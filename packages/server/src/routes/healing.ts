@@ -117,15 +117,76 @@ const app = new Hono()
       });
     }
 
-    // TODO: 동일 로케이터를 사용하는 다른 시나리오에 전파 로직 구현
-    // 현재는 빈 배열 반환
+    // 동일 로케이터를 사용하는 다른 시나리오 찾기
+    const allScenarios = await db.getAllScenarios();
     const propagatedTo: string[] = [];
+
+    for (const scenario of allScenarios) {
+      // 자기 자신은 제외
+      if (scenario.id === record.scenarioId) {
+        continue;
+      }
+
+      let scenarioModified = false;
+      const updatedSteps = scenario.steps.map((step: any) => {
+        // 로케이터를 가진 스텝 타입인지 확인
+        const hasLocator = ["click", "fill", "select", "hover", "wait", "assert"].includes(step.type);
+        if (!hasLocator || !step.config?.locator) {
+          return step;
+        }
+
+        // 동일한 displayName을 가진 로케이터인지 확인
+        if (step.config.locator.displayName !== record.locatorDisplayName) {
+          return step;
+        }
+
+        // 로케이터 전략 업데이트
+        const currentStrategies = step.config.locator.strategies || [];
+
+        // 기존 전략에서 healed strategy와 동일한 타입 제거
+        const filteredStrategies = currentStrategies.filter(
+          (s: any) => s.type !== record.healedStrategy.type
+        );
+
+        // healed strategy를 최우선(priority: 1)으로 추가
+        const updatedStrategies = [
+          { ...record.healedStrategy, priority: 1 },
+          ...filteredStrategies.map((s: any, idx: number) => ({
+            ...s,
+            priority: idx + 2
+          }))
+        ];
+
+        scenarioModified = true;
+
+        return {
+          ...step,
+          config: {
+            ...step.config,
+            locator: {
+              ...step.config.locator,
+              strategies: updatedStrategies
+            }
+          }
+        };
+      });
+
+      // 시나리오가 수정되었으면 저장
+      if (scenarioModified) {
+        await db.updateScenario(scenario.id, { steps: updatedSteps });
+        propagatedTo.push(scenario.id);
+      }
+    }
 
     const updated = await db.updateHealingRecord(id, {
       propagatedTo,
     });
 
-    return c.json({ success: true, data: updated });
+    return c.json({
+      success: true,
+      data: updated,
+      message: `${propagatedTo.length}개 시나리오에 전파되었습니다.`
+    });
   });
 
 export type HealingRoute = typeof app;

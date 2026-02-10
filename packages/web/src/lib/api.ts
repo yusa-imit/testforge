@@ -62,8 +62,10 @@ export async function getComponents() {
   return res.json();
 }
 
-export async function getHealingRecords() {
-  const res = await api.api.healing.$get();
+export async function getHealingRecords(params?: { status?: string }) {
+  const res = await api.api.healing.$get({
+    query: params?.status ? { status: params.status } : undefined
+  });
   return res.json();
 }
 

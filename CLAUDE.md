@@ -108,6 +108,65 @@ testforge/
 
 ---
 
+## 최근 완료된 작업
+
+### ✅ Healing Dashboard UI Enhancement (완료)
+
+**완료일:** 2026-02-10
+**관련 PRD:** Section 6.2.4 (Self-Healing 대시보드)
+
+#### 작업 내용
+
+Self-Healing 대시보드의 UI를 PRD 스펙에 맞춰 전면 개선했습니다.
+
+**Backend 개선:**
+- `GET /api/healing` - status 필터 파라미터 지원
+- `POST /api/healing/:id/propagate` - 로케이터 전파 로직 구현
+  - 동일한 displayName을 가진 로케이터를 다른 시나리오에서 자동 탐색
+  - healed strategy를 최우선(priority: 1)으로 적용
+  - 전파된 시나리오 ID 목록 반환
+
+**Frontend 개선:**
+1. **Stats Cards**: 통계 카드에 Rejected 카운트 추가, 아이콘 및 컬러 코딩
+2. **Filters Section**: Status 필터 드롭다운, 검색 박스 추가
+3. **Healing Records List**:
+   - 로케이터 표시명, 상태 배지, 트리거 이유 배지
+   - 전략 변경 시각화 (original → healed)
+   - Confidence 프로그레스 바 (색상 코딩: 90%+ 녹색, 70-89% 노란색, <70% 빨간색)
+   - 상대 시간 표시 (date-fns 사용)
+   - 확장 가능한 상세 뷰 (Accordion)
+4. **Action Buttons**: Approve, Reject, 전체 승인, 전파 버튼
+5. **Detail View**: 전체 전략 JSON, 시나리오/실행 링크, 리뷰 정보, 전파 정보
+
+**새로운 shadcn/ui 컴포넌트:**
+- `accordion.tsx` - 확장/축소 가능한 상세 뷰
+- `dropdown-menu.tsx` - 필터 드롭다운
+- `progress.tsx` - Confidence 진행률 표시
+
+**새로운 의존성:**
+- `date-fns` ^3.3.0 - 상대 시간 포맷팅
+- `@radix-ui/react-accordion` ^1.2.2
+- `@radix-ui/react-dropdown-menu` ^2.1.4
+- `@radix-ui/react-progress` ^1.1.1
+
+**파일 변경:**
+- `packages/server/src/routes/healing.ts` - 필터링, 전파 로직
+- `packages/web/src/pages/Healing.tsx` - 전체 UI 재작성
+- `packages/web/src/lib/api.ts` - API 함수 업데이트
+- `packages/web/package.json` - 의존성 추가
+- `packages/web/tailwind.config.js` - 애니메이션 설정
+- `packages/web/src/components/ui/` - 새 컴포넌트 추가
+
+**PRD 준수:**
+- ✅ PRD Section 6.2.4의 모든 요구사항 충족
+- ✅ 와이어프레임 구조 정확히 반영
+- ✅ PRD Section 3.1의 HealingRecord 타입 사용
+- ✅ PRD Section 4의 API 엔드포인트 스펙 준수
+
+**상세 문서:** `HEALING_DASHBOARD_ENHANCEMENTS.md` 참조
+
+---
+
 ## 서브 에이전트 팀
 
 복잡한 작업은 전문 에이전트에게 위임하세요.
