@@ -13,6 +13,7 @@ import type {
 } from "../types";
 import { LocatorResolver, ElementNotFoundError } from "../locator/resolver";
 import { HealingTracker, type HealingEvent } from "../healing/tracker";
+import { ApiClient, type ApiRequestResponse } from "../api/client";
 
 export interface ExecutionOptions {
   headless?: boolean;
@@ -39,10 +40,14 @@ export class TestExecutor {
   private page: Page | null = null;
   private locatorResolver: LocatorResolver;
   private healingTracker: HealingTracker;
+  private apiClient: ApiClient;
+  private apiResponses: Map<string, ApiRequestResponse>; // 저장된 API 응답
 
   constructor() {
     this.locatorResolver = new LocatorResolver();
     this.healingTracker = new HealingTracker();
+    this.apiClient = new ApiClient();
+    this.apiResponses = new Map();
   }
 
   /**
@@ -78,6 +83,9 @@ export class TestExecutor {
 
     const stepResults: StepResult[] = [];
     const healingEvents: HealingEvent[] = [];
+
+    // API 응답 저장소 초기화
+    this.apiResponses.clear();
 
     try {
       // 브라우저 초기화
@@ -209,9 +217,12 @@ export class TestExecutor {
           // Components should be expanded before execution
           throw new Error("Component steps should be expanded before execution");
         case "api-request":
+          return await this.executeApiRequest(step, index, runId, variables, startTime);
         case "api-assert":
+          await this.executeApiAssert(step, variables);
+          break;
         case "script":
-          // Not implemented in Phase 1
+          // Not implemented yet
           throw new Error(`Step type not yet implemented: ${step.type}`);
         default:
           throw new Error(`Unsupported step type: ${step.type}`);
@@ -692,6 +703,189 @@ export class TestExecutor {
   }
 
   /**
+   * api-request 스텝 실행
+   * PRD Appendix A: api-request
+   */
+  private async executeApiRequest(
+    step: Step,
+    index: number,
+    runId: string,
+    variables: Record<string, any>,
+    startTime: number
+  ): Promise<StepResult> {
+    const config = step.config as {
+      method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+      url: string;
+      headers?: Record<string, string>;
+      body?: any;
+      saveResponseAs?: string;
+    };
+
+    try {
+      // URL 및 body 변수 치환
+      const url = this.interpolate(config.url, variables);
+      const body = config.body
+        ? this.applyParametersToConfig(config.body, variables)
+        : undefined;
+
+      // 헤더 치환
+      const headers: Record<string, string> = {};
+      if (config.headers) {
+        for (const [key, value] of Object.entries(config.headers)) {
+          headers[key] = this.interpolate(value, variables);
+        }
+      }
+
+      // API 요청 실행
+      const response = await this.apiClient.request({
+        method: config.method,
+        url,
+        headers,
+        body,
+        timeout: step.timeout,
+      });
+
+      // 응답 저장 (saveResponseAs 지정 시)
+      if (config.saveResponseAs) {
+        this.apiResponses.set(config.saveResponseAs, response);
+        // 변수로도 저장하여 다른 스텝에서 참조 가능
+        variables[config.saveResponseAs] = response.body;
+      }
+
+      return {
+        id: uuid(),
+        runId,
+        stepId: step.id,
+        stepIndex: index,
+        status: "passed",
+        duration: Date.now() - startTime,
+        context: {
+          consoleLog: [
+            `API Request: ${config.method} ${url}`,
+            `Status: ${response.status} ${response.statusText}`,
+            `Duration: ${response.duration}ms`,
+          ],
+        },
+        createdAt: new Date(),
+      };
+    } catch (error) {
+      return {
+        id: uuid(),
+        runId,
+        stepId: step.id,
+        stepIndex: index,
+        status: "failed",
+        duration: Date.now() - startTime,
+        error: {
+          message: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+        },
+        createdAt: new Date(),
+      };
+    }
+  }
+
+  /**
+   * api-assert 스텝 실행
+   * PRD Appendix A: api-assert
+   */
+  private async executeApiAssert(
+    step: Step,
+    variables: Record<string, any>
+  ): Promise<void> {
+    const config = step.config as {
+      type: "status" | "body" | "header";
+      path?: string;
+      expected?: any;
+      operator?: "equals" | "contains" | "matches" | "exists" | "type";
+      headerName?: string;
+      status?: number;
+      responseRef?: string; // 참조할 저장된 응답 이름
+    };
+
+    // 응답 가져오기 (가장 최근 응답 또는 지정된 응답)
+    let response: ApiRequestResponse | undefined;
+
+    if (config.responseRef) {
+      response = this.apiResponses.get(config.responseRef);
+      if (!response) {
+        throw new Error(
+          `Saved response not found: ${config.responseRef}. Use saveResponseAs in api-request step.`
+        );
+      }
+    } else {
+      // 마지막 응답 사용
+      const responses = Array.from(this.apiResponses.values());
+      response = responses[responses.length - 1];
+      if (!response) {
+        throw new Error(
+          "No API response available for assertion. Execute api-request first."
+        );
+      }
+    }
+
+    const operator = config.operator ?? "equals";
+
+    switch (config.type) {
+      case "status":
+        if (config.status === undefined) {
+          throw new Error("status field is required for status assertion");
+        }
+        if (response.status !== config.status) {
+          throw new Error(
+            `Status assertion failed: expected ${config.status}, got ${response.status}`
+          );
+        }
+        break;
+
+      case "header":
+        if (!config.headerName) {
+          throw new Error("headerName is required for header assertion");
+        }
+        const headerValue = response.headers[config.headerName.toLowerCase()];
+        const expectedHeader = this.interpolate(
+          String(config.expected ?? ""),
+          variables
+        );
+
+        if (!this.apiClient.compareValues(headerValue, expectedHeader, operator)) {
+          throw new Error(
+            `Header assertion failed: ${config.headerName} ${operator} ${expectedHeader}, got ${headerValue}`
+          );
+        }
+        break;
+
+      case "body":
+        if (!config.path) {
+          throw new Error("path is required for body assertion");
+        }
+
+        // JSON path로 값 추출
+        const actualValue = this.apiClient.getValueByPath(
+          response.body,
+          config.path
+        );
+
+        // expected 값 변수 치환
+        const expectedValue =
+          typeof config.expected === "string"
+            ? this.interpolate(config.expected, variables)
+            : config.expected;
+
+        // 비교
+        if (!this.apiClient.compareValues(actualValue, expectedValue, operator)) {
+          throw new Error(
+            `Body assertion failed: ${config.path} ${operator} ${JSON.stringify(expectedValue)}, got ${JSON.stringify(actualValue)}`
+          );
+        }
+        break;
+
+      default:
+        throw new Error(`Unsupported assertion type: ${config.type}`);
+    }
+  }
+
+  /**
    * 리소스를 정리합니다.
    */
   private async cleanup(): Promise<void> {
@@ -704,5 +898,6 @@ export class TestExecutor {
       this.browser = null;
     }
     this.page = null;
+    this.apiResponses.clear();
   }
 }

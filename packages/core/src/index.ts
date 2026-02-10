@@ -9,3 +9,6 @@ export * from "./executor/engine";
 
 // Healing
 export * from "./healing/tracker";
+
+// API
+export * from "./api/client";

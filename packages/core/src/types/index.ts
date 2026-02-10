@@ -204,15 +204,21 @@ export const apiRequestConfigSchema = z.object({
   url: z.string(),
   headers: z.record(z.string()).optional(),
   body: z.any().optional(),
-  saveResponseAs: z.string().optional(),
+  saveResponseAs: z.string().optional(), // Store response for later assertions
 });
 
 // API Assert Step
 export const apiAssertConfigSchema = z.object({
   type: z.enum(["status", "body", "header"]),
   path: z.string().optional(),
-  expected: z.any(),
-  operator: z.enum(["equals", "contains", "matches", "exists"]).default("equals"),
+  expected: z.any().optional(),
+  operator: z.enum(["equals", "contains", "matches", "exists", "type"]).default("equals"),
+  // Status assertion
+  status: z.number().optional(),
+  // Header assertion
+  headerName: z.string().optional(),
+  // Response reference (optional, defaults to last response)
+  responseRef: z.string().optional(),
 });
 
 // Component Step
