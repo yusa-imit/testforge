@@ -17,5 +17,8 @@
     "test": "bun test",
     "lint": "bunx eslint . --ext .ts,.tsx",
     "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
   }
 }

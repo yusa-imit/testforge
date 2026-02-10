@@ -1,66 +1,62 @@
 import { Hono } from "hono";
-import { db } from "../db";
+import { getDB } from "../db";
+import { notFound, badRequest } from "../utils/errors";
 
 const app = new Hono()
   // GET /api/runs - 실행 목록
-  .get("/", (c) => {
+  .get("/", async (c) => {
+    const db = await getDB();
     const limitParam = c.req.query("limit");
     const limit = limitParam ? parseInt(limitParam, 10) : 50;
-    const runs = db.getAllTestRuns(limit);
+    const runs = await db.getAllTestRuns(limit);
     return c.json({ success: true, data: runs });
   })
 
   // GET /api/runs/:id - 실행 상세
-  .get("/:id", (c) => {
+  .get("/:id", async (c) => {
+    const db = await getDB();
     const id = c.req.param("id");
-    const run = db.getTestRun(id);
+    const run = await db.getTestRun(id);
 
     if (!run) {
-      return c.json(
-        { success: false, error: { code: "NOT_FOUND", message: "Run not found" } },
-        404
-      );
+      throw notFound("Run", id);
     }
 
     return c.json({ success: true, data: run });
   })
 
   // GET /api/runs/:id/steps - 실행의 스텝 결과
-  .get("/:id/steps", (c) => {
+  .get("/:id/steps", async (c) => {
+    const db = await getDB();
     const id = c.req.param("id");
-    const run = db.getTestRun(id);
+    const run = await db.getTestRun(id);
 
     if (!run) {
-      return c.json(
-        { success: false, error: { code: "NOT_FOUND", message: "Run not found" } },
-        404
-      );
+      throw notFound("Run", id);
     }
 
-    const stepResults = db.getStepResultsByRun(id);
+    const stepResults = await db.getStepResultsByRun(id);
     return c.json({ success: true, data: stepResults });
   })
 
   // DELETE /api/runs/:id - 실행 취소 (상태 업데이트)
-  .delete("/:id", (c) => {
+  .delete("/:id", async (c) => {
+    const db = await getDB();
     const id = c.req.param("id");
-    const run = db.getTestRun(id);
+    const run = await db.getTestRun(id);
 
     if (!run) {
-      return c.json(
-        { success: false, error: { code: "NOT_FOUND", message: "Run not found" } },
-        404
-      );
+      throw notFound("Run", id);
     }
 
     if (run.status !== "running") {
-      return c.json(
-        { success: false, error: { code: "INVALID_STATE", message: "Run is not running" } },
-        400
-      );
+      throw badRequest("Run is not running", {
+        code: "INVALID_STATE",
+        currentStatus: run.status
+      });
     }
 
-    const updated = db.updateTestRun(id, {
+    const updated = await db.updateTestRun(id, {
       status: "cancelled",
       finishedAt: new Date(),
     });

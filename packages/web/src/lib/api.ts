@@ -34,8 +34,8 @@ export async function getService(id: string) {
 }
 
 export async function getFeatures(serviceId: string) {
-  const res = await api.api.services[":id"].features.$get({
-    param: { id: serviceId },
+  const res = await api.api.services[":serviceId"].features.$get({
+    param: { serviceId },
   });
   return res.json();
 }
@@ -46,8 +46,8 @@ export async function getFeature(id: string) {
 }
 
 export async function getScenarios(featureId: string) {
-  const res = await api.api.features[":id"].scenarios.$get({
-    param: { id: featureId },
+  const res = await api.api.features[":featureId"].scenarios.$get({
+    param: { featureId },
   });
   return res.json();
 }

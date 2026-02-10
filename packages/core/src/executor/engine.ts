@@ -9,6 +9,7 @@ import type {
   StepResultStatus,
   Service,
   ElementLocator,
+  Component,
 } from "../types";
 import { LocatorResolver, ElementNotFoundError } from "../locator/resolver";
 import { HealingTracker, type HealingEvent } from "../healing/tracker";
@@ -20,6 +21,7 @@ export interface ExecutionOptions {
   onStepStart?: (step: Step, index: number) => void;
   onStepComplete?: (result: StepResult) => void;
   onHealing?: (event: HealingEvent) => void;
+  componentLoader?: (componentId: string) => Promise<Component | undefined>;
 }
 
 export interface ExecutionResult {
@@ -58,6 +60,7 @@ export class TestExecutor {
       onStepStart,
       onStepComplete,
       onHealing,
+      componentLoader,
     } = options;
 
     // 실행 기록 생성
@@ -83,10 +86,17 @@ export class TestExecutor {
       // 기본 URL로 이동
       await this.page!.goto(service.baseUrl);
 
+      // 스텝 확장 (컴포넌트 포함)
+      const expandedSteps = await this.expandSteps(
+        scenario.steps,
+        run.environment.variables,
+        componentLoader
+      );
+
       // 스텝 실행
-      for (let i = 0; i < scenario.steps.length; i++) {
-        const step = scenario.steps[i];
-        
+      for (let i = 0; i < expandedSteps.length; i++) {
+        const step = expandedSteps[i];
+
         onStepStart?.(step, i);
 
         const result = await this.executeStep(
@@ -195,6 +205,14 @@ export class TestExecutor {
         case "screenshot":
           await this.executeScreenshot(step);
           break;
+        case "component":
+          // Components should be expanded before execution
+          throw new Error("Component steps should be expanded before execution");
+        case "api-request":
+        case "api-assert":
+        case "script":
+          // Not implemented in Phase 1
+          throw new Error(`Step type not yet implemented: ${step.type}`);
         default:
           throw new Error(`Unsupported step type: ${step.type}`);
       }
@@ -534,6 +552,143 @@ export class TestExecutor {
       return "failed";
     }
     return "passed";
+  }
+
+  /**
+   * 스텝 목록을 확장합니다 (컴포넌트를 하위 스텝으로 변환).
+   * PRD Section 5.3 - 컴포넌트 시스템 구현
+   */
+  private async expandSteps(
+    steps: Step[],
+    variables: Record<string, any>,
+    componentLoader?: (componentId: string) => Promise<Component | undefined>
+  ): Promise<Step[]> {
+    const expanded: Step[] = [];
+
+    for (const step of steps) {
+      if (step.type === "component") {
+        // 컴포넌트 스텝 확장
+        const componentSteps = await this.expandComponentStep(
+          step,
+          variables,
+          componentLoader
+        );
+        expanded.push(...componentSteps);
+      } else {
+        expanded.push(step);
+      }
+    }
+
+    return expanded;
+  }
+
+  /**
+   * 컴포넌트 스텝을 하위 스텝으로 확장합니다.
+   */
+  private async expandComponentStep(
+    step: Step,
+    variables: Record<string, any>,
+    componentLoader?: (componentId: string) => Promise<Component | undefined>
+  ): Promise<Step[]> {
+    const config = step.config as {
+      componentId: string;
+      parameters?: Record<string, any>;
+    };
+
+    if (!componentLoader) {
+      throw new Error(
+        "Component loader not provided. Cannot expand component steps."
+      );
+    }
+
+    // 컴포넌트 로드
+    const component = await componentLoader(config.componentId);
+    if (!component) {
+      throw new Error(`Component not found: ${config.componentId}`);
+    }
+
+    // 파라미터 바인딩을 위한 변수 생성
+    const componentVariables = this.bindComponentParameters(
+      component,
+      config.parameters ?? {},
+      variables
+    );
+
+    // 컴포넌트의 스텝들을 복사하고 파라미터 적용
+    const expandedSteps: Step[] = component.steps.map((compStep) => ({
+      ...compStep,
+      id: uuid(), // 새로운 ID 생성 (중복 방지)
+      config: this.applyParametersToConfig(
+        compStep.config,
+        componentVariables
+      ),
+      description: this.interpolate(compStep.description, componentVariables),
+    }));
+
+    return expandedSteps;
+  }
+
+  /**
+   * 컴포넌트 파라미터를 바인딩합니다.
+   * PRD Section 5.3 - 파라미터 바인딩
+   */
+  private bindComponentParameters(
+    component: Component,
+    providedParams: Record<string, any>,
+    variables: Record<string, any>
+  ): Record<string, any> {
+    const bound: Record<string, any> = { ...variables };
+
+    for (const paramDef of component.parameters) {
+      let value = providedParams[paramDef.name];
+
+      // 변수 참조 처리 ({{adminEmail}} 형태)
+      if (typeof value === "string" && value.includes("{{")) {
+        value = this.interpolate(value, variables);
+      }
+
+      // 값이 제공되지 않았으면 기본값 사용
+      if (value === undefined) {
+        value = paramDef.defaultValue;
+      }
+
+      // 필수 파라미터 검증
+      if (value === undefined && paramDef.required) {
+        throw new Error(
+          `Required parameter '${paramDef.name}' not provided for component '${component.name}'`
+        );
+      }
+
+      bound[paramDef.name] = value;
+    }
+
+    return bound;
+  }
+
+  /**
+   * config 객체에 파라미터를 적용합니다.
+   */
+  private applyParametersToConfig(
+    config: any,
+    variables: Record<string, any>
+  ): any {
+    if (typeof config === "string") {
+      return this.interpolate(config, variables);
+    }
+
+    if (Array.isArray(config)) {
+      return config.map((item) => this.applyParametersToConfig(item, variables));
+    }
+
+    if (config && typeof config === "object") {
+      const result: any = {};
+      for (const [key, value] of Object.entries(config)) {
+        result[key] = this.applyParametersToConfig(value, variables);
+      }
+      return result;
+    }
+
+    return config;
   }
 
   /**

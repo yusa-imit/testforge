@@ -15,11 +15,11 @@ export default function ScenarioEditor() {
     return <div className="text-center py-12">로딩 중...</div>;
   }
 
-  const scenario = data?.data;
-
-  if (!scenario) {
+  if (!data || !data.success) {
     return <div className="text-center py-12">시나리오를 찾을 수 없습니다.</div>;
   }
+
+  const scenario = data.data;
 
   return (
     <div className="space-y-6">

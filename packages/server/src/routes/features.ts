@@ -1,86 +1,80 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { createFeatureSchema } from "@testforge/core";
-import { db } from "../db";
+import { createFeatureSchema, createScenarioSchema } from "@testforge/core";
+import { getDB } from "../db";
+import { notFound } from "../utils/errors";
 
 const app = new Hono()
   // GET /api/features/:id - 기능 상세
-  .get("/:id", (c) => {
+  .get("/:id", async (c) => {
+    const db = await getDB();
     const id = c.req.param("id");
-    const feature = db.getFeature(id);
+    const feature = await db.getFeature(id);
 
     if (!feature) {
-      return c.json(
-        { success: false, error: { code: "NOT_FOUND", message: "Feature not found" } },
-        404
-      );
+      throw notFound("Feature", id);
     }
 
     return c.json({ success: true, data: feature });
   })
 
-  // POST /api/features - 기능 생성
-  .post("/", zValidator("json", createFeatureSchema), (c) => {
-    const data = c.req.valid("json");
-    
-    // 서비스 존재 확인
-    const service = db.getService(data.serviceId);
-    if (!service) {
-      return c.json(
-        { success: false, error: { code: "NOT_FOUND", message: "Service not found" } },
-        404
-      );
-    }
-
-    const feature = db.createFeature(data);
-    return c.json({ success: true, data: feature }, 201);
-  })
-
   // PUT /api/features/:id - 기능 수정
-  .put("/:id", zValidator("json", createFeatureSchema.partial()), (c) => {
+  .put("/:id", zValidator("json", createFeatureSchema.partial()), async (c) => {
+    const db = await getDB();
     const id = c.req.param("id");
     const data = c.req.valid("json");
-    const feature = db.updateFeature(id, data);
+    const feature = await db.updateFeature(id, data);
 
     if (!feature) {
-      return c.json(
-        { success: false, error: { code: "NOT_FOUND", message: "Feature not found" } },
-        404
-      );
+      throw notFound("Feature", id);
     }
 
     return c.json({ success: true, data: feature });
   })
 
   // DELETE /api/features/:id - 기능 삭제
-  .delete("/:id", (c) => {
+  .delete("/:id", async (c) => {
+    const db = await getDB();
     const id = c.req.param("id");
-    const deleted = db.deleteFeature(id);
+    const deleted = await db.deleteFeature(id);
 
     if (!deleted) {
-      return c.json(
-        { success: false, error: { code: "NOT_FOUND", message: "Feature not found" } },
-        404
-      );
+      throw notFound("Feature", id);
     }
 
     return c.json({ success: true });
   })
 
-  // GET /api/features/:id/scenarios - 기능의 시나리오 목록
-  .get("/:id/scenarios", (c) => {
-    const id = c.req.param("id");
-    const feature = db.getFeature(id);
+  // GET /api/features/:featureId/scenarios - 기능의 시나리오 목록
+  .get("/:featureId/scenarios", async (c) => {
+    const db = await getDB();
+    const featureId = c.req.param("featureId");
+    const feature = await db.getFeature(featureId);
 
     if (!feature) {
-      return c.json(
-        { success: false, error: { code: "NOT_FOUND", message: "Feature not found" } },
-        404
-      );
+      throw notFound("Feature", featureId);
     }
 
-    const scenarios = db.getScenariosByFeature(id);
+    const scenarios = await db.getScenariosByFeature(featureId);
     return c.json({ success: true, data: scenarios });
+  })
+
+  // POST /api/features/:featureId/scenarios - 시나리오 생성
+  .post("/:featureId/scenarios", zValidator("json", createScenarioSchema), async (c) => {
+    const db = await getDB();
+    const featureId = c.req.param("featureId");
+
+    // 기능 존재 확인
+    const feature = await db.getFeature(featureId);
+    if (!feature) {
+      throw notFound("Feature", featureId);
+    }
+
+    const data = c.req.valid("json");
+
+    // featureId는 URL에서 가져와서 덮어씀
+    const scenario = await db.createScenario({ ...data, featureId });
+    return c.json({ success: true, data: scenario }, 201);
   });
 
 export type FeaturesRoute = typeof app;

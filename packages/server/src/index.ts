@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 
+import { errorHandler } from "./middleware/errorHandler";
 import services from "./routes/services";
 import features from "./routes/features";
 import scenarios from "./routes/scenarios";
@@ -12,6 +13,7 @@ import healing from "./routes/healing";
 const app = new Hono()
   .use("*", logger())
   .use("*", cors())
+  .onError(errorHandler)
   .get("/", (c) => c.json({ message: "TestForge API", version: "0.1.0" }))
   .get("/health", (c) => c.json({ status: "ok" }))
   .route("/api/services", services)

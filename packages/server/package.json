@@ -6,7 +6,7 @@
   "types": "./src/index.ts",
   "scripts": {
     "dev": "bun run --watch src/index.ts",
-    "build": "bun build src/index.ts --outdir=dist --target=bun",
+    "build": "bun build src/index.ts --outdir=dist --target=bun --external=playwright --external=playwright-core --external=chromium-bidi --external=electron --external=duckdb",
     "start": "bun run dist/index.js",
     "db:migrate": "bun run src/db/migrate.ts",
     "test": "bun test",
@@ -23,6 +23,7 @@
   },
   "devDependencies": {
     "@types/bun": "^1.1.0",
+    "@types/node": "^25.2.2",
     "@types/uuid": "^10.0.0",
     "drizzle-kit": "^0.30.0",
     "typescript": "^5.7.0"

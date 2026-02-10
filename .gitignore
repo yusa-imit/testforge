@@ -10,6 +10,7 @@ build/
 # Runtime data
 *.db
 *.duckdb
+*.duckdb.wal
 screenshots/
 
 # OS files

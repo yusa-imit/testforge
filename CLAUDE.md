@@ -1,5 +1,36 @@
 # TestForge - Claude Code 프로젝트 가이드
 
+## ⚠️ CRITICAL: PRD 필독 규칙
+
+**모든 구현 작업 전에 PRD를 반드시 읽어야 합니다.**
+
+```
+🔴 MANDATORY: 어떤 코드도 작성하기 전에 먼저 docs/PRD.md를 읽으세요
+```
+
+**적용 범위:**
+- ✅ 새로운 기능 구현
+- ✅ UI 컴포넌트 작성 (특히!)
+- ✅ API 엔드포인트 개발
+- ✅ 데이터 모델 변경
+- ✅ 아키텍처 설계
+- ✅ 모든 서브 에이전트 작업
+
+**PRD에는 다음이 명시되어 있습니다:**
+- 완전한 데이터 모델 (TypeScript 인터페이스)
+- API 엔드포인트 스펙 (경로, 메서드, 요청/응답)
+- UI 화면 상세 설계 (와이어프레임, 동작)
+- 스텝 타입별 설정 (config 구조)
+- 기술 스택 및 사용법
+
+**절대 하지 말 것:**
+- ❌ PRD를 읽지 않고 추측으로 구현
+- ❌ 타입을 임의로 정의
+- ❌ API 경로를 임의로 정의
+- ❌ UI 구조를 임의로 변경
+
+---
+
 ## 프로젝트 개요
 
 QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫폼.
@@ -10,7 +41,7 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 - 다층 셀렉터 기반 Self-Healing
 - 브라우저 + API 테스트 지원
 
-**PRD 위치:** `docs/PRD.md`
+**PRD 위치:** `docs/PRD.md` ← **모든 작업 전에 필수 확인**
 
 ---
 
@@ -45,25 +76,35 @@ testforge/
 
 ## 개발 워크플로우
 
+**🔴 모든 Phase 작업 전에: PRD 해당 섹션을 먼저 읽으세요!**
+
 ### Phase 1: 기반 구축
+**PRD 참조:** Section 3 (데이터 모델), Section 4 (API 설계)
+
 1. 모노레포 설정 (Bun workspace)
-2. DB 스키마 및 마이그레이션
-3. 기본 CRUD API
-4. 프론트엔드 기본 구조
+2. DB 스키마 및 마이그레이션 ← PRD Section 3 참조
+3. 기본 CRUD API ← PRD Section 4 참조
+4. 프론트엔드 기본 구조 ← PRD Section 6 참조
 
 ### Phase 2: 핵심 기능
-1. 테스트 실행 엔진
-2. 다층 셀렉터 시스템
-3. Self-Healing 로직
+**PRD 참조:** Section 5 (핵심 기능 상세), Section 3.1 (ElementLocator, HealingRecord)
+
+1. 테스트 실행 엔진 ← PRD Section 5.1 참조
+2. 다층 셀렉터 시스템 ← PRD Section 3.1, 5.1 참조
+3. Self-Healing 로직 ← PRD Section 5.2 참조
 
 ### Phase 3: 컴포넌트 & API 테스트
-1. 컴포넌트 시스템
-2. API 테스트 스텝
+**PRD 참조:** Section 5.3 (컴포넌트 시스템), 부록 A (스텝 타입)
+
+1. 컴포넌트 시스템 ← PRD Section 5.3 참조
+2. API 테스트 스텝 ← PRD 부록 A (api-request, api-assert) 참조
 
 ### Phase 4: 안정화
-1. 에러 처리
-2. 실시간 상태 (SSE)
-3. UX 개선
+**PRD 참조:** Section 4.2 (실시간 통신), Section 8 (기술적 고려사항)
+
+1. 에러 처리 ← PRD Section 8.5 참조
+2. 실시간 상태 (SSE) ← PRD Section 4.2 참조
+3. UX 개선 ← PRD Section 6 참조
 
 ---
 
@@ -71,25 +112,49 @@ testforge/
 
 복잡한 작업은 전문 에이전트에게 위임하세요.
 
+### 🔴 에이전트 작업 시작 전 필수 체크리스트
+
+**모든 에이전트는 작업을 시작하기 전에:**
+
+1. ✅ `docs/PRD.md`를 읽는다
+2. ✅ 관련 섹션을 정확히 파악한다
+3. ✅ 타입 정의를 확인한다
+4. ✅ API 스펙을 확인한다 (backend)
+5. ✅ UI 설계를 확인한다 (frontend)
+6. ✅ 그 다음에 코드를 작성한다
+
 ### 사용 가능한 에이전트
 
-| 에이전트 | 역할 | 호출 상황 |
-|----------|------|----------|
-| `architect` | 시스템 설계, 아키텍처 결정 | 새 기능 설계, 구조 변경 |
-| `backend` | API 개발, DB 스키마 | 서버 코드 작성 |
-| `frontend` | React UI 개발 | 컴포넌트, 페이지 작성 |
-| `test-engine` | Playwright, Self-Healing | 테스트 실행 로직 |
-| `reviewer` | 코드 리뷰, 품질 검토 | PR 전 검토 |
-| `debugger` | 버그 분석, 해결 | 에러 발생 시 |
-| `docs` | 문서 작성, API 문서화 | 문서 필요 시 |
+| 에이전트 | 역할 | 호출 상황 | PRD 참조 필수 |
+|----------|------|----------|---------------|
+| `architect` | 시스템 설계, 아키텍처 결정 | 새 기능 설계, 구조 변경 | ✅ 데이터 모델, 시스템 구조 |
+| `backend` | API 개발, DB 스키마 | 서버 코드 작성 | ✅ API 스펙, 데이터 모델 |
+| `frontend` | React UI 개발 | 컴포넌트, 페이지 작성 | ✅ UI 설계, API 스펙, 타입 |
+| `test-engine` | Playwright, Self-Healing | 테스트 실행 로직 | ✅ 스텝 타입, 로케이터 시스템 |
+| `reviewer` | 코드 리뷰, 품질 검토 | PR 전 검토 | ✅ 전체 스펙 준수 확인 |
+| `debugger` | 버그 분석, 해결 | 에러 발생 시 | ✅ 예상 동작 파악 |
+| `docs` | 문서 작성, API 문서화 | 문서 필요 시 | ✅ API 스펙, 타입 정의 |
 
 ### 에이전트 호출 방법
 
+**올바른 호출 (PRD 확인 명시):**
 ```
-@architect 새로운 기능 X를 추가하려고 합니다. 구조를 설계해주세요.
-@backend scenarios CRUD API를 구현해주세요.
-@frontend 시나리오 에디터 페이지를 만들어주세요.
+@architect 새로운 기능 X를 추가하려고 합니다. 먼저 docs/PRD.md를 읽고 구조를 설계해주세요.
+
+@backend scenarios CRUD API를 구현해주세요. PRD Section 4의 API 스펙을 먼저 확인하고 시작하세요.
+
+@frontend 시나리오 에디터 페이지를 만들어주세요. PRD Section 6.2.2와 Section 3의 Scenario 타입을 먼저 읽어주세요.
 ```
+
+**잘못된 호출 (PRD 확인 없음):**
+```
+❌ @frontend 시나리오 에디터 만들어줘
+❌ @backend API 구현해줘
+```
+
+**⚠️ 중요:**
+- 서브 에이전트에게 작업을 위임할 때는 **반드시** "PRD를 먼저 읽으세요"를 명시해주세요.
+- 가능하면 읽어야 할 PRD의 특정 섹션을 지정해주세요.
 
 ---
 
@@ -180,6 +245,58 @@ testforge/
   - 클라이언트 상태는 적음 (UI 상태 정도)
   - 서버 상태가 대부분 (테스트 데이터, 실행 결과)
   - 실시간 업데이트 필요 (SSE)
+```
+
+---
+
+## 🎨 Frontend 개발 특별 규칙
+
+**Frontend 에이전트 및 UI 작업 시 절대 규칙:**
+
+### 1. PRD Section 6 (UI 설계) 필독
+```bash
+# Frontend 작업 전에 항상 먼저 확인
+Read docs/PRD.md Section 6 (UI 설계)
+```
+
+**PRD Section 6에 포함된 내용:**
+- 페이지 구조 및 라우팅
+- 각 화면의 와이어프레임 (ASCII art)
+- 모달/다이얼로그 구조
+- 버튼/액션 위치
+- 폼 필드 구성
+
+### 2. 컴포넌트 작성 전 체크리스트
+
+- [ ] PRD Section 6에서 해당 화면 찾기
+- [ ] 와이어프레임 확인
+- [ ] 필요한 데이터 모델 확인 (PRD Section 3)
+- [ ] API 엔드포인트 확인 (PRD Section 4)
+- [ ] 그 다음 컴포넌트 작성
+
+### 3. 절대 하지 말 것
+
+❌ PRD를 읽지 않고 "일반적인" UI 구조로 작성
+❌ 임의로 필드 추가/제거
+❌ 임의로 버튼/액션 추가
+❌ PRD와 다른 레이아웃 사용
+❌ 임의로 타입 정의 (PRD Section 3 사용!)
+
+### 4. Frontend 작업 예시
+
+**올바른 순서:**
+```
+1. Read docs/PRD.md Section 6.2.2 (시나리오 에디터)
+2. Read docs/PRD.md Section 3.1 (Scenario 타입)
+3. Read docs/PRD.md Section 4 (API 엔드포인트)
+4. 그 다음 ScenarioEditor.tsx 작성
+```
+
+**잘못된 순서:**
+```
+❌ 1. 바로 ScenarioEditor.tsx 작성
+❌ 2. 타입을 임의로 정의
+❌ 3. 나중에 PRD 확인
 ```
 
 ---
@@ -343,14 +460,27 @@ axiosClient.interceptors.request.use((config) => {
 
 ### 새 기능 개발 시
 
-- [ ] PRD 확인
+**🔴 Step 0: PRD 읽기 (MANDATORY)**
+- [ ] **`docs/PRD.md` 전체 읽기** ← 이것부터!
+- [ ] 해당 기능의 데이터 모델 확인
+- [ ] API 엔드포인트 스펙 확인 (backend 작업 시)
+- [ ] UI 화면 설계 확인 (frontend 작업 시)
+- [ ] 스텝 타입별 config 구조 확인 (해당되는 경우)
+
+**Step 1: 설계**
 - [ ] 필요시 @architect에게 설계 요청
-- [ ] 타입 정의 먼저
-- [ ] Zod 스키마 작성
-- [ ] API 구현 (@backend)
-- [ ] UI 구현 (@frontend)
+- [ ] PRD 스펙과 일치하는지 확인
+
+**Step 2: 구현**
+- [ ] PRD의 타입 정의 그대로 사용
+- [ ] Zod 스키마 작성 (타입과 일치)
+- [ ] API 구현 (@backend) - PRD의 엔드포인트 스펙 준수
+- [ ] UI 구현 (@frontend) - PRD의 화면 설계 준수
 - [ ] 테스트 작성
+
+**Step 3: 검토**
 - [ ] @reviewer 코드 리뷰
+- [ ] PRD 스펙 준수 확인
 - [ ] 문서 업데이트 (@docs)
 
 ### PR 전 확인
