@@ -6,6 +6,7 @@ import ServiceDetail from "./pages/ServiceDetail";
 import FeatureDetail from "./pages/FeatureDetail";
 import ScenarioEditor from "./pages/ScenarioEditor";
 import Components from "./pages/Components";
+import ComponentEditor from "./pages/ComponentEditor";
 import Healing from "./pages/Healing";
 import Runs from "./pages/Runs";
 
@@ -19,6 +20,8 @@ function App() {
         <Route path="/features/:id" element={<FeatureDetail />} />
         <Route path="/scenarios/:id" element={<ScenarioEditor />} />
         <Route path="/components" element={<Components />} />
+        <Route path="/components/new" element={<ComponentEditor />} />
+        <Route path="/components/:id/edit" element={<ComponentEditor />} />
         <Route path="/healing" element={<Healing />} />
         <Route path="/runs" element={<Runs />} />
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -78,3 +78,28 @@ export async function getRuns(limit = 50) {
   const res = await api.api.runs.$get({ query: { limit: String(limit) } });
   return res.json();
 }
+
+export async function getComponent(id: string) {
+  const res = await api.api.components[":id"].$get({ param: { id } });
+  return res.json();
+}
+
+export async function createComponent(data: any) {
+  const res = await api.api.components.$post({ json: data });
+  return res.json();
+}
+
+export async function updateComponent(id: string, data: any) {
+  const res = await api.api.components[":id"].$put({ param: { id }, json: data });
+  return res.json();
+}
+
+export async function deleteComponent(id: string) {
+  const res = await api.api.components[":id"].$delete({ param: { id } });
+  return res.json();
+}
+
+export async function getComponentUsages(id: string) {
+  const res = await api.api.components[":id"].usages.$get({ param: { id } });
+  return res.json();
+}
