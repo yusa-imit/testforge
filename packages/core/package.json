@@ -1,0 +1,19 @@
+{
+  "name": "@testforge/core",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "playwright": "^1.50.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.1.0",
+    "typescript": "^5.7.0"
+  }
+}

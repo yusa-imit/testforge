@@ -1,0 +1,21 @@
+{
+  "name": "testforge",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "bun run --cwd scripts dev.ts",
+    "dev:server": "bun run --cwd packages/server dev",
+    "dev:web": "bun run --cwd packages/web dev",
+    "build": "bun run build:server && bun run build:web",
+    "build:server": "bun run --cwd packages/server build",
+    "build:web": "bun run --cwd packages/web build",
+    "db:migrate": "bun run --cwd packages/server db:migrate",
+    "db:seed": "bun run --cwd scripts seed.ts",
+    "test": "bun test",
+    "lint": "bunx eslint . --ext .ts,.tsx",
+    "typecheck": "tsc --noEmit"
+  }
+}
