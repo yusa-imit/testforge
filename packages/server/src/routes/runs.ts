@@ -1,6 +1,9 @@
 import { Hono } from "hono";
+import { streamSSE } from "hono/streaming";
 import { getDB } from "../db";
 import { notFound, badRequest } from "../utils/errors";
+import { ExecutionManager } from "../execution/manager";
+import type { RunEvent } from "@testforge/core";
 
 const app = new Hono()
   // GET /api/runs - 실행 목록
@@ -62,6 +65,105 @@ const app = new Hono()
     });
 
     return c.json({ success: true, data: updated });
+  })
+
+  // GET /api/runs/:id/stream - 실시간 실행 상태 스트림 (SSE)
+  // PRD Section 4.2 - 실시간 통신
+  .get("/:id/stream", async (c) => {
+    const db = await getDB();
+    const id = c.req.param("id");
+    const run = await db.getTestRun(id);
+
+    if (!run) {
+      throw notFound("Run", id);
+    }
+
+    const executionManager = ExecutionManager.getInstance();
+
+    // 이미 완료된 실행인 경우 최종 상태만 전송하고 종료
+    if (run.status !== "running") {
+      return streamSSE(c, async (stream) => {
+        await stream.writeSSE({
+          data: JSON.stringify({
+            type: "run:finished",
+            data: { status: run.status, summary: run.summary },
+          }),
+          event: "message",
+        });
+        await stream.close();
+      });
+    }
+
+    // 활성 실행 조회
+    const executor = executionManager.getExecutor(id);
+    if (!executor) {
+      // 실행 중이지만 executor를 찾을 수 없는 경우
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: "EXECUTOR_NOT_FOUND",
+            message: "Run is marked as running but executor not found",
+          },
+        },
+        404
+      );
+    }
+
+    // SSE 스트림 시작
+    return streamSSE(c, async (stream) => {
+      let closed = false;
+
+      // 이벤트 리스너 등록
+      const eventHandler = async (event: RunEvent) => {
+        if (closed) return;
+
+        try {
+          await stream.writeSSE({
+            data: JSON.stringify(event),
+            event: "message",
+          });
+
+          // run:finished 이벤트 후 스트림 종료
+          if (event.type === "run:finished") {
+            closed = true;
+            await stream.close();
+          }
+        } catch (error) {
+          // 클라이언트 연결 끊김 등의 에러 처리
+          console.error("SSE write error:", error);
+          closed = true;
+        }
+      };
+
+      executor.on("event", eventHandler);
+
+      // Keep-alive: 30초마다 heartbeat 전송
+      const heartbeatInterval = setInterval(async () => {
+        if (closed) {
+          clearInterval(heartbeatInterval);
+          return;
+        }
+
+        try {
+          await stream.writeSSE({
+            data: JSON.stringify({ type: "heartbeat" }),
+            event: "heartbeat",
+          });
+        } catch (error) {
+          console.error("SSE heartbeat error:", error);
+          closed = true;
+          clearInterval(heartbeatInterval);
+        }
+      }, 30000);
+
+      // 클라이언트 연결 끊김 처리
+      c.req.raw.signal.addEventListener("abort", () => {
+        closed = true;
+        clearInterval(heartbeatInterval);
+        executor.off("event", eventHandler);
+      });
+    });
   });
 
 export type RunsRoute = typeof app;

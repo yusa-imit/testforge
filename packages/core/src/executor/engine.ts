@@ -1,5 +1,6 @@
 import { chromium, Browser, BrowserContext, Page } from "playwright";
 import { v4 as uuid } from "uuid";
+import { EventEmitter } from "events";
 import type {
   Scenario,
   Step,
@@ -25,6 +26,31 @@ export interface ExecutionOptions {
   componentLoader?: (componentId: string) => Promise<Component | undefined>;
 }
 
+/**
+ * SSE Event Types (PRD Section 4.2)
+ */
+export type RunEvent =
+  | { type: "run:started"; data: { runId: string } }
+  | { type: "step:started"; data: { stepIndex: number; description: string } }
+  | { type: "step:passed"; data: { stepIndex: number; duration: number } }
+  | { type: "step:failed"; data: { stepIndex: number; error: string } }
+  | { type: "step:healed"; data: { stepIndex: number; healing: HealingInfo } }
+  | { type: "run:finished"; data: { status: string; summary: RunSummary } };
+
+export interface HealingInfo {
+  originalStrategy: any;
+  usedStrategy: any;
+  confidence: number;
+}
+
+export interface RunSummary {
+  totalSteps: number;
+  passedSteps: number;
+  failedSteps: number;
+  skippedSteps: number;
+  healedSteps: number;
+}
+
 export interface ExecutionResult {
   run: TestRun;
   stepResults: StepResult[];
@@ -34,7 +60,7 @@ export interface ExecutionResult {
 /**
  * TestExecutor - 테스트 실행 엔진
  */
-export class TestExecutor {
+export class TestExecutor extends EventEmitter {
   private browser: Browser | null = null;
   private context: BrowserContext | null = null;
   private page: Page | null = null;
@@ -44,6 +70,7 @@ export class TestExecutor {
   private apiResponses: Map<string, ApiRequestResponse>; // 저장된 API 응답
 
   constructor() {
+    super();
     this.locatorResolver = new LocatorResolver();
     this.healingTracker = new HealingTracker();
     this.apiClient = new ApiClient();
@@ -87,6 +114,12 @@ export class TestExecutor {
     // API 응답 저장소 초기화
     this.apiResponses.clear();
 
+    // Emit run started event (PRD Section 4.2)
+    this.emit("event", {
+      type: "run:started",
+      data: { runId: run.id },
+    } as RunEvent);
+
     try {
       // 브라우저 초기화
       await this.initBrowser(headless, timeout);
@@ -104,6 +137,12 @@ export class TestExecutor {
       // 스텝 실행
       for (let i = 0; i < expandedSteps.length; i++) {
         const step = expandedSteps[i];
+
+        // Emit step started event (PRD Section 4.2)
+        this.emit("event", {
+          type: "step:started",
+          data: { stepIndex: i, description: step.description },
+        } as RunEvent);
 
         onStepStart?.(step, i);
 
@@ -130,9 +169,38 @@ export class TestExecutor {
           };
           healingEvents.push(event);
           onHealing?.(event);
+
+          // Emit step healed event (PRD Section 4.2)
+          this.emit("event", {
+            type: "step:healed",
+            data: {
+              stepIndex: i,
+              healing: {
+                originalStrategy: result.healing.originalStrategy,
+                usedStrategy: result.healing.usedStrategy,
+                confidence: result.healing.confidence,
+              },
+            },
+          } as RunEvent);
         }
 
         onStepComplete?.(result);
+
+        // Emit step result event (PRD Section 4.2)
+        if (result.status === "failed") {
+          this.emit("event", {
+            type: "step:failed",
+            data: {
+              stepIndex: i,
+              error: result.error?.message ?? "Unknown error",
+            },
+          } as RunEvent);
+        } else {
+          this.emit("event", {
+            type: "step:passed",
+            data: { stepIndex: i, duration: result.duration },
+          } as RunEvent);
+        }
 
         // 실패 시 중단 (continueOnError가 아닌 경우)
         if (result.status === "failed" && !step.continueOnError) {
@@ -151,10 +219,31 @@ export class TestExecutor {
         skippedSteps: stepResults.filter((r) => r.status === "skipped").length,
         healedSteps: stepResults.filter((r) => r.status === "healed").length,
       };
+
+      // Emit run finished event (PRD Section 4.2)
+      this.emit("event", {
+        type: "run:finished",
+        data: { status: run.status, summary: run.summary },
+      } as RunEvent);
     } catch (error) {
       run.status = "failed";
       run.finishedAt = new Date();
       run.duration = run.finishedAt.getTime() - run.startedAt!.getTime();
+
+      // Emit run finished event on error
+      this.emit("event", {
+        type: "run:finished",
+        data: {
+          status: run.status,
+          summary: {
+            totalSteps: scenario.steps.length,
+            passedSteps: stepResults.filter((r) => r.status === "passed").length,
+            failedSteps: stepResults.filter((r) => r.status === "failed").length,
+            skippedSteps: stepResults.filter((r) => r.status === "skipped").length,
+            healedSteps: stepResults.filter((r) => r.status === "healed").length,
+          },
+        },
+      } as RunEvent);
     } finally {
       await this.cleanup();
     }

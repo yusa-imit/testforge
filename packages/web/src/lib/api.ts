@@ -139,3 +139,13 @@ export async function propagateHealing(id: string) {
   const res = await api.api.healing[":id"].propagate.$post({ param: { id } });
   return res.json();
 }
+
+export async function getRun(id: string) {
+  const res = await api.api.runs[":id"].$get({ param: { id } });
+  return res.json();
+}
+
+export async function getRunSteps(id: string) {
+  const res = await api.api.runs[":id"].steps.$get({ param: { id } });
+  return res.json();
+}

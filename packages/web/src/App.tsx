@@ -9,6 +9,7 @@ import Components from "./pages/Components";
 import ComponentEditor from "./pages/ComponentEditor";
 import Healing from "./pages/Healing";
 import Runs from "./pages/Runs";
+import RunDetail from "./pages/RunDetail";
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
         <Route path="/components/:id/edit" element={<ComponentEditor />} />
         <Route path="/healing" element={<Healing />} />
         <Route path="/runs" element={<Runs />} />
+        <Route path="/scenarios/:scenarioId/runs/:runId" element={<RunDetail />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
