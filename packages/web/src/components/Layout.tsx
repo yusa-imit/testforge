@@ -1,4 +1,5 @@
 import { Link, Outlet, useLocation } from "react-router-dom";
+import { Toaster } from "./ui/toaster";
 
 const navigation = [
   { name: "대시보드", href: "/" },
@@ -52,6 +53,8 @@ export default function Layout() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Outlet />
       </main>
+
+      <Toaster />
     </div>
   );
 }

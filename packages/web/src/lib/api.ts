@@ -103,3 +103,39 @@ export async function getComponentUsages(id: string) {
   const res = await api.api.components[":id"].usages.$get({ param: { id } });
   return res.json();
 }
+
+export async function updateScenario(id: string, data: any) {
+  const res = await api.api.scenarios[":id"].$put({ param: { id }, json: data });
+  return res.json();
+}
+
+export async function deleteScenario(id: string) {
+  const res = await api.api.scenarios[":id"].$delete({ param: { id } });
+  return res.json();
+}
+
+export async function runScenario(id: string) {
+  const res = await api.api.scenarios[":id"].run.$post({ param: { id } });
+  return res.json();
+}
+
+export async function approveHealing(id: string, reviewedBy?: string, reviewNote?: string) {
+  const res = await api.api.healing[":id"].approve.$post({
+    param: { id },
+    json: { reviewedBy, reviewNote }
+  });
+  return res.json();
+}
+
+export async function rejectHealing(id: string, reviewedBy?: string, reviewNote?: string) {
+  const res = await api.api.healing[":id"].reject.$post({
+    param: { id },
+    json: { reviewedBy, reviewNote }
+  });
+  return res.json();
+}
+
+export async function propagateHealing(id: string) {
+  const res = await api.api.healing[":id"].propagate.$post({ param: { id } });
+  return res.json();
+}
