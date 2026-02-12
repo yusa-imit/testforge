@@ -23,7 +23,7 @@ import type {
 async function seed() {
   console.log("🌱 Starting database seed...\n");
 
-  const db = await initDatabase("./packages/server/testforge.duckdb");
+  const db = await initDatabase("../packages/server/testforge.duckdb");
 
   // Clear existing data
   console.log("🗑️  Clearing existing data...");
