@@ -152,6 +152,27 @@ export const healingRecordsTable = `
 `;
 
 /**
+ * Element Registry Table
+ *
+ * Tracks elements across scenarios for Self-Healing quality improvement.
+ * Records element changes and usage patterns.
+ */
+export const elementRegistryTable = `
+  CREATE TABLE IF NOT EXISTS element_registry (
+    id VARCHAR PRIMARY KEY,
+    service_id VARCHAR NOT NULL,
+    display_name VARCHAR NOT NULL,
+    page_pattern VARCHAR,
+    current_locator JSON NOT NULL,
+    history JSON DEFAULT '[]',
+    used_in JSON DEFAULT '[]',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE
+  )
+`;
+
+/**
  * Indexes for performance optimization
  *
  * DuckDB automatically creates indexes for foreign keys,
@@ -176,6 +197,10 @@ export const indexes = [
   'CREATE INDEX IF NOT EXISTS idx_healing_records_status ON healing_records(status)',
   'CREATE INDEX IF NOT EXISTS idx_healing_records_scenario_id ON healing_records(scenario_id)',
   'CREATE INDEX IF NOT EXISTS idx_healing_records_created_at ON healing_records(created_at)',
+
+  // Element registry indexes
+  'CREATE INDEX IF NOT EXISTS idx_element_registry_service_id ON element_registry(service_id)',
+  'CREATE INDEX IF NOT EXISTS idx_element_registry_display_name ON element_registry(display_name)',
 ];
 
 /**
@@ -189,4 +214,5 @@ export const allTables = [
   testRunsTable,
   stepResultsTable,
   healingRecordsTable,
+  elementRegistryTable,
 ];

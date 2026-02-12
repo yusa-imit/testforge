@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getFeature, getScenarios, api } from "../lib/api";
@@ -8,12 +8,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function FeatureDetail() {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
   const [isCreating, setIsCreating] = useState(false);
   const [scenarioName, setScenarioName] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [priorityFilter, setPriorityFilter] = useState<string>("all");
 
   const { data: featureData, isLoading: featureLoading } = useQuery({
     queryKey: ["feature", id],
@@ -60,6 +63,29 @@ export default function FeatureDetail() {
   const feature = featureData.data;
   const scenarios = scenariosData?.success ? scenariosData.data : [];
 
+  // Filter scenarios based on search query and priority
+  const filteredScenarios = useMemo(() => {
+    return scenarios.filter((scenario: any) => {
+      const matchesSearch = !searchQuery.trim() || 
+        scenario.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        scenario.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        scenario.tags?.some((tag: string) => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+      
+      const matchesPriority = priorityFilter === "all" || scenario.priority === priorityFilter;
+      
+      return matchesSearch && matchesPriority;
+    });
+  }, [scenarios, searchQuery, priorityFilter]);
+
+  // Get unique tags for potential tag filtering
+  const allTags = useMemo(() => {
+    const tagSet = new Set<string>();
+    scenarios.forEach((scenario: any) => {
+      scenario.tags?.forEach((tag: string) => tagSet.add(tag));
+    });
+    return Array.from(tagSet);
+  }, [scenarios]);
+
   return (
     <div className="space-y-6">
       {/* Breadcrumb */}
@@ -88,6 +114,56 @@ export default function FeatureDetail() {
           + 시나리오 추가
         </Button>
       </div>
+
+      {/* Search and Filter Controls */}
+      {scenarios.length > 0 && (
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="relative flex-1 min-w-[200px] max-w-md">
+            <svg
+              className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <Input
+              placeholder="시나리오 검색..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="우선순위" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">모든 우선순위</SelectItem>
+              <SelectItem value="critical">Critical</SelectItem>
+              <SelectItem value="high">High</SelectItem>
+              <SelectItem value="medium">Medium</SelectItem>
+              <SelectItem value="low">Low</SelectItem>
+            </SelectContent>
+          </Select>
+          {(searchQuery || priorityFilter !== "all") && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setSearchQuery("");
+                setPriorityFilter("all");
+              }}
+            >
+              필터 초기화
+            </Button>
+          )}
+          <span className="text-sm text-muted-foreground">
+            {filteredScenarios.length}/{scenarios.length}개 시나리오
+          </span>
+        </div>
+      )}
 
       {/* Create Scenario Dialog */}
       <Dialog open={isCreating} onOpenChange={setIsCreating}>
@@ -137,10 +213,23 @@ export default function FeatureDetail() {
               첫 시나리오 추가하기
             </Button>
           </CardContent>
+        ) : filteredScenarios.length === 0 ? (
+          <CardContent className="py-12 text-center">
+            <p className="text-muted-foreground mb-2">필터 조건에 맞는 시나리오가 없습니다.</p>
+            <Button
+              variant="link"
+              onClick={() => {
+                setSearchQuery("");
+                setPriorityFilter("all");
+              }}
+            >
+              필터 초기화
+            </Button>
+          </CardContent>
         ) : (
           <CardContent className="p-0">
             <div className="divide-y">
-              {scenarios.map((scenario: any) => (
+              {filteredScenarios.map((scenario: any) => (
                 <Link
                   key={scenario.id}
                   to={`/scenarios/${scenario.id}`}

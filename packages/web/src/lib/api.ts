@@ -149,3 +149,59 @@ export async function getRunSteps(id: string) {
   const res = await api.api.runs[":id"].steps.$get({ param: { id } });
   return res.json();
 }
+
+// Element Registry API functions
+export async function getRegistryElements(serviceId?: string, search?: string) {
+  const queryParams = new URLSearchParams();
+  if (serviceId) queryParams.append("serviceId", serviceId);
+  if (search) queryParams.append("search", search);
+  
+  const res = await axiosClient.get(`/registry?${queryParams.toString()}`);
+  return res.data;
+}
+
+export async function getRegistryElement(id: string) {
+  const res = await axiosClient.get(`/registry/${id}`);
+  return res.data;
+}
+
+export async function createRegistryElement(data: {
+  serviceId: string;
+  displayName: string;
+  pagePattern?: string;
+  currentLocator: any;
+}) {
+  const res = await axiosClient.post("/registry", data);
+  return res.data;
+}
+
+export async function updateRegistryElement(id: string, data: {
+  displayName?: string;
+  pagePattern?: string;
+  currentLocator?: any;
+  reason?: string;
+}) {
+  const res = await axiosClient.put(`/registry/${id}`, data);
+  return res.data;
+}
+
+export async function deleteRegistryElement(id: string) {
+  const res = await axiosClient.delete(`/registry/${id}`);
+  return res.data;
+}
+
+export async function addRegistryUsage(id: string, data: {
+  scenarioId: string;
+  stepId: string;
+}) {
+  const res = await axiosClient.post(`/registry/${id}/usage`, data);
+  return res.data;
+}
+
+export async function findRegistryByName(displayName: string, serviceId?: string) {
+  const queryParams = new URLSearchParams();
+  if (serviceId) queryParams.append("serviceId", serviceId);
+  
+  const res = await axiosClient.get(`/registry/by-name/${encodeURIComponent(displayName)}?${queryParams.toString()}`);
+  return res.data;
+}

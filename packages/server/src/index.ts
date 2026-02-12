@@ -10,6 +10,7 @@ import components from "./routes/components";
 import runs from "./routes/runs";
 import healing from "./routes/healing";
 import screenshots from "./routes/screenshots";
+import registry from "./routes/registry";
 
 const app = new Hono()
   .use("*", logger())
@@ -23,7 +24,8 @@ const app = new Hono()
   .route("/api/components", components)
   .route("/api/runs", runs)
   .route("/api/healing", healing)
-  .route("/api/screenshots", screenshots);
+  .route("/api/screenshots", screenshots)
+  .route("/api/registry", registry);
 
 export type AppType = typeof app;
 export default app;

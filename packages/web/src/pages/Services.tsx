@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { getServices, api } from "../lib/api";
@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 export default function Services() {
   const queryClient = useQueryClient();
   const [isCreating, setIsCreating] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [form, setForm] = useState({
     name: "",
     description: "",
@@ -38,6 +39,17 @@ export default function Services() {
 
   const services = data?.data ?? [];
 
+  // Filter services based on search query
+  const filteredServices = useMemo(() => {
+    if (!searchQuery.trim()) return services;
+    const query = searchQuery.toLowerCase();
+    return services.filter((service: any) =>
+      service.name.toLowerCase().includes(query) ||
+      service.description?.toLowerCase().includes(query) ||
+      service.baseUrl?.toLowerCase().includes(query)
+    );
+  }, [services, searchQuery]);
+
   if (isLoading) {
     return <div className="text-center py-12">로딩 중...</div>;
   }
@@ -49,6 +61,32 @@ export default function Services() {
         <Button onClick={() => setIsCreating(true)}>
           + 새 서비스
         </Button>
+      </div>
+
+      {/* Search Input */}
+      <div className="flex items-center gap-4">
+        <div className="relative flex-1 max-w-md">
+          <svg
+            className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <Input
+            placeholder="서비스 검색..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        {searchQuery && (
+          <span className="text-sm text-muted-foreground">
+            {filteredServices.length}개 결과
+          </span>
+        )}
       </div>
 
       {/* Create Form Dialog */}
@@ -121,9 +159,20 @@ export default function Services() {
             </Button>
           </CardContent>
         </Card>
+      ) : filteredServices.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-muted-foreground mb-2">
+              "{searchQuery}"에 대한 검색 결과가 없습니다.
+            </p>
+            <Button variant="link" onClick={() => setSearchQuery("")}>
+              검색 초기화
+            </Button>
+          </CardContent>
+        </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {services.map((service: any) => (
+          {filteredServices.map((service: any) => (
             <Link key={service.id} to={`/services/${service.id}`}>
               <Card className="hover:shadow-lg transition-shadow h-full">
                 <CardHeader>
