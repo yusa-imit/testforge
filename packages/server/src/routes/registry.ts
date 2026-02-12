@@ -57,35 +57,11 @@ const app = new Hono()
     const db = await getDB();
     const serviceId = c.req.query("serviceId");
     const search = c.req.query("search");
-    
-    let elements: any[] = [];
-    
-    try {
-      if (serviceId) {
-        const result = await db.db.all(
-          `SELECT * FROM element_registry WHERE service_id = ? ORDER BY updated_at DESC`,
-          [serviceId]
-        );
-        elements = result;
-      } else {
-        const result = await db.db.all(
-          `SELECT * FROM element_registry ORDER BY updated_at DESC`
-        );
-        elements = result;
-      }
-    } catch (error) {
-      // Table might not exist yet
-      elements = [];
-    }
-    
-    // Parse JSON fields
-    elements = elements.map((el: any) => ({
-      ...el,
-      currentLocator: JSON.parse(el.current_locator || "{}"),
-      history: JSON.parse(el.history || "[]"),
-      usedIn: JSON.parse(el.used_in || "[]"),
-    }));
-    
+
+    let elements = await db.getAllRegistryElements(
+      serviceId !== "all" && serviceId ? serviceId : undefined
+    );
+
     // Apply search filter
     if (search) {
       const searchLower = search.toLowerCase();
@@ -94,7 +70,7 @@ const app = new Hono()
         el.page_pattern?.toLowerCase().includes(searchLower)
       );
     }
-    
+
     return c.json({ success: true, data: elements });
   })
 
@@ -102,30 +78,14 @@ const app = new Hono()
   .get("/:id", async (c) => {
     const db = await getDB();
     const id = c.req.param("id");
-    
-    try {
-      const result = await db.db.all(
-        `SELECT * FROM element_registry WHERE id = ?`,
-        [id]
-      );
-      
-      if (result.length === 0) {
-        throw notFound("Element registry entry", id);
-      }
-      
-      const el = result[0];
-      const element = {
-        ...el,
-        currentLocator: JSON.parse(el.current_locator || "{}"),
-        history: JSON.parse(el.history || "[]"),
-        usedIn: JSON.parse(el.used_in || "[]"),
-      };
-      
-      return c.json({ success: true, data: element });
-    } catch (error: any) {
-      if (error.code === "NOT_FOUND") throw error;
+
+    const element = await db.getRegistryElement(id);
+
+    if (!element) {
       throw notFound("Element registry entry", id);
     }
+
+    return c.json({ success: true, data: element });
   })
 
   // POST /api/registry - Create new element registry entry
@@ -133,27 +93,16 @@ const app = new Hono()
     const db = await getDB();
     const data = c.req.valid("json");
     const id = crypto.randomUUID();
-    const now = new Date().toISOString();
-    
+
     try {
-      await db.db.run(
-        `INSERT INTO element_registry (id, service_id, display_name, page_pattern, current_locator, history, used_in, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, '[]', '[]', ?, ?)`,
-        [id, data.serviceId, data.displayName, data.pagePattern || null, JSON.stringify(data.currentLocator), now, now]
-      );
-      
-      const element = {
+      const element = await db.createRegistryElement({
         id,
         serviceId: data.serviceId,
         displayName: data.displayName,
         pagePattern: data.pagePattern,
         currentLocator: data.currentLocator,
-        history: [],
-        usedIn: [],
-        createdAt: now,
-        updatedAt: now,
-      };
-      
+      });
+
       return c.json({ success: true, data: element }, 201);
     } catch (error: any) {
       throw badRequest("Failed to create element registry entry", { error: error.message });
@@ -165,64 +114,18 @@ const app = new Hono()
     const db = await getDB();
     const id = c.req.param("id");
     const data = c.req.valid("json");
-    const now = new Date().toISOString();
-    
-    // Get current element
-    const result = await db.db.all(
-      `SELECT * FROM element_registry WHERE id = ?`,
-      [id]
-    );
-    
-    if (result.length === 0) {
+
+    const element = await db.updateRegistryElement(id, {
+      displayName: data.displayName,
+      pagePattern: data.pagePattern,
+      currentLocator: data.currentLocator,
+      reason: data.reason,
+    });
+
+    if (!element) {
       throw notFound("Element registry entry", id);
     }
-    
-    const current = result[0];
-    const currentLocator = JSON.parse(current.current_locator || "{}");
-    const history = JSON.parse(current.history || "[]");
-    
-    // If locator is changing, add current to history
-    if (data.currentLocator) {
-      history.push({
-        locator: currentLocator,
-        changedAt: now,
-        reason: data.reason || "Manual update",
-      });
-    }
-    
-    // Update the element
-    await db.db.run(
-      `UPDATE element_registry
-       SET display_name = COALESCE(?, display_name),
-           page_pattern = COALESCE(?, page_pattern),
-           current_locator = COALESCE(?, current_locator),
-           history = ?,
-           updated_at = ?
-       WHERE id = ?`,
-      [
-        data.displayName || null,
-        data.pagePattern || null,
-        data.currentLocator ? JSON.stringify(data.currentLocator) : null,
-        JSON.stringify(history),
-        now,
-        id
-      ]
-    );
-    
-    // Get updated element
-    const updated = await db.db.all(
-      `SELECT * FROM element_registry WHERE id = ?`,
-      [id]
-    );
-    
-    const el = updated[0];
-    const element = {
-      ...el,
-      currentLocator: JSON.parse(el.current_locator || "{}"),
-      history: JSON.parse(el.history || "[]"),
-      usedIn: JSON.parse(el.used_in || "[]"),
-    };
-    
+
     return c.json({ success: true, data: element });
   })
 
@@ -231,57 +134,31 @@ const app = new Hono()
     const db = await getDB();
     const id = c.req.param("id");
     const data = c.req.valid("json");
-    const now = new Date().toISOString();
-    
-    // Get current element
-    const result = await db.db.all(
-      `SELECT * FROM element_registry WHERE id = ?`,
-      [id]
-    );
-    
-    if (result.length === 0) {
+
+    const result = await db.addRegistryUsage(id, {
+      scenarioId: data.scenarioId,
+      stepId: data.stepId,
+    });
+
+    if (!result) {
       throw notFound("Element registry entry", id);
     }
-    
-    const current = result[0];
-    const usedIn = JSON.parse(current.used_in || "[]");
-    
-    // Check if usage already exists
-    const exists = usedIn.some(
-      (u: any) => u.scenarioId === data.scenarioId && u.stepId === data.stepId
-    );
-    
-    if (!exists) {
-      usedIn.push({
-        scenarioId: data.scenarioId,
-        stepId: data.stepId,
-        addedAt: now,
-      });
-      
-      await db.db.run(
-        `UPDATE element_registry SET used_in = ?, updated_at = ? WHERE id = ?`,
-        [JSON.stringify(usedIn), now, id]
-      );
-    }
-    
-    return c.json({ success: true, data: { usedIn } });
+
+    return c.json({ success: true, data: result });
   })
 
   // DELETE /api/registry/:id - Delete element registry entry
   .delete("/:id", async (c) => {
     const db = await getDB();
     const id = c.req.param("id");
-    
-    try {
-      const result = await db.db.run(
-        `DELETE FROM element_registry WHERE id = ?`,
-        [id]
-      );
-      
-      return c.json({ success: true });
-    } catch (error: any) {
+
+    const deleted = await db.deleteRegistryElement(id);
+
+    if (!deleted) {
       throw notFound("Element registry entry", id);
     }
+
+    return c.json({ success: true });
   })
 
   // GET /api/registry/by-name/:displayName - Find element by display name
@@ -289,34 +166,10 @@ const app = new Hono()
     const db = await getDB();
     const displayName = decodeURIComponent(c.req.param("displayName"));
     const serviceId = c.req.query("serviceId");
-    
-    try {
-      let query = `SELECT * FROM element_registry WHERE display_name = ?`;
-      const params: any[] = [displayName];
-      
-      if (serviceId) {
-        query += ` AND service_id = ?`;
-        params.push(serviceId);
-      }
-      
-      const result = await db.db.all(query, params);
-      
-      if (result.length === 0) {
-        return c.json({ success: true, data: null });
-      }
-      
-      const el = result[0];
-      const element = {
-        ...el,
-        currentLocator: JSON.parse(el.current_locator || "{}"),
-        history: JSON.parse(el.history || "[]"),
-        usedIn: JSON.parse(el.used_in || "[]"),
-      };
-      
-      return c.json({ success: true, data: element });
-    } catch (error) {
-      return c.json({ success: true, data: null });
-    }
+
+    const element = await db.findRegistryByName(displayName, serviceId);
+
+    return c.json({ success: true, data: element });
   });
 
 export default app;

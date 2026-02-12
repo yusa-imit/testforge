@@ -762,4 +762,203 @@ export class DuckDBDatabase {
       autoApproved: Number(row.auto_approved) || 0,
     };
   }
+
+  // ============================================
+  // Element Registry
+  // ============================================
+
+  async getAllRegistryElements(serviceId?: string): Promise<any[]> {
+    let query = "SELECT * FROM element_registry";
+    const params: any[] = [];
+
+    if (serviceId) {
+      query += " WHERE service_id = ?";
+      params.push(serviceId);
+    }
+
+    query += " ORDER BY updated_at DESC";
+
+    try {
+      const rows = await this.db.all(query, params);
+      return rows.map((el: any) => ({
+        ...el,
+        currentLocator: JSON.parse(el.current_locator || "{}"),
+        history: JSON.parse(el.history || "[]"),
+        usedIn: JSON.parse(el.used_in || "[]"),
+      }));
+    } catch (error) {
+      // Table might not exist yet
+      return [];
+    }
+  }
+
+  async getRegistryElement(id: string): Promise<any | undefined> {
+    try {
+      const row = await this.db.get("SELECT * FROM element_registry WHERE id = ?", [id]);
+      if (!row) return undefined;
+
+      return {
+        ...row,
+        currentLocator: JSON.parse(row.current_locator || "{}"),
+        history: JSON.parse(row.history || "[]"),
+        usedIn: JSON.parse(row.used_in || "[]"),
+      };
+    } catch (error) {
+      return undefined;
+    }
+  }
+
+  async createRegistryElement(data: {
+    id: string;
+    serviceId: string;
+    displayName: string;
+    pagePattern?: string;
+    currentLocator: any;
+  }): Promise<any> {
+    const now = new Date().toISOString();
+
+    await this.db.run(
+      `INSERT INTO element_registry (id, service_id, display_name, page_pattern, current_locator, history, used_in, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, '[]', '[]', ?, ?)`,
+      [
+        data.id,
+        data.serviceId,
+        data.displayName,
+        data.pagePattern || null,
+        JSON.stringify(data.currentLocator),
+        now,
+        now,
+      ]
+    );
+
+    return {
+      id: data.id,
+      service_id: data.serviceId,
+      display_name: data.displayName,
+      page_pattern: data.pagePattern,
+      currentLocator: data.currentLocator,
+      history: [],
+      usedIn: [],
+      created_at: now,
+      updated_at: now,
+    };
+  }
+
+  async updateRegistryElement(
+    id: string,
+    data: {
+      displayName?: string;
+      pagePattern?: string;
+      currentLocator?: any;
+      reason?: string;
+    }
+  ): Promise<any | undefined> {
+    const now = new Date().toISOString();
+
+    // Get current element
+    const current = await this.getRegistryElement(id);
+    if (!current) return undefined;
+
+    const history = current.history || [];
+
+    // If locator is changing, add current to history
+    if (data.currentLocator) {
+      history.push({
+        locator: current.currentLocator,
+        changedAt: now,
+        reason: data.reason || "Manual update",
+      });
+    }
+
+    // Update the element
+    await this.db.run(
+      `UPDATE element_registry
+       SET display_name = COALESCE(?, display_name),
+           page_pattern = COALESCE(?, page_pattern),
+           current_locator = COALESCE(?, current_locator),
+           history = ?,
+           updated_at = ?
+       WHERE id = ?`,
+      [
+        data.displayName || null,
+        data.pagePattern || null,
+        data.currentLocator ? JSON.stringify(data.currentLocator) : null,
+        JSON.stringify(history),
+        now,
+        id,
+      ]
+    );
+
+    // Return updated element
+    return this.getRegistryElement(id);
+  }
+
+  async addRegistryUsage(
+    id: string,
+    data: { scenarioId: string; stepId: string }
+  ): Promise<any> {
+    const now = new Date().toISOString();
+
+    // Get current element
+    const current = await this.getRegistryElement(id);
+    if (!current) return undefined;
+
+    const usedIn = current.usedIn || [];
+
+    // Check if usage already exists
+    const exists = usedIn.some(
+      (u: any) => u.scenarioId === data.scenarioId && u.stepId === data.stepId
+    );
+
+    if (!exists) {
+      usedIn.push({
+        scenarioId: data.scenarioId,
+        stepId: data.stepId,
+        addedAt: now,
+      });
+
+      await this.db.run(
+        `UPDATE element_registry SET used_in = ?, updated_at = ? WHERE id = ?`,
+        [JSON.stringify(usedIn), now, id]
+      );
+    }
+
+    return { usedIn };
+  }
+
+  async deleteRegistryElement(id: string): Promise<boolean> {
+    try {
+      await this.db.run("DELETE FROM element_registry WHERE id = ?", [id]);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  async findRegistryByName(
+    displayName: string,
+    serviceId?: string
+  ): Promise<any | null> {
+    try {
+      let query = "SELECT * FROM element_registry WHERE display_name = ?";
+      const params: any[] = [displayName];
+
+      if (serviceId) {
+        query += " AND service_id = ?";
+        params.push(serviceId);
+      }
+
+      const row = await this.db.get(query, params);
+      if (!row) return null;
+
+      return {
+        ...row,
+        currentLocator: JSON.parse(row.current_locator || "{}"),
+        history: JSON.parse(row.history || "[]"),
+        usedIn: JSON.parse(row.used_in || "[]"),
+      };
+    } catch (error) {
+      return null;
+    }
+  }
 }

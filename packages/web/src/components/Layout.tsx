@@ -6,6 +6,7 @@ const navigation = [
   { name: "서비스", href: "/services" },
   { name: "컴포넌트", href: "/components" },
   { name: "Self-Healing", href: "/healing" },
+  { name: "Element Registry", href: "/registry" },
   { name: "실행 이력", href: "/runs" },
 ];
 

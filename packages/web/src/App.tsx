@@ -8,6 +8,7 @@ import ScenarioEditor from "./pages/ScenarioEditor";
 import Components from "./pages/Components";
 import ComponentEditor from "./pages/ComponentEditor";
 import Healing from "./pages/Healing";
+import ElementRegistry from "./pages/ElementRegistry";
 import Runs from "./pages/Runs";
 import RunDetail from "./pages/RunDetail";
 
@@ -24,6 +25,7 @@ function App() {
         <Route path="/components/new" element={<ComponentEditor />} />
         <Route path="/components/:id/edit" element={<ComponentEditor />} />
         <Route path="/healing" element={<Healing />} />
+        <Route path="/registry" element={<ElementRegistry />} />
         <Route path="/runs" element={<Runs />} />
         <Route path="/scenarios/:scenarioId/runs/:runId" element={<RunDetail />} />
         <Route path="*" element={<Navigate to="/" replace />} />
