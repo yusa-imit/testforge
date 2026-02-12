@@ -92,8 +92,8 @@ export default function ScenarioEditor() {
         title: "실행 시작",
         description: "시나리오 실행이 시작되었습니다.",
       });
-      if (result?.data?.id) {
-        navigate(`/scenarios/${id}/runs/${result.data.id}`);
+      if (result?.data?.runId) {
+        navigate(`/scenarios/${id}/runs/${result.data.runId}`);
       }
     },
     onError: (error: any) => {

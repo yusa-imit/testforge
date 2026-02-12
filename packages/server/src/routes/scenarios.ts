@@ -91,7 +91,7 @@ const app = new Hono()
       executor.once("event", (event: any) => {
         if (event.type === "run:started") {
           runId = event.data.runId;
-          resolve(runId);
+          resolve(event.data.runId);
         }
       });
     });

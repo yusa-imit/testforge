@@ -300,8 +300,7 @@ export class TestExecutor extends EventEmitter {
           await this.executeAssert(step, variables);
           break;
         case "screenshot":
-          await this.executeScreenshot(step);
-          break;
+          return await this.executeScreenshot(step, index, runId, startTime);
         case "component":
           // Components should be expanded before execution
           throw new Error("Component steps should be expanded before execution");
@@ -603,12 +602,54 @@ export class TestExecutor extends EventEmitter {
   /**
    * screenshot 스텝 실행
    */
-  private async executeScreenshot(step: Step): Promise<void> {
+  private async executeScreenshot(
+    step: Step,
+    index: number,
+    runId: string,
+    startTime: number
+  ): Promise<StepResult> {
     const config = step.config as { name?: string; fullPage?: boolean };
-    await this.page!.screenshot({
-      path: `screenshots/${config.name ?? Date.now()}.png`,
-      fullPage: config.fullPage,
-    });
+
+    // Generate unique filename: {runId}-{stepIndex}-{timestamp}.png
+    const timestamp = Date.now();
+    const filename = `${runId}-${index}-${timestamp}.png`;
+    const filePath = `screenshots/${filename}`;
+
+    try {
+      // Capture screenshot
+      await this.page!.screenshot({
+        path: filePath,
+        fullPage: config.fullPage ?? false,
+      });
+
+      // Return result with screenshot path
+      return {
+        id: uuid(),
+        runId,
+        stepId: step.id,
+        stepIndex: index,
+        status: "passed",
+        duration: Date.now() - startTime,
+        context: {
+          screenshotPath: filename, // Store just the filename, frontend will construct full URL
+        },
+        createdAt: new Date(),
+      };
+    } catch (error) {
+      return {
+        id: uuid(),
+        runId,
+        stepId: step.id,
+        stepIndex: index,
+        status: "failed",
+        duration: Date.now() - startTime,
+        error: {
+          message: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+        },
+        createdAt: new Date(),
+      };
+    }
   }
 
   /**

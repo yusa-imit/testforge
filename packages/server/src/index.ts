@@ -9,6 +9,7 @@ import scenarios from "./routes/scenarios";
 import components from "./routes/components";
 import runs from "./routes/runs";
 import healing from "./routes/healing";
+import screenshots from "./routes/screenshots";
 
 const app = new Hono()
   .use("*", logger())
@@ -21,7 +22,8 @@ const app = new Hono()
   .route("/api/scenarios", scenarios)
   .route("/api/components", components)
   .route("/api/runs", runs)
-  .route("/api/healing", healing);
+  .route("/api/healing", healing)
+  .route("/api/screenshots", screenshots);
 
 export type AppType = typeof app;
 export default app;

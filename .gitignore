@@ -11,7 +11,11 @@ build/
 *.db
 *.duckdb
 *.duckdb.wal
-screenshots/
+
+# Screenshots (keep directory, ignore images)
+screenshots/*.png
+screenshots/*.jpg
+screenshots/*.jpeg
 
 # OS files
 .DS_Store

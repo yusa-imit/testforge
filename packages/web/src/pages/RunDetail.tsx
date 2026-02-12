@@ -163,8 +163,8 @@ export default function RunDetail() {
     mutationFn: () => runScenario(scenarioId!),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["runs"] });
-      if (data?.data?.id) {
-        navigate(`/scenarios/${scenarioId}/runs/${data.data.id}`);
+      if (data?.data?.runId) {
+        navigate(`/scenarios/${scenarioId}/runs/${data.data.runId}`);
       }
     },
   });
@@ -414,9 +414,21 @@ export default function RunDetail() {
                           </div>
                           <div className="border rounded-md overflow-hidden bg-gray-50">
                             <img
-                              src={step.context.screenshotPath}
+                              src={`http://localhost:3001/api/screenshots/${step.context.screenshotPath}`}
                               alt={`Step ${index + 1} screenshot`}
-                              className="w-full"
+                              className="w-full hover:scale-105 transition-transform cursor-pointer"
+                              onClick={(e) => {
+                                // Open screenshot in new tab for full view
+                                window.open(e.currentTarget.src, '_blank');
+                              }}
+                              onError={(e) => {
+                                // Handle missing screenshot gracefully
+                                e.currentTarget.style.display = 'none';
+                                const parent = e.currentTarget.parentElement;
+                                if (parent) {
+                                  parent.innerHTML = '<div class="text-sm text-red-600 p-4">스크린샷을 불러올 수 없습니다.</div>';
+                                }
+                              }}
                             />
                           </div>
                         </div>
