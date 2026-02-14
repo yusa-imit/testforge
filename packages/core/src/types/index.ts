@@ -230,6 +230,7 @@ export const componentConfigSchema = z.object({
 // Script Step
 export const scriptConfigSchema = z.object({
   code: z.string(),
+  saveResultAs: z.string().optional(), // Save the script return value to a variable
 });
 
 export const stepConfigSchema = z.union([

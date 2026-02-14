@@ -307,11 +307,9 @@ export class TestExecutor extends EventEmitter {
         case "api-request":
           return await this.executeApiRequest(step, index, runId, variables, startTime);
         case "api-assert":
-          await this.executeApiAssert(step, variables);
-          break;
+          return await this.executeApiAssert(step, index, runId, variables, startTime);
         case "script":
-          // Not implemented yet
-          throw new Error(`Step type not yet implemented: ${step.type}`);
+          return await this.executeScript(step, index, runId, variables, startTime);
         default:
           throw new Error(`Unsupported step type: ${step.type}`);
       }
@@ -916,13 +914,18 @@ export class TestExecutor extends EventEmitter {
   }
 
   /**
-   * api-assert 스텝 실행
+   * api-assert 스텝 실행 (Self-Healing 지원)
    * PRD Appendix A: api-assert
+   *
+   * API 응답 검증을 수행하며, 경로 변경 시 Self-Healing을 시도합니다.
    */
   private async executeApiAssert(
     step: Step,
-    variables: Record<string, any>
-  ): Promise<void> {
+    index: number,
+    runId: string,
+    variables: Record<string, any>,
+    startTime: number
+  ): Promise<StepResult> {
     const config = step.config as {
       type: "status" | "body" | "header";
       path?: string;
@@ -990,11 +993,28 @@ export class TestExecutor extends EventEmitter {
           throw new Error("path is required for body assertion");
         }
 
-        // JSON path로 값 추출
-        const actualValue = this.apiClient.getValueByPath(
+        // JSON path로 값 추출 (Self-Healing 지원)
+        const healingResult = this.apiClient.getValueByPathWithHealing(
           response.body,
           config.path
         );
+
+        if (healingResult.value === undefined) {
+          throw new Error(
+            `Body path not found: ${config.path}. No alternative path found.`
+          );
+        }
+
+        // Self-Healing이 발생한 경우 로그 출력
+        // TODO: API Self-Healing 완전 구현 - HealingEvent에 api-path 타입 추가 필요
+        if (healingResult.healed && healingResult.usedPath && healingResult.confidence) {
+          console.log(
+            `[API Self-Healing] Path changed: ${config.path} → ${healingResult.usedPath} (confidence: ${(healingResult.confidence * 100).toFixed(1)}%)`
+          );
+
+          // NOTE: Healing event creation commented out until api-path type is added to LocatorStrategy
+          // See CURRENT_STATUS.md: "API Self-Healing - Basic only, advanced detection missing"
+        }
 
         // expected 값 변수 치환
         const expectedValue =
@@ -1003,15 +1023,99 @@ export class TestExecutor extends EventEmitter {
             : config.expected;
 
         // 비교
-        if (!this.apiClient.compareValues(actualValue, expectedValue, operator)) {
+        if (!this.apiClient.compareValues(healingResult.value, expectedValue, operator)) {
           throw new Error(
-            `Body assertion failed: ${config.path} ${operator} ${JSON.stringify(expectedValue)}, got ${JSON.stringify(actualValue)}`
+            `Body assertion failed: ${healingResult.healed ? healingResult.usedPath : config.path} ${operator} ${JSON.stringify(expectedValue)}, got ${JSON.stringify(healingResult.value)}`
           );
         }
         break;
 
       default:
         throw new Error(`Unsupported assertion type: ${config.type}`);
+    }
+
+    // 성공 시 StepResult 반환
+    return {
+      id: uuid(),
+      runId,
+      stepId: step.id,
+      stepIndex: index,
+      status: "passed",
+      duration: Date.now() - startTime,
+      createdAt: new Date(),
+    };
+  }
+
+  /**
+   * script 스텝 실행
+   * PRD Appendix A: script (커스텀 JavaScript 실행)
+   *
+   * 브라우저 컨텍스트에서 사용자 정의 JavaScript를 실행합니다.
+   * 반환 값은 캡처되어 context에 저장됩니다.
+   */
+  private async executeScript(
+    step: Step,
+    index: number,
+    runId: string,
+    variables: Record<string, any>,
+    startTime: number
+  ): Promise<StepResult> {
+    const config = step.config as {
+      code: string;
+      saveResultAs?: string;
+    };
+
+    try {
+      // 변수 치환 (코드 내 {{variable}} 형태)
+      const code = this.interpolate(config.code, variables);
+
+      // 브라우저 컨텍스트에서 스크립트 실행
+      // 변수를 함수 인자로 전달하여 스크립트에서 접근 가능하게 함
+      const result = await this.page!.evaluate(
+        ({ code, vars }) => {
+          // eval을 사용하여 코드 실행 (브라우저 컨텍스트)
+          // 변수들을 스코프에 추가
+          const func = new Function(...Object.keys(vars), code);
+          return func(...Object.values(vars));
+        },
+        { code, vars: variables }
+      );
+
+      // 결과를 변수로 저장 (saveResultAs 지정 시)
+      if (config.saveResultAs) {
+        variables[config.saveResultAs] = result;
+      }
+
+      return {
+        id: uuid(),
+        runId,
+        stepId: step.id,
+        stepIndex: index,
+        status: "passed",
+        duration: Date.now() - startTime,
+        context: {
+          consoleLog: [
+            `Script executed successfully`,
+            config.saveResultAs ? `Result saved as: ${config.saveResultAs}` : undefined,
+            result !== undefined ? `Return value: ${JSON.stringify(result)}` : undefined,
+          ].filter(Boolean) as string[],
+        },
+        createdAt: new Date(),
+      };
+    } catch (error) {
+      return {
+        id: uuid(),
+        runId,
+        stepId: step.id,
+        stepIndex: index,
+        status: "failed",
+        duration: Date.now() - startTime,
+        error: {
+          message: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+        },
+        createdAt: new Date(),
+      };
     }
   }
 
