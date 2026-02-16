@@ -10,8 +10,9 @@ import {
   AlertTriangle,
   ChevronDown,
   ExternalLink,
+  StopCircle,
 } from "lucide-react";
-import { getRun, getRunSteps, getScenario, runScenario } from "../lib/api";
+import { getRun, getRunSteps, getScenario, runScenario, cancelRun } from "../lib/api";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
@@ -169,6 +170,13 @@ export default function RunDetail() {
     },
   });
 
+  const cancelMutation = useMutation({
+    mutationFn: () => cancelRun(runId!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["runs", runId] });
+    },
+  });
+
   if (runLoading || stepsLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -209,16 +217,28 @@ export default function RunDetail() {
             {scenario?.name || "시나리오로 돌아가기"}
           </Button>
         </div>
-        <Button
-          onClick={() => rerunMutation.mutate()}
-          disabled={rerunMutation.isPending}
-        >
-          <RefreshCw className={cn(
-            "h-4 w-4 mr-2",
-            rerunMutation.isPending && "animate-spin"
-          )} />
-          재실행
-        </Button>
+        <div className="flex space-x-2">
+          {run?.status === "running" && (
+            <Button
+              variant="destructive"
+              onClick={() => cancelMutation.mutate()}
+              disabled={cancelMutation.isPending}
+            >
+              <StopCircle className="h-4 w-4 mr-2" />
+              취소
+            </Button>
+          )}
+          <Button
+            onClick={() => rerunMutation.mutate()}
+            disabled={rerunMutation.isPending}
+          >
+            <RefreshCw className={cn(
+              "h-4 w-4 mr-2",
+              rerunMutation.isPending && "animate-spin"
+            )} />
+            재실행
+          </Button>
+        </div>
       </div>
 
       {/* Run Metadata */}

@@ -3,7 +3,7 @@ import * as React from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Scenario, Step, Variable } from "@testforge/core";
-import { getScenario, updateScenario, runScenario, deleteScenario } from "../lib/api";
+import { getScenario, updateScenario, runScenario, deleteScenario, duplicateScenario } from "../lib/api";
 import { VariableEditor } from "../components/VariableEditor";
 import { StepEditModal } from "../components/StepEditModal";
 import { Button } from "../components/ui/button";
@@ -11,7 +11,7 @@ import { Badge } from "../components/ui/badge";
 import { Card } from "../components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Separator } from "../components/ui/separator";
-import { ChevronLeft, Play, Save, Trash2, Edit, GripVertical } from "lucide-react";
+import { ChevronLeft, Play, Save, Trash2, Edit, GripVertical, Copy } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
 
 const STEP_TYPE_ICONS: Record<string, string> = {
@@ -119,6 +119,27 @@ export default function ScenarioEditor() {
       toast({
         title: "삭제 실패",
         description: error.message || "시나리오 삭제 중 오류가 발생했습니다.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Duplicate mutation
+  const duplicateMutation = useMutation({
+    mutationFn: () => duplicateScenario(id!),
+    onSuccess: (result) => {
+      toast({
+        title: "복제 완료",
+        description: "시나리오가 복제되었습니다.",
+      });
+      if (result?.data?.id) {
+        navigate(`/scenarios/${result.data.id}`);
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "복제 실패",
+        description: error.message || "시나리오 복제 중 오류가 발생했습니다.",
         variant: "destructive",
       });
     },
@@ -235,6 +256,14 @@ export default function ScenarioEditor() {
           >
             <Trash2 className="h-4 w-4 mr-2" />
             삭제
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => duplicateMutation.mutate()}
+            disabled={duplicateMutation.isPending}
+          >
+            <Copy className="h-4 w-4 mr-2" />
+            복제
           </Button>
           <Button
             variant="outline"
