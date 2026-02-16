@@ -140,6 +140,31 @@ export async function propagateHealing(id: string) {
   return res.json();
 }
 
+export async function getDashboardData() {
+  const res = await api.api.runs.dashboard.$get();
+  return res.json();
+}
+
+export async function duplicateScenario(id: string) {
+  const res = await api.api.scenarios[":id"].duplicate.$post({ param: { id } });
+  return res.json();
+}
+
+export async function cancelRun(id: string) {
+  const res = await api.api.runs[":id"].$delete({ param: { id } });
+  return res.json();
+}
+
+export async function runFeature(id: string) {
+  const res = await api.api.features[":id"].run.$post({ param: { id } });
+  return res.json();
+}
+
+export async function runService(id: string) {
+  const res = await api.api.services[":id"].run.$post({ param: { id } });
+  return res.json();
+}
+
 export async function getRun(id: string) {
   const res = await api.api.runs[":id"].$get({ param: { id } });
   return res.json();

@@ -3,6 +3,7 @@ import { zValidator } from "@hono/zod-validator";
 import { createFeatureSchema, createScenarioSchema } from "@testforge/core";
 import { getDB } from "../db";
 import { notFound } from "../utils/errors";
+import { executeScenarioRun } from "../execution/runHelper";
 
 const app = new Hono()
   // GET /api/features/:id - 기능 상세
@@ -57,6 +58,49 @@ const app = new Hono()
 
     const scenarios = await db.getScenariosByFeature(featureId);
     return c.json({ success: true, data: scenarios });
+  })
+
+  // POST /api/features/:id/run - 기능 전체 실행 (PRD Section 4.1)
+  .post("/:id/run", async (c) => {
+    const db = await getDB();
+    const id = c.req.param("id");
+    const feature = await db.getFeature(id);
+
+    if (!feature) {
+      throw notFound("Feature", id);
+    }
+
+    const service = await db.getService(feature.serviceId);
+    if (!service) {
+      throw notFound("Service", feature.serviceId);
+    }
+
+    const scenarios = await db.getScenariosByFeature(id);
+    if (scenarios.length === 0) {
+      return c.json({
+        success: true,
+        data: { runIds: [], message: "No scenarios to run." },
+      });
+    }
+
+    // Execute all scenarios sequentially
+    const runIds: string[] = [];
+    for (const scenario of scenarios) {
+      const runId = await executeScenarioRun(scenario, service, db);
+      runIds.push(runId);
+    }
+
+    return c.json(
+      {
+        success: true,
+        data: {
+          runIds,
+          total: scenarios.length,
+          message: `Started ${scenarios.length} scenario(s). Connect to /api/runs/:id/stream for updates.`,
+        },
+      },
+      202
+    );
   })
 
   // POST /api/features/:featureId/scenarios - 시나리오 생성

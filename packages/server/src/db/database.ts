@@ -573,6 +573,21 @@ export class DuckDBDatabase {
     return rows.map(RowConverter.toTestRun);
   }
 
+  async getDashboardRuns(hours = 24): Promise<(TestRun & { scenarioName: string })[]> {
+    const rows = await this.db.all(
+      `SELECT t.*, s.name as scenario_name
+       FROM test_runs t
+       LEFT JOIN scenarios s ON t.scenario_id = s.id
+       WHERE t.created_at >= CURRENT_TIMESTAMP - INTERVAL '${hours} hours'
+       ORDER BY t.created_at DESC`,
+      []
+    );
+    return rows.map((row: any) => ({
+      ...RowConverter.toTestRun(row),
+      scenarioName: row.scenario_name || `시나리오 ${row.scenario_id?.slice(0, 8)}...`,
+    }));
+  }
+
   async updateTestRun(id: string, data: Partial<TestRun>): Promise<TestRun | undefined> {
     const existing = await this.getTestRun(id);
     if (!existing) return undefined;

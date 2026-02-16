@@ -15,6 +15,31 @@ const app = new Hono()
     return c.json({ success: true, data: runs });
   })
 
+  // GET /api/runs/dashboard - 대시보드 데이터
+  .get("/dashboard", async (c) => {
+    const db = await getDB();
+    const runs = await db.getDashboardRuns(24);
+
+    const total = runs.length;
+    const passed = runs.filter((r) => r.status === "passed").length;
+    const failed = runs.filter((r) => r.status === "failed").length;
+    const healed = runs.reduce(
+      (acc, r) => acc + (r.summary?.healedSteps || 0),
+      0
+    );
+    const recentFailures = runs
+      .filter((r) => r.status === "failed")
+      .slice(0, 5);
+
+    return c.json({
+      success: true,
+      data: {
+        stats: { total, passed, failed, healed },
+        recentFailures,
+      },
+    });
+  })
+
   // GET /api/runs/:id - 실행 상세
   .get("/:id", async (c) => {
     const db = await getDB();
