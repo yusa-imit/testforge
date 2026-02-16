@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getFeature, getScenarios, api } from "../lib/api";
+import { getFeature, getScenarios, api, runFeature } from "../lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -28,6 +28,18 @@ export default function FeatureDetail() {
     queryKey: ["scenarios", id],
     queryFn: () => getScenarios(id!),
     enabled: !!id,
+  });
+
+  const runFeatureMutation = useMutation({
+    mutationFn: () => runFeature(id!),
+    onSuccess: (data) => {
+      const responseData = data?.data;
+      const total = responseData && 'total' in responseData ? responseData.total : responseData?.runIds?.length || 0;
+      alert(`${total}개 시나리오 실행이 시작되었습니다. 실행 이력 페이지에서 확인하세요.`);
+    },
+    onError: (error: any) => {
+      alert(error.message || "기능 실행 중 오류가 발생했습니다.");
+    },
   });
 
   const createMutation = useMutation({
@@ -110,9 +122,20 @@ export default function FeatureDetail() {
       {/* Scenarios Section */}
       <div className="flex justify-between items-center">
         <h2 className="text-lg font-semibold">시나리오</h2>
-        <Button onClick={() => setIsCreating(true)}>
-          + 시나리오 추가
-        </Button>
+        <div className="flex space-x-2">
+          {scenarios.length > 0 && (
+            <Button
+              variant="outline"
+              onClick={() => runFeatureMutation.mutate()}
+              disabled={runFeatureMutation.isPending}
+            >
+              {runFeatureMutation.isPending ? "실행 중..." : "전체 실행"}
+            </Button>
+          )}
+          <Button onClick={() => setIsCreating(true)}>
+            + 시나리오 추가
+          </Button>
+        </div>
       </div>
 
       {/* Search and Filter Controls */}

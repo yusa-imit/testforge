@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getService, getFeatures, api } from "../lib/api";
+import { getService, getFeatures, api, runService } from "../lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -25,6 +25,18 @@ export default function ServiceDetail() {
     queryKey: ["features", id],
     queryFn: () => getFeatures(id!),
     enabled: !!id,
+  });
+
+  const runServiceMutation = useMutation({
+    mutationFn: () => runService(id!),
+    onSuccess: (data) => {
+      const responseData = data?.data;
+      const total = responseData && 'total' in responseData ? responseData.total : responseData?.runIds?.length || 0;
+      alert(`${total}개 시나리오 실행이 시작되었습니다. 실행 이력 페이지에서 확인하세요.`);
+    },
+    onError: (error: any) => {
+      alert(error.message || "서비스 실행 중 오류가 발생했습니다.");
+    },
   });
 
   const createMutation = useMutation({
@@ -82,9 +94,20 @@ export default function ServiceDetail() {
       {/* Features Section */}
       <div className="flex justify-between items-center">
         <h2 className="text-lg font-semibold">기능</h2>
-        <Button onClick={() => setIsCreating(true)}>
-          + 기능 추가
-        </Button>
+        <div className="flex space-x-2">
+          {features.length > 0 && (
+            <Button
+              variant="outline"
+              onClick={() => runServiceMutation.mutate()}
+              disabled={runServiceMutation.isPending}
+            >
+              {runServiceMutation.isPending ? "실행 중..." : "전체 실행"}
+            </Button>
+          )}
+          <Button onClick={() => setIsCreating(true)}>
+            + 기능 추가
+          </Button>
+        </div>
       </div>
 
       {/* Create Feature Dialog */}
