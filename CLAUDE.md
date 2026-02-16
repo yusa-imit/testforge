@@ -566,3 +566,157 @@ axiosClient.interceptors.request.use((config) => {
 
 **Q: 어떤 방식으로 구현할지 모르겠어요**
 → 투표 시스템 사용하여 5명의 전문가 의견 수집
+
+---
+
+## 자율 개발 프로토콜 (Autonomous Development Protocol)
+
+Claude Code는 이 프로젝트에서 **완전 자율 개발**을 수행한다. 다음 프로토콜을 따른다:
+
+1. **작업 수신** → PRD 또는 사용자 지시를 분석
+2. **계획 수립** → `EnterPlanMode`로 구현 전략 수립, 사용자 승인
+3. **팀 구성** → 작업 복잡도에 따라 동적으로 팀/서브에이전트 생성
+4. **구현** → 코딩, 테스트, 리뷰를 병렬 수행
+5. **검증** → `bun test` + `bun run typecheck` + `bun run build`로 통과 확인
+6. **커밋** → 변경사항 커밋 (사용자 요청 시)
+7. **메모리 갱신** → 학습된 내용을 `.claude/memory/`에 기록
+
+---
+
+## 팀 오케스트레이션 (Team Orchestration)
+
+복잡한 작업 시 다음 패턴으로 팀을 구성한다:
+
+```
+Leader (orchestrator)
+├── backend       — API/DB 구현 담당
+├── frontend      — React UI 구현 담당
+├── reviewer      — 코드 리뷰 & 품질 보증
+├── test-engine   — 테스트 작성 & 검증
+└── architect     — 설계 검토 (필요 시)
+```
+
+**팀 생성 기준**:
+- 3개 이상 파일 수정이 필요한 작업 → 팀 구성
+- 단일 파일 수정 → 직접 수행
+- 아키텍처 변경 → architect 포함
+
+**팀 해산**: 작업 완료 후 반드시 `shutdown_request` → `TeamDelete`로 정리
+
+---
+
+## 자동화 세션 실행 (Automated Session Execution)
+
+자동화 세션(cron job 등)에서는 다음 프로토콜을 순서대로 실행한다.
+
+### 컨텍스트 복원
+
+세션 시작 시 다음 파일을 읽어 프로젝트 상태 파악:
+
+1. `.claude/memory/project-context.md` — 현재 phase, 체크리스트, 진행 상황
+2. `.claude/memory/architecture.md` — 아키텍처 결정사항
+3. `.claude/memory/decisions.md` — 기술 결정 로그
+4. `.claude/memory/debugging.md` — 알려진 이슈와 해결법
+5. `.claude/memory/patterns.md` — 검증된 코드 패턴
+
+### 8단계 실행 사이클
+
+| Phase | 내용 | 비고 |
+|-------|------|------|
+| 1. 상태 파악 | `/status` 실행, git log·빌드·테스트 상태 점검 | 체크리스트에서 다음 미완료 항목 식별 |
+| 2. 계획 | `EnterPlanMode`로 구현 전략 수립 | 자율 모드에서는 자체 승인 |
+| 3. 구현 | 코딩 + 테스트 (복잡도에 따라 팀 구성) | 팀 구성 기준은 위 참조 |
+| 4. 검증 | `bun run build` + `bun test` + `bun run typecheck` 통과 필수 | 실패 시 수정 후 재검증 |
+| 5. 코드 리뷰 | `/review` — PRD 준수·타입 안전성·테스트 커버리지 확인 | 이슈 발견 시 Phase 4로 회귀 |
+| 6. 커밋 & 푸시 | 기능 단위 커밋 후 `git push` 실행 | `git add -A` 금지 |
+| 7. 메모리 갱신 | `.claude/memory/` 파일 업데이트 | 별도 커밋: `chore: update session memory` → push |
+| 8. 세션 요약 | 구조화된 요약 출력 | 아래 템플릿 참조 |
+
+### 작업 선택 규칙
+
+- 테스트 실패 중이면 새 기능 추가 전에 수정
+- 의존성 순서 준수: Core → Server → Web
+- 사이클당 하나의 집중 작업만 수행
+- 이전 세션의 미완료 작업이 있으면 먼저 완료
+
+### 세션 요약 템플릿
+
+```
+## Session Summary
+### Completed
+- [이번 사이클에서 완료한 내용]
+### Files Changed
+- [생성/수정된 파일 목록]
+### Tests
+- [테스트 수, 통과/실패 상태]
+### Next Priority
+- [다음 사이클에서 작업할 내용]
+### Issues / Blockers
+- [발생한 문제 또는 미해결 이슈]
+```
+
+---
+
+## 슬래시 커맨드 (Available Slash Commands)
+
+| 커맨드 | 파일 | 용도 |
+|--------|------|------|
+| `/build` | `.claude/commands/build.md` | 프로젝트 빌드 (server/web/all) |
+| `/test` | `.claude/commands/test.md` | 테스트 실행 (unit/typecheck/lint) |
+| `/review` | `.claude/commands/review.md` | 현재 변경사항 코드 리뷰 |
+| `/implement` | `.claude/commands/implement.md` | 기능 구현 워크플로우 |
+| `/fix` | `.claude/commands/fix.md` | 버그 수정 워크플로우 |
+| `/release` | `.claude/commands/release.md` | 릴리스 준비 워크플로우 |
+| `/status` | `.claude/commands/status.md` | 프로젝트 상태 대시보드 |
+| `/validate` | `.claude/commands/validate.md` | 프로젝트 건강 상태 검증 |
+
+---
+
+## 메모리 시스템 (Memory System)
+
+### 장기 기억 보존
+
+에이전트와 오케스트레이터는 `.claude/memory/` 디렉토리에 장기 기억을 보존한다.
+
+**메모리 파일 구조:**
+
+```
+.claude/memory/
+├── README.md             # 메모리 시스템 가이드
+├── project-context.md    # 프로젝트 개요, phase, 체크리스트
+├── architecture.md       # 아키텍처 결정사항
+├── decisions.md          # 주요 기술 결정 로그
+├── debugging.md          # 디버깅 인사이트, 해결된 문제
+├── patterns.md           # 검증된 코드 패턴 (TypeScript, React, Hono)
+└── session-summaries/    # 세션별 요약 (압축된 기억)
+```
+
+**메모리 프로토콜:**
+
+1. 세션 시작 시 `.claude/memory/` 파일들을 읽어 컨텍스트 복원
+2. 중요한 결정/발견 시 즉시 해당 메모리 파일에 기록
+3. 세션 종료 전 `session-summaries/`에 해당 세션의 핵심 내용 요약
+4. 메모리 파일이 200줄을 초과하면 핵심만 남기고 압축
+
+**메모리 압축 규칙:**
+
+- 해결된 문제는 1-2줄 요약으로 압축
+- 반복 확인된 패턴만 유지, 일회성 발견은 제거
+- 최신 정보가 과거 정보보다 우선
+
+---
+
+## Rules for Claude Code
+
+1. **Always read before writing** — 파일 수정 전 반드시 Read로 현재 내용 확인
+2. **PRD is source of truth** — 모든 요구사항은 `docs/PRD.md` 참조. PRD 읽지 않고 구현 금지
+3. **Test after every change** — 코드 변경 후 `bun test` + `bun run typecheck` 실행
+4. **Incremental commits** — 기능 단위로 작은 커밋, `git add -A` 금지
+5. **Memory updates** — 중요한 발견/결정은 즉시 `.claude/memory/`에 기록
+6. **No over-engineering** — 현재 필요한 것만 구현, scope creep 금지
+7. **Team cleanup** — 팀 작업 완료 후 반드시 `shutdown_request` → `TeamDelete`
+8. **Error messages matter** — 사용자 경험은 에러 메시지 품질로 결정됨
+9. **Stop if stuck** — 동일 에러가 3회 시도 후에도 지속되면 `.claude/memory/debugging.md`에 기록하고 다음 작업으로 이동
+10. **Respect dependencies** — Core → Server → Web 순서로 구현
+11. **Respect CI** — CI 파이프라인이 존재하면 호환성 유지
+12. **Never force push** — 파괴적 git 명령어 금지, `main` 브랜치 직접 수정 금지
