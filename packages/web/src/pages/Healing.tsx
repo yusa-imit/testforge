@@ -39,7 +39,7 @@ interface HealingRecord {
     type: string;
     [key: string]: any;
   };
-  trigger: "element_not_found" | "multiple_matches" | "wrong_element";
+  trigger: "element_not_found" | "multiple_matches" | "wrong_element" | "api_path_changed";
   confidence: number;
   status: "pending" | "approved" | "rejected" | "auto_approved";
   reviewedBy?: string;
@@ -148,6 +148,8 @@ export default function Healing() {
         return <Badge variant="outline" className="border-yellow-500 text-yellow-700">중복 발견</Badge>;
       case "wrong_element":
         return <Badge variant="outline" className="border-orange-500 text-orange-700">잘못된 요소</Badge>;
+      case "api_path_changed":
+        return <Badge variant="outline" className="border-blue-500 text-blue-700">API 경로 변경</Badge>;
       default:
         return <Badge variant="outline">{trigger}</Badge>;
     }

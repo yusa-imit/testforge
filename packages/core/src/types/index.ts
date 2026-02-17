@@ -98,6 +98,11 @@ export const locatorStrategySchema = z.discriminatedUnion("type", [
     expression: z.string(),
     priority: z.number(),
   }),
+  z.object({
+    type: z.literal("api-path"),
+    path: z.string(),
+    priority: z.number(),
+  }),
 ]);
 
 export type LocatorStrategy = z.infer<typeof locatorStrategySchema>;
@@ -425,6 +430,7 @@ export const healingTriggerSchema = z.enum([
   "element_not_found",
   "multiple_matches",
   "wrong_element",
+  "api_path_changed",
 ]);
 
 export type HealingTrigger = z.infer<typeof healingTriggerSchema>;

@@ -52,7 +52,7 @@ export async function executeScenarioRun(
           locatorDisplayName: event.locatorDisplayName,
           originalStrategy: event.originalStrategy,
           healedStrategy: event.healedStrategy,
-          trigger: "element_not_found",
+          trigger: event.originalStrategy.type === "api-path" ? "api_path_changed" : "element_not_found",
           confidence: event.confidence,
           status: event.confidence >= 0.9 ? "auto_approved" : "pending",
           createdAt: new Date(),

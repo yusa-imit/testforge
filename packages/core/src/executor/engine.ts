@@ -1005,17 +1005,6 @@ export class TestExecutor extends EventEmitter {
           );
         }
 
-        // Self-Healing이 발생한 경우 로그 출력
-        // TODO: API Self-Healing 완전 구현 - HealingEvent에 api-path 타입 추가 필요
-        if (healingResult.healed && healingResult.usedPath && healingResult.confidence) {
-          console.log(
-            `[API Self-Healing] Path changed: ${config.path} → ${healingResult.usedPath} (confidence: ${(healingResult.confidence * 100).toFixed(1)}%)`
-          );
-
-          // NOTE: Healing event creation commented out until api-path type is added to LocatorStrategy
-          // See CURRENT_STATUS.md: "API Self-Healing - Basic only, advanced detection missing"
-        }
-
         // expected 값 변수 치환
         const expectedValue =
           typeof config.expected === "string"
@@ -1027,6 +1016,32 @@ export class TestExecutor extends EventEmitter {
           throw new Error(
             `Body assertion failed: ${healingResult.healed ? healingResult.usedPath : config.path} ${operator} ${JSON.stringify(expectedValue)}, got ${JSON.stringify(healingResult.value)}`
           );
+        }
+
+        // API Self-Healing이 발생한 경우 healing 데이터 포함하여 반환
+        if (healingResult.healed && healingResult.usedPath && healingResult.confidence) {
+          return {
+            id: uuid(),
+            runId,
+            stepId: step.id,
+            stepIndex: index,
+            status: "passed",
+            duration: Date.now() - startTime,
+            healing: {
+              originalStrategy: {
+                type: "api-path" as const,
+                path: config.path!,
+                priority: 1,
+              },
+              usedStrategy: {
+                type: "api-path" as const,
+                path: healingResult.usedPath,
+                priority: 1,
+              },
+              confidence: healingResult.confidence,
+            },
+            createdAt: new Date(),
+          };
         }
         break;
 
