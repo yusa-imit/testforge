@@ -42,7 +42,7 @@ async function get(path: string): Promise<any> {
   return data.data;
 }
 
-async function post(path: string, body: any): Promise<any> {
+async function _post(path: string, body: any): Promise<any> {
   const response = await fetch(`${API_BASE}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

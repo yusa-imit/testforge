@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { createScenarioSchema } from "@testforge/core";
 import { getDB } from "../db";
-import { notFound, executionError } from "../utils/errors";
+import { notFound } from "../utils/errors";
 import { executeScenarioRun } from "../execution/runHelper";
 
 const app = new Hono()

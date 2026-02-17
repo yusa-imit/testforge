@@ -1,4 +1,4 @@
-import { Context, Next, ErrorHandler as HonoErrorHandler } from "hono";
+import { ErrorHandler as HonoErrorHandler } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { TestForgeError } from "../utils/errors";
 import { ZodError } from "zod";

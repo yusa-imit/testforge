@@ -801,7 +801,7 @@ export class DuckDBDatabase {
         history: JSON.parse(el.history || "[]"),
         usedIn: JSON.parse(el.used_in || "[]"),
       }));
-    } catch (error) {
+    } catch (_error) {
       // Table might not exist yet
       return [];
     }
@@ -818,7 +818,7 @@ export class DuckDBDatabase {
         history: JSON.parse(row.history || "[]"),
         usedIn: JSON.parse(row.used_in || "[]"),
       };
-    } catch (error) {
+    } catch (_error) {
       return undefined;
     }
   }
@@ -945,7 +945,7 @@ export class DuckDBDatabase {
     try {
       await this.db.run("DELETE FROM element_registry WHERE id = ?", [id]);
       return true;
-    } catch (error) {
+    } catch (_error) {
       return false;
     }
   }
@@ -972,7 +972,7 @@ export class DuckDBDatabase {
         history: JSON.parse(row.history || "[]"),
         usedIn: JSON.parse(row.used_in || "[]"),
       };
-    } catch (error) {
+    } catch (_error) {
       return null;
     }
   }

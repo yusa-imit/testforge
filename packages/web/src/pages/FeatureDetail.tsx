@@ -64,7 +64,10 @@ export default function FeatureDetail() {
     },
   });
 
-  const scenarios = scenariosData?.success ? scenariosData.data : [];
+  const scenarios = useMemo(
+    () => (scenariosData?.success ? scenariosData.data : []),
+    [scenariosData]
+  );
 
   // Filter scenarios based on search query and priority
   const filteredScenarios = useMemo(() => {

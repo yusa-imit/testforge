@@ -124,7 +124,7 @@ export class LocatorResolver {
         confidence: this.calculateStrategyConfidence(strategy),
         matchCount: 1,
       };
-    } catch (error) {
+    } catch (_error) {
       return { found: false, confidence: 0 };
     }
   }

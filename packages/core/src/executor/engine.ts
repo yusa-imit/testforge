@@ -225,7 +225,7 @@ export class TestExecutor extends EventEmitter {
         type: "run:finished",
         data: { status: run.status, summary: run.summary },
       } as RunEvent);
-    } catch (error) {
+    } catch (_error) {
       run.status = "failed";
       run.finishedAt = new Date();
       run.duration = run.finishedAt.getTime() - run.startedAt!.getTime();

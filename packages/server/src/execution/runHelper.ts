@@ -27,7 +27,7 @@ export async function executeScenarioRun(
   // Start execution in background
   let capturedRunId: string | null = null;
 
-  const executionPromise = (async () => {
+  const _executionPromise = (async () => {
     try {
       const result = await executor.execute(scenario, service, {
         headless: true,

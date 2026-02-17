@@ -2,7 +2,7 @@ import { describe, it, expect } from "bun:test";
 import { ApiClient } from "./client";
 
 describe("ApiClient", () => {
-  let client: ApiClient;
+  let _client: ApiClient;
 
   // Using beforeEach-like pattern with re-instantiation
   const getClient = () => new ApiClient();

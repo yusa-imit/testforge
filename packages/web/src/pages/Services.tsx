@@ -37,7 +37,7 @@ export default function Services() {
     },
   });
 
-  const services = data?.data ?? [];
+  const services = useMemo(() => data?.data ?? [], [data]);
 
   // Filter services based on search query
   const filteredServices = useMemo(() => {

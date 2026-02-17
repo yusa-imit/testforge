@@ -15,9 +15,6 @@ import type {
   Feature,
   Scenario,
   Component,
-  Step,
-  Variable,
-  ParameterDef,
 } from "../packages/core/src/types";
 
 async function seed() {

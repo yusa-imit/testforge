@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { ko } from "date-fns/locale";
 import { Search, ChevronDown, Check, AlertTriangle, X, ExternalLink } from "lucide-react";
-import { getHealingRecords, getHealingStats, api, getScenario } from "../lib/api";
+import { getHealingRecords, getHealingStats, api } from "../lib/api";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Badge } from "../components/ui/badge";
@@ -126,7 +126,7 @@ export default function Healing() {
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 
-  const getConfidenceColor = (confidence: number) => {
+  const _getConfidenceColor = (confidence: number) => {
     const percent = confidence * 100;
     if (percent >= 90) return "bg-green-500";
     if (percent >= 70) return "bg-yellow-500";

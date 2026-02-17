@@ -16,7 +16,7 @@ export default function Runs() {
     queryFn: () => getRuns(100),
   });
 
-  const runs = data?.data ?? [];
+  const runs = useMemo(() => data?.data ?? [], [data]);
 
   // Filter runs based on status, date, and search query
   const filteredRuns = useMemo(() => {
@@ -72,7 +72,7 @@ export default function Runs() {
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const _getStatusColor = (status: string) => {
     switch (status) {
       case "passed":
         return "bg-green-100 text-green-800";

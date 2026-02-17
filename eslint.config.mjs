@@ -31,7 +31,7 @@ export default tseslint.config(
     },
     rules: {
       // Allow unused vars with underscore prefix
-      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }],
       // Allow explicit any in some cases (useful for escape hatches)
       '@typescript-eslint/no-explicit-any': 'warn',
       // Turn off require-returns enforcement for simple functions

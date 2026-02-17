@@ -1,7 +1,6 @@
 import { Hono } from "hono";
-import { serveStatic } from "hono/bun";
 import { existsSync } from "fs";
-import { resolve, basename } from "path";
+import { resolve } from "path";
 import { notFound } from "../utils/errors";
 
 const app = new Hono();

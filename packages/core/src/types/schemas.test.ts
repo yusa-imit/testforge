@@ -1,14 +1,10 @@
 import { describe, it, expect } from "bun:test";
 import {
   serviceSchema,
-  featureSchema,
   locatorStrategySchema,
   elementLocatorSchema,
   stepTypeSchema,
-  scenarioSchema,
   healingStatusSchema,
-  healingRecordSchema,
-  componentSchema,
   runStatusSchema,
 } from "./index";
 
@@ -42,7 +38,7 @@ describe("Zod Schemas", () => {
     });
 
     it("defaults defaultTimeout to 30000", () => {
-      const { defaultTimeout, ...rest } = validService;
+      const { defaultTimeout: _defaultTimeout, ...rest } = validService;
       const result = serviceSchema.safeParse(rest);
       // defaultTimeout has a default in schema
       expect(result.success).toBe(true);

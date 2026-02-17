@@ -189,7 +189,7 @@ export default function ComponentEditor() {
     return <div className="text-center py-12">컴포넌트를 찾을 수 없습니다.</div>;
   }
 
-  const hasUnsavedChanges =
+  const _hasUnsavedChanges =
     (componentData?.data?.name !== name ||
       componentData?.data?.description !== description ||
       componentData?.data?.type !== type) &&
