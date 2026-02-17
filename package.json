@@ -15,13 +15,18 @@
     "db:migrate": "bun run --cwd packages/server db:migrate",
     "db:seed": "bun run --cwd scripts seed.ts",
     "test": "bun test",
-    "lint": "bunx eslint . --ext .ts,.tsx",
+    "lint": "bunx eslint .",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/uuid": "^11.0.0",
     "bun-types": "^1.3.9",
+    "eslint": "^10.0.0",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "globals": "^17.3.0",
     "typescript": "^5.9.3",
-    "uuid": "^13.0.0",
-    "@types/uuid": "^11.0.0"
+    "typescript-eslint": "^8.56.0",
+    "uuid": "^13.0.0"
   }
 }

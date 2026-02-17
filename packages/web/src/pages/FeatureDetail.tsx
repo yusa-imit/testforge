@@ -64,6 +64,31 @@ export default function FeatureDetail() {
     },
   });
 
+  const scenarios = scenariosData?.success ? scenariosData.data : [];
+
+  // Filter scenarios based on search query and priority
+  const filteredScenarios = useMemo(() => {
+    return scenarios.filter((scenario: any) => {
+      const matchesSearch = !searchQuery.trim() ||
+        scenario.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        scenario.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        scenario.tags?.some((tag: string) => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+
+      const matchesPriority = priorityFilter === "all" || scenario.priority === priorityFilter;
+
+      return matchesSearch && matchesPriority;
+    });
+  }, [scenarios, searchQuery, priorityFilter]);
+
+  // Get unique tags for potential tag filtering
+  const _allTags = useMemo(() => {
+    const tagSet = new Set<string>();
+    scenarios.forEach((scenario: any) => {
+      scenario.tags?.forEach((tag: string) => tagSet.add(tag));
+    });
+    return Array.from(tagSet);
+  }, [scenarios]);
+
   if (featureLoading || scenariosLoading) {
     return <div className="text-center py-12">로딩 중...</div>;
   }
@@ -73,30 +98,6 @@ export default function FeatureDetail() {
   }
 
   const feature = featureData.data;
-  const scenarios = scenariosData?.success ? scenariosData.data : [];
-
-  // Filter scenarios based on search query and priority
-  const filteredScenarios = useMemo(() => {
-    return scenarios.filter((scenario: any) => {
-      const matchesSearch = !searchQuery.trim() || 
-        scenario.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        scenario.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        scenario.tags?.some((tag: string) => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-      
-      const matchesPriority = priorityFilter === "all" || scenario.priority === priorityFilter;
-      
-      return matchesSearch && matchesPriority;
-    });
-  }, [scenarios, searchQuery, priorityFilter]);
-
-  // Get unique tags for potential tag filtering
-  const allTags = useMemo(() => {
-    const tagSet = new Set<string>();
-    scenarios.forEach((scenario: any) => {
-      scenario.tags?.forEach((tag: string) => tagSet.add(tag));
-    });
-    return Array.from(tagSet);
-  }, [scenarios]);
 
   return (
     <div className="space-y-6">
