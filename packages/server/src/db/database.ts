@@ -168,7 +168,7 @@ export class DuckDBDatabase {
     await this.db.run(
       `INSERT INTO services (id, name, description, base_url, default_timeout, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [id, data.name, data.description ?? null, data.baseUrl, data.defaultTimeout, now, now]
+      [id, data.name, data.description ?? null, data.baseUrl, data.defaultTimeout ?? 30000, now, now]
     );
 
     const row = await this.db.get("SELECT * FROM services WHERE id = ?", [id]);
@@ -223,6 +223,8 @@ export class DuckDBDatabase {
   }
 
   async deleteService(id: string): Promise<boolean> {
+    const existing = await this.getService(id);
+    if (!existing) return false;
     await this.db.run("DELETE FROM services WHERE id = ?", [id]);
     return true;
   }
@@ -238,7 +240,7 @@ export class DuckDBDatabase {
     await this.db.run(
       `INSERT INTO features (id, service_id, name, description, owners, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [id, data.serviceId, data.name, data.description ?? null, data.owners || [], now, now]
+      [id, data.serviceId, data.name, data.description ?? null, data.owners?.length ? data.owners : null, now, now]
     );
 
     const row = await this.db.get("SELECT * FROM features WHERE id = ?", [id]);
@@ -275,7 +277,7 @@ export class DuckDBDatabase {
     }
     if (data.owners !== undefined) {
       updates.push("owners = ?");
-      params.push(data.owners);
+      params.push(data.owners?.length ? data.owners : null);
     }
 
     updates.push("updated_at = ?");
@@ -292,6 +294,8 @@ export class DuckDBDatabase {
   }
 
   async deleteFeature(id: string): Promise<boolean> {
+    const existing = await this.getFeature(id);
+    if (!existing) return false;
     await this.db.run("DELETE FROM features WHERE id = ?", [id]);
     return true;
   }
@@ -312,7 +316,7 @@ export class DuckDBDatabase {
         data.featureId,
         data.name,
         data.description ?? null,
-        data.tags || [],
+        data.tags?.length ? data.tags : null,
         data.priority || "medium",
         JSON.stringify(data.variables || []),
         JSON.stringify(data.steps || []),
@@ -361,7 +365,7 @@ export class DuckDBDatabase {
     }
     if (data.tags !== undefined) {
       updates.push("tags = ?");
-      params.push(data.tags);
+      params.push(data.tags?.length ? data.tags : null);
     }
     if (data.priority !== undefined) {
       updates.push("priority = ?");
@@ -391,6 +395,8 @@ export class DuckDBDatabase {
   }
 
   async deleteScenario(id: string): Promise<boolean> {
+    const existing = await this.getScenario(id);
+    if (!existing) return false;
     await this.db.run("DELETE FROM scenarios WHERE id = ?", [id]);
     return true;
   }
@@ -410,7 +416,7 @@ export class DuckDBDatabase {
         original.featureId,
         `${original.name} (복사본)`,
         original.description ?? null,
-        original.tags,
+        original.tags?.length ? original.tags : null,
         original.priority,
         JSON.stringify(original.variables),
         JSON.stringify(original.steps),
@@ -502,6 +508,8 @@ export class DuckDBDatabase {
   }
 
   async deleteComponent(id: string): Promise<boolean> {
+    const existing = await this.getComponent(id);
+    if (!existing) return false;
     await this.db.run("DELETE FROM components WHERE id = ?", [id]);
     return true;
   }
@@ -943,6 +951,8 @@ export class DuckDBDatabase {
 
   async deleteRegistryElement(id: string): Promise<boolean> {
     try {
+      const existing = await this.getRegistryElement(id);
+      if (!existing) return false;
       await this.db.run("DELETE FROM element_registry WHERE id = ?", [id]);
       return true;
     } catch (_error) {

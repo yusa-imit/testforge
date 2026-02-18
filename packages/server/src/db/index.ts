@@ -52,6 +52,25 @@ export async function getDB(): Promise<DuckDBDatabase> {
 }
 
 /**
+ * Set database instance (for testing only)
+ *
+ * Allows integration tests to inject a pre-configured in-memory database.
+ * Call this before the first `getDB()` call in tests.
+ */
+export function setDB(instance: DuckDBDatabase): void {
+  dbInstance = instance;
+}
+
+/**
+ * Reset database instance (for testing only)
+ *
+ * Clears the singleton so a fresh DB can be injected.
+ */
+export function resetDB(): void {
+  dbInstance = null;
+}
+
+/**
  * Legacy compatibility export
  *
  * For synchronous code that expects the old InMemoryDB interface,
