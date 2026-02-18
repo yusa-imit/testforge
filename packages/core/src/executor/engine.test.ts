@@ -45,7 +45,7 @@ class TestExecutorTestable extends TestExecutor {
 }
 
 // Helper factories
-const makeStep = (overrides: Partial<Step> = {}): Step => ({
+const _makeStep = (overrides: Partial<Step> = {}): Step => ({
   id: "00000000-0000-0000-0000-000000000001",
   type: "navigate",
   description: "Navigate to page",
