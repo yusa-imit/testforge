@@ -1,7 +1,8 @@
 import { TestExecutor } from "@testforge/core";
-import type { Scenario, Service } from "@testforge/core";
+import type { Scenario, Service, RunEvent } from "@testforge/core";
 import { v4 as uuid } from "uuid";
 import { ExecutionManager } from "./manager";
+import type { DuckDBDatabase } from "../db/database";
 
 /**
  * Shared helper to execute a single scenario and return the runId.
@@ -10,14 +11,14 @@ import { ExecutionManager } from "./manager";
 export async function executeScenarioRun(
   scenario: Scenario,
   service: Service,
-  db: any
+  db: DuckDBDatabase
 ): Promise<string> {
   const executor = new TestExecutor();
   const executionManager = ExecutionManager.getInstance();
 
   // Capture runId from run:started event
   const runIdPromise = new Promise<string>((resolve) => {
-    executor.once("event", (event: any) => {
+    executor.once("event", (event: RunEvent) => {
       if (event.type === "run:started") {
         resolve(event.data.runId);
       }

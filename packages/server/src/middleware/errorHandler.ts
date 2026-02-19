@@ -1,4 +1,5 @@
 import { ErrorHandler as HonoErrorHandler } from "hono";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { HTTPException } from "hono/http-exception";
 import { TestForgeError } from "../utils/errors";
 import { ZodError } from "zod";
@@ -12,7 +13,7 @@ import { ZodError } from "zod";
 export const errorHandler: HonoErrorHandler = (err, c) => {
     // Handle TestForge custom errors
     if (err instanceof TestForgeError) {
-      const statusCode = err.getStatusCode() as any;
+      const statusCode = err.getStatusCode() as ContentfulStatusCode;
       return c.json(err.toJSON(), statusCode);
     }
 

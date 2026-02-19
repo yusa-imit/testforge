@@ -76,7 +76,7 @@ export function resetDB(): void {
  * For synchronous code that expects the old InMemoryDB interface,
  * throw an error to force migration to async/await pattern.
  */
-export const db = new Proxy({} as any, {
+export const db = new Proxy({} as Record<string, unknown>, {
   get() {
     throw new Error(
       "Database is now async. Use `await getDB()` instead of `db` directly."
