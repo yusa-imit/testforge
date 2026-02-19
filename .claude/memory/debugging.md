@@ -19,6 +19,19 @@ _(현재 미해결 이슈가 있을 때 여기에 기록)_
 
 ## 해결된 이슈
 
+### [2026-02-19 session 9] updateHealingRecord propagatedTo 빈 배열 바인딩 실패
+- **증상**: propagate 엔드포인트에서 아무 시나리오도 매칭 안 되면 500 에러
+- **원인**: `propagatedTo: []` (빈 배열)로 UPDATE 시 DuckDB VARCHAR[] 변환 실패
+- **수정**: `data.propagatedTo?.length ? data.propagatedTo : null` — null로 저장
+- **추가 수정**: `toHealingRecord`에서 `propagated_to || undefined` → `propagated_to || []`로 복원
+- **파일**: `packages/server/src/db/database.ts`
+
+### [2026-02-19 session 9] healing_records FK 제약 (테스트)
+- **증상**: `createHealingRecord()` 직접 호출 시 FK 에러
+- **원인**: `healing_records.scenario_id → scenarios(id)`, `run_id → test_runs(id)` FK 제약
+- **수정**: 테스트 beforeEach에서 service→feature→scenario→test_run 전체 계층 생성 후 ID 사용
+- **파일**: `packages/server/src/routes/healing.test.ts`
+
 ### [2026-02-19] DuckDB VARCHAR[] 빈 배열 바인딩 실패
 - **증상**: `createFeature`, `createScenario` 호출 시 owners/tags가 빈 배열이면 `Conversion Error: Type VARCHAR with value '' can't be cast to VARCHAR[]`
 - **원인**: DuckDB 드라이버가 JS 빈 배열 `[]`을 VARCHAR[]로 변환 불가. `null`은 정상 처리됨
