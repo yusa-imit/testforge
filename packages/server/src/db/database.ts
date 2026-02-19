@@ -143,7 +143,7 @@ class RowConverter {
       reviewedBy: row.reviewed_by,
       reviewedAt: row.reviewed_at ? new Date(row.reviewed_at) : undefined,
       reviewNote: row.review_note,
-      propagatedTo: row.propagated_to || undefined,
+      propagatedTo: row.propagated_to || [],
       createdAt: new Date(row.created_at),
     };
   }
@@ -744,7 +744,7 @@ export class DuckDBDatabase {
     }
     if (data.propagatedTo !== undefined) {
       updates.push("propagated_to = ?");
-      params.push(data.propagatedTo);
+      params.push(data.propagatedTo?.length ? data.propagatedTo : null);
     }
 
     if (updates.length === 0) return existing;
