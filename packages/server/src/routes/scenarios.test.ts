@@ -6,6 +6,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import { v4 as uuid } from "uuid";
 import app from "../index";
 import { setupTestDB } from "../test-helpers/setup";
 import type { DuckDBDatabase } from "../db/database";
@@ -185,8 +186,43 @@ describe("GET /api/scenarios/:id/runs", () => {
     expect(body.data).toEqual([]);
   });
 
+  it("returns run history for a scenario", async () => {
+    const service = await createService();
+    const feature = await createFeature(service.id);
+    const scenario = await createScenario(feature.id);
+    const now = new Date();
+    await db.createTestRun({
+      id: uuid(),
+      scenarioId: scenario.id,
+      status: "passed",
+      environment: { baseUrl: service.baseUrl, variables: {} },
+      startedAt: now,
+      createdAt: now,
+    });
+    const res = await req("GET", `/api/scenarios/${scenario.id}/runs`);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.success).toBe(true);
+    expect(body.data.length).toBe(1);
+    expect(body.data[0].scenarioId).toBe(scenario.id);
+    expect(body.data[0].status).toBe("passed");
+  });
+
   it("returns 404 for unknown scenario", async () => {
     const res = await req("GET", "/api/scenarios/nonexistent-id/runs");
     expect(res.status).toBe(404);
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// POST /api/scenarios/:id/run
+// ──────────────────────────────────────────────────────────────────────────────
+
+describe("POST /api/scenarios/:id/run", () => {
+  it("returns 404 for unknown scenario", async () => {
+    const res = await req("POST", "/api/scenarios/nonexistent-id/run");
+    expect(res.status).toBe(404);
+    const body = await res.json();
+    expect(body.error.code).toBe("NOT_FOUND");
   });
 });

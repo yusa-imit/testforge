@@ -198,3 +198,27 @@ describe("POST /api/features/:featureId/scenarios", () => {
     expect(res.status).toBe(404);
   });
 });
+
+// ──────────────────────────────────────────────────────────────────────────────
+// POST /api/features/:id/run
+// ──────────────────────────────────────────────────────────────────────────────
+
+describe("POST /api/features/:id/run", () => {
+  it("returns 404 for unknown feature", async () => {
+    const res = await req("POST", "/api/features/nonexistent-id/run");
+    expect(res.status).toBe(404);
+    const body = await res.json();
+    expect(body.error.code).toBe("NOT_FOUND");
+  });
+
+  it("returns 200 with empty runIds when feature has no scenarios", async () => {
+    const service = await createService();
+    const feature = await createFeature(service.id);
+    const res = await req("POST", `/api/features/${feature.id}/run`);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.success).toBe(true);
+    expect(body.data.runIds).toEqual([]);
+    expect(body.data.message).toBe("No scenarios to run.");
+  });
+});

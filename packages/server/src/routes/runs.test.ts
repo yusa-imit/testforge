@@ -144,6 +144,29 @@ describe("GET /api/runs/:id/steps", () => {
     expect(Array.isArray(body.data)).toBe(true);
   });
 
+  it("returns step results when steps exist", async () => {
+    const { runId } = await createTestRun();
+    const stepId = uuid();
+    await db.createStepResult({
+      id: uuid(),
+      runId,
+      stepId,
+      stepIndex: 0,
+      status: "passed",
+      duration: 123,
+      createdAt: new Date(),
+    });
+    const res = await req("GET", `/api/runs/${runId}/steps`);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.success).toBe(true);
+    expect(body.data.length).toBe(1);
+    expect(body.data[0].runId).toBe(runId);
+    expect(body.data[0].stepIndex).toBe(0);
+    expect(body.data[0].status).toBe("passed");
+    expect(body.data[0].duration).toBe(123);
+  });
+
   it("returns 404 for unknown run", async () => {
     const res = await req("GET", "/api/runs/nonexistent-run/steps");
     expect(res.status).toBe(404);
