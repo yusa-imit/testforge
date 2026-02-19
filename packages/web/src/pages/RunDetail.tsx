@@ -34,7 +34,7 @@ interface TestRun {
   duration?: number;
   environment: {
     baseUrl: string;
-    variables: Record<string, any>;
+    variables: Record<string, unknown>;
   };
   summary?: {
     totalSteps: number;
@@ -60,11 +60,11 @@ interface StepResult {
   healing?: {
     originalStrategy: {
       type: string;
-      [key: string]: any;
+      [key: string]: unknown;
     };
     usedStrategy: {
       type: string;
-      [key: string]: any;
+      [key: string]: unknown;
     };
     confidence: number;
   };
@@ -112,26 +112,31 @@ function StepStatusIcon({ status }: { status: StepResult["status"] }) {
   }
 }
 
-function formatStrategy(strategy: any): string {
+interface StrategyObj {
+  type: string;
+  [key: string]: unknown;
+}
+
+function formatStrategy(strategy: StrategyObj | null | undefined): string {
   if (!strategy) return "N/A";
 
   const type = strategy.type;
 
   switch (type) {
     case "testId":
-      return `testId="${strategy.value}"`;
+      return `testId="${strategy.value as string}"`;
     case "role":
       return strategy.name
-        ? `role=${strategy.role}, name="${strategy.name}"`
-        : `role=${strategy.role}`;
+        ? `role=${strategy.role as string}, name="${strategy.name as string}"`
+        : `role=${strategy.role as string}`;
     case "text":
-      return `text="${strategy.value}"${strategy.exact ? " (exact)" : ""}`;
+      return `text="${strategy.value as string}"${strategy.exact ? " (exact)" : ""}`;
     case "label":
-      return `label="${strategy.value}"`;
+      return `label="${strategy.value as string}"`;
     case "css":
-      return `css="${strategy.selector}"`;
+      return `css="${strategy.selector as string}"`;
     case "xpath":
-      return `xpath="${strategy.expression}"`;
+      return `xpath="${strategy.expression as string}"`;
     default:
       return JSON.stringify(strategy);
   }

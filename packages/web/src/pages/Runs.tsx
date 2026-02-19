@@ -20,7 +20,7 @@ export default function Runs() {
 
   // Filter runs based on status, date, and search query
   const filteredRuns = useMemo(() => {
-    return runs.filter((run: any) => {
+    return runs.filter((run) => {
       // Status filter
       const matchesStatus = statusFilter === "all" || run.status === statusFilter;
       
@@ -193,7 +193,7 @@ export default function Runs() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredRuns.map((run: any) => (
+              {filteredRuns.map((run) => (
                 <tr key={run.id} className="hover:bg-gray-50 cursor-pointer">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="text-xl">{getStatusIcon(run.status)}</span>

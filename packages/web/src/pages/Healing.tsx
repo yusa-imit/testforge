@@ -33,11 +33,11 @@ interface HealingRecord {
   locatorDisplayName: string;
   originalStrategy: {
     type: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
   healedStrategy: {
     type: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
   trigger: "element_not_found" | "multiple_matches" | "wrong_element" | "api_path_changed";
   confidence: number;
@@ -190,11 +190,13 @@ export default function Healing() {
     }
   };
 
-  const formatStrategy = (strategy: any) => {
+  const formatStrategy = (strategy: HealingRecord["originalStrategy"]) => {
+    const role = strategy.role as string | undefined;
+    const name = strategy.name as string | undefined;
     return `${strategy.type}${
-      strategy.role ? ` (${strategy.role}` : ""
-    }${strategy.name ? `, "${strategy.name}"` : ""}${
-      strategy.role || strategy.name ? ")" : ""
+      role ? ` (${role}` : ""
+    }${name ? `, "${name}"` : ""}${
+      role || name ? ")" : ""
     }`;
   };
 

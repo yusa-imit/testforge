@@ -76,7 +76,7 @@ const app = new Hono()
       data: {
         component,
         usedBy: usages,
-        totalUsages: usages.reduce((sum: number, u: any) => sum + u.stepIndices.length, 0),
+        totalUsages: usages.reduce((sum: number, u: { scenarioId: string; stepIndices: number[] }) => sum + u.stepIndices.length, 0),
       },
     });
   });

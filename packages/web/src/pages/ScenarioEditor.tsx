@@ -74,7 +74,7 @@ export default function ScenarioEditor() {
         description: "시나리오가 성공적으로 저장되었습니다.",
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: "저장 실패",
         description: error.message || "시나리오 저장 중 오류가 발생했습니다.",
@@ -95,7 +95,7 @@ export default function ScenarioEditor() {
         navigate(`/scenarios/${id}/runs/${result.data.runId}`);
       }
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: "실행 실패",
         description: error.message || "시나리오 실행 중 오류가 발생했습니다.",
@@ -114,7 +114,7 @@ export default function ScenarioEditor() {
       });
       navigate(-1);
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: "삭제 실패",
         description: error.message || "시나리오 삭제 중 오류가 발생했습니다.",
@@ -135,7 +135,7 @@ export default function ScenarioEditor() {
         navigate(`/scenarios/${result.data.id}`);
       }
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: "복제 실패",
         description: error.message || "시나리오 복제 중 오류가 발생했습니다.",
@@ -287,7 +287,7 @@ export default function ScenarioEditor() {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               우선순위
             </label>
-            <Select value={priority} onValueChange={(v: any) => setPriority(v)}>
+            <Select value={priority} onValueChange={(v: "critical" | "high" | "medium" | "low") => setPriority(v)}>
               <SelectTrigger className="w-48">
                 <SelectValue />
               </SelectTrigger>
@@ -398,17 +398,17 @@ export default function ScenarioEditor() {
                   {/* Step Config Preview */}
                   <div className="text-xs text-gray-500 mt-1 space-y-1">
                     {step.type === "navigate" && (
-                      <div>→ {(step.config as any).url}</div>
+                      <div>→ {(step.config as Record<string, unknown>).url as string}</div>
                     )}
                     {["click", "fill", "select", "hover"].includes(step.type) && (
                       <div>
-                        └─ {(step.config as any).locator?.displayName || "요소"}
-                        {step.type === "fill" && ` = "${(step.config as any).value}"`}
+                        └─ {((step.config as Record<string, unknown>).locator as { displayName?: string } | undefined)?.displayName || "요소"}
+                        {step.type === "fill" && ` = "${(step.config as Record<string, unknown>).value as string}"`}
                       </div>
                     )}
                     {step.type === "api-request" && (
                       <div>
-                        {(step.config as any).method} {(step.config as any).url}
+                        {(step.config as Record<string, unknown>).method as string} {(step.config as Record<string, unknown>).url as string}
                       </div>
                     )}
                     {step.timeout && <div className="text-orange-600">⏱ {step.timeout}ms</div>}

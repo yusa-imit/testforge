@@ -35,7 +35,7 @@ export default function Components() {
           </div>
         ) : (
           <ul className="divide-y divide-gray-200">
-            {components.map((component: any) => (
+            {components.map((component) => (
               <li key={component.id} className="px-6 py-4 hover:bg-gray-50">
                 <Link to={`/components/${component.id}/edit`}>
                   <div className="flex items-center justify-between">

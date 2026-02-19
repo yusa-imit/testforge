@@ -7,7 +7,7 @@ export interface ApiRequestOptions {
   method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   url: string;
   headers?: Record<string, string>;
-  body?: any;
+  body?: unknown;
   timeout?: number;
 }
 
@@ -15,7 +15,7 @@ export interface ApiRequestResponse {
   status: number;
   statusText: string;
   headers: Record<string, string>;
-  body: any;
+  body: unknown;
   duration: number;
 }
 
@@ -56,7 +56,7 @@ export class ApiClient {
       });
 
       // 응답 본문 파싱
-      let body: any;
+      let body: unknown;
       const contentType = response.headers.get("content-type") || "";
 
       if (contentType.includes("application/json")) {
@@ -94,18 +94,22 @@ export class ApiClient {
    * JSON path로 값을 가져옵니다.
    * 예: "data.user.name" → response.data.user.name
    */
-  getValueByPath(obj: any, path: string): any {
+  getValueByPath(obj: unknown, path: string): unknown {
     const parts = path.split(".");
-    let current = obj;
+    let current: Record<string, unknown> | unknown[] | unknown = obj;
 
     for (const part of parts) {
+      if (current === null || current === undefined || typeof current !== "object") {
+        return undefined;
+      }
       // 배열 인덱스 처리: items[0]
       const arrayMatch = part.match(/^(\w+)\[(\d+)\]$/);
       if (arrayMatch) {
         const [, key, index] = arrayMatch;
-        current = current?.[key]?.[parseInt(index, 10)];
+        const obj2 = current as Record<string, unknown[]>;
+        current = obj2[key]?.[parseInt(index, 10)];
       } else {
-        current = current?.[part];
+        current = (current as Record<string, unknown>)[part];
       }
 
       if (current === undefined) {
@@ -119,7 +123,7 @@ export class ApiClient {
   /**
    * 값이 존재하는지 확인합니다.
    */
-  pathExists(obj: any, path: string): boolean {
+  pathExists(obj: unknown, path: string): boolean {
     return this.getValueByPath(obj, path) !== undefined;
   }
 
@@ -127,8 +131,8 @@ export class ApiClient {
    * 두 값을 비교합니다.
    */
   compareValues(
-    actual: any,
-    expected: any,
+    actual: unknown,
+    expected: unknown,
     operator: "equals" | "contains" | "matches" | "exists" | "type"
   ): boolean {
     switch (operator) {
@@ -172,7 +176,7 @@ export class ApiClient {
    * 모든 가능한 JSON 경로를 추출합니다.
    * Self-Healing을 위해 대체 경로를 찾는 데 사용됩니다.
    */
-  private extractAllPaths(obj: any, prefix: string = ""): string[] {
+  private extractAllPaths(obj: unknown, prefix: string = ""): string[] {
     const paths: string[] = [];
 
     if (obj === null || obj === undefined) {
@@ -244,7 +248,7 @@ export class ApiClient {
    * 가장 유사한 경로를 반환하며, 신뢰도 점수를 함께 제공합니다.
    */
   findAlternativePath(
-    obj: any,
+    obj: unknown,
     originalPath: string,
     minConfidence: number = 0.7
   ): { path: string; confidence: number } | null {
@@ -283,10 +287,10 @@ export class ApiClient {
    * 경로에서 값을 가져오되, 실패 시 대체 경로를 시도합니다 (Self-Healing).
    */
   getValueByPathWithHealing(
-    obj: any,
+    obj: unknown,
     originalPath: string
   ): {
-    value: any;
+    value: unknown;
     healed: boolean;
     usedPath?: string;
     confidence?: number;

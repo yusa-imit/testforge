@@ -33,7 +33,7 @@ export default function ServiceDetail() {
       const total = responseData && 'total' in responseData ? responseData.total : responseData?.runIds?.length || 0;
       alert(`${total}개 시나리오 실행이 시작되었습니다. 실행 이력 페이지에서 확인하세요.`);
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       alert(error.message || "서비스 실행 중 오류가 발생했습니다.");
     },
   });
@@ -160,7 +160,7 @@ export default function ServiceDetail() {
         ) : (
           <CardContent className="p-0">
             <div className="divide-y">
-              {features.map((feature: any) => (
+              {features.map((feature) => (
                 <Link
                   key={feature.id}
                   to={`/features/${feature.id}`}

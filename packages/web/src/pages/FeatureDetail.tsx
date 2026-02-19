@@ -37,7 +37,7 @@ export default function FeatureDetail() {
       const total = responseData && 'total' in responseData ? responseData.total : responseData?.runIds?.length || 0;
       alert(`${total}개 시나리오 실행이 시작되었습니다. 실행 이력 페이지에서 확인하세요.`);
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       alert(error.message || "기능 실행 중 오류가 발생했습니다.");
     },
   });
@@ -71,7 +71,7 @@ export default function FeatureDetail() {
 
   // Filter scenarios based on search query and priority
   const filteredScenarios = useMemo(() => {
-    return scenarios.filter((scenario: any) => {
+    return scenarios.filter((scenario) => {
       const matchesSearch = !searchQuery.trim() ||
         scenario.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         scenario.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -86,7 +86,7 @@ export default function FeatureDetail() {
   // Get unique tags for potential tag filtering
   const _allTags = useMemo(() => {
     const tagSet = new Set<string>();
-    scenarios.forEach((scenario: any) => {
+    scenarios.forEach((scenario) => {
       scenario.tags?.forEach((tag: string) => tagSet.add(tag));
     });
     return Array.from(tagSet);
@@ -256,7 +256,7 @@ export default function FeatureDetail() {
         ) : (
           <CardContent className="p-0">
             <div className="divide-y">
-              {filteredScenarios.map((scenario: any) => (
+              {filteredScenarios.map((scenario) => (
                 <Link
                   key={scenario.id}
                   to={`/scenarios/${scenario.id}`}

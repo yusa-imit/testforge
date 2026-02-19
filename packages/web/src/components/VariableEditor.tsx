@@ -71,7 +71,7 @@ export function VariableEditor({ variables, onChange }: VariableEditorProps) {
                 <Label htmlFor={`var-type-${index}`}>타입</Label>
                 <Select
                   value={variable.type}
-                  onValueChange={(value: any) => updateVariable(index, { type: value })}
+                  onValueChange={(value) => updateVariable(index, { type: value as Variable["type"] })}
                 >
                   <SelectTrigger className="mt-1">
                     <SelectValue />

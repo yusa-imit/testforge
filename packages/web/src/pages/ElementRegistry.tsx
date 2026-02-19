@@ -199,7 +199,7 @@ export default function ElementRegistry() {
               <Button variant="outline" className="w-48">
                 {serviceFilter === "all"
                   ? "전체 서비스"
-                  : services.find((s: any) => s.id === serviceFilter)?.name || "서비스 선택"}
+                  : services.find((s) => s.id === serviceFilter)?.name || "서비스 선택"}
                 <ChevronDown className="w-4 h-4 ml-auto" />
               </Button>
             </DropdownMenuTrigger>
@@ -208,7 +208,7 @@ export default function ElementRegistry() {
                 전체 서비스
               </DropdownMenuItem>
               <Separator className="my-1" />
-              {services.map((service: any) => (
+              {services.map((service) => (
                 <DropdownMenuItem
                   key={service.id}
                   onClick={() => setServiceFilter(service.id)}
@@ -244,7 +244,7 @@ export default function ElementRegistry() {
         ) : (
           <Accordion type="single" collapsible className="space-y-4">
             {elements.map((element) => {
-              const service = services.find((s: any) => s.id === element.service_id);
+              const service = services.find((s) => s.id === element.service_id);
               const primaryStrategy = element.currentLocator.strategies[0];
 
               return (

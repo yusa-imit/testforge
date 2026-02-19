@@ -33,7 +33,7 @@ interface ParameterDef {
   name: string;
   type: "string" | "number" | "boolean" | "enum";
   required: boolean;
-  defaultValue?: any;
+  defaultValue?: string | number | boolean;
   options?: string[];
   description?: string;
 }
@@ -42,7 +42,7 @@ interface StepData {
   id: string;
   type: string;
   description: string;
-  config: any;
+  config: Record<string, unknown>;
 }
 
 export default function ComponentEditor() {
@@ -104,7 +104,7 @@ export default function ComponentEditor() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data: any) => updateComponent(id!, data),
+    mutationFn: (data: Record<string, unknown>) => updateComponent(id!, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["components"] });
       queryClient.invalidateQueries({ queryKey: ["components", id] });
@@ -156,7 +156,7 @@ export default function ComponentEditor() {
     ]);
   };
 
-  const updateParameter = (index: number, field: keyof ParameterDef, value: any) => {
+  const updateParameter = (index: number, field: keyof ParameterDef, value: ParameterDef[keyof ParameterDef]) => {
     const updated = [...parameters];
     updated[index] = { ...updated[index], [field]: value };
     setParameters(updated);
@@ -252,7 +252,7 @@ export default function ComponentEditor() {
 
         <div className="space-y-2">
           <Label htmlFor="type">타입</Label>
-          <Select value={type} onValueChange={(value: any) => setType(value)}>
+          <Select value={type} onValueChange={(value: "flow" | "assertion" | "setup" | "teardown") => setType(value)}>
             <SelectTrigger className="w-48">
               <SelectValue />
             </SelectTrigger>
@@ -354,7 +354,7 @@ export default function ComponentEditor() {
                     <div className="space-y-2">
                       <Label>기본값</Label>
                       <Input
-                        value={param.defaultValue || ""}
+                        value={param.defaultValue != null ? String(param.defaultValue) : ""}
                         onChange={(e) =>
                           updateParameter(index, "defaultValue", e.target.value)
                         }

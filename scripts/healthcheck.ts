@@ -30,7 +30,7 @@ async function check(name: string, fn: () => Promise<void>): Promise<void> {
   }
 }
 
-async function get(path: string): Promise<any> {
+async function get(path: string): Promise<unknown> {
   const response = await fetch(`${API_BASE}${path}`);
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -42,7 +42,7 @@ async function get(path: string): Promise<any> {
   return data.data;
 }
 
-async function _post(path: string, body: any): Promise<any> {
+async function _post(path: string, body: unknown): Promise<unknown> {
   const response = await fetch(`${API_BASE}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

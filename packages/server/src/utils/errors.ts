@@ -13,7 +13,7 @@ export class TestForgeError extends Error {
   constructor(
     message: string,
     public code: string,
-    public details?: Record<string, any>
+    public details?: Record<string, unknown>
   ) {
     super(message);
     this.name = "TestForgeError";
@@ -41,7 +41,7 @@ export class TestForgeError extends Error {
  * Thrown when an element cannot be located using any strategy.
  */
 export class ElementNotFoundError extends TestForgeError {
-  constructor(locator: { displayName: string; strategies?: any[] }) {
+  constructor(locator: { displayName: string; strategies?: unknown[] }) {
     super(
       `Element not found: ${locator.displayName}`,
       "ELEMENT_NOT_FOUND",
@@ -64,7 +64,7 @@ export class ElementNotFoundError extends TestForgeError {
 export class HealingFailedError extends TestForgeError {
   constructor(
     locator: { displayName: string },
-    attemptedStrategies: any[]
+    attemptedStrategies: unknown[]
   ) {
     super(
       `All healing strategies failed for: ${locator.displayName}`,
@@ -106,7 +106,7 @@ export class NotFoundError extends TestForgeError {
  * Thrown when input validation fails.
  */
 export class ValidationError extends TestForgeError {
-  constructor(message: string, details?: Record<string, any>) {
+  constructor(message: string, details?: Record<string, unknown>) {
     super(message, "VALIDATION_ERROR", details);
     this.name = "ValidationError";
     Object.setPrototypeOf(this, ValidationError.prototype);
@@ -123,7 +123,7 @@ export class ValidationError extends TestForgeError {
  * Generic error for malformed requests.
  */
 export class BadRequestError extends TestForgeError {
-  constructor(message: string, details?: Record<string, any>) {
+  constructor(message: string, details?: Record<string, unknown>) {
     super(message, "BAD_REQUEST", details);
     this.name = "BadRequestError";
     Object.setPrototypeOf(this, BadRequestError.prototype);
@@ -140,7 +140,7 @@ export class BadRequestError extends TestForgeError {
  * Thrown when a resource already exists or there's a state conflict.
  */
 export class ConflictError extends TestForgeError {
-  constructor(message: string, details?: Record<string, any>) {
+  constructor(message: string, details?: Record<string, unknown>) {
     super(message, "CONFLICT", details);
     this.name = "ConflictError";
     Object.setPrototypeOf(this, ConflictError.prototype);
@@ -157,7 +157,7 @@ export class ConflictError extends TestForgeError {
  * Thrown when test execution fails.
  */
 export class ExecutionError extends TestForgeError {
-  constructor(message: string, details?: Record<string, any>) {
+  constructor(message: string, details?: Record<string, unknown>) {
     super(message, "EXECUTION_ERROR", details);
     this.name = "ExecutionError";
     Object.setPrototypeOf(this, ExecutionError.prototype);
@@ -174,7 +174,7 @@ export class ExecutionError extends TestForgeError {
  * Generic error for unexpected server errors.
  */
 export class InternalServerError extends TestForgeError {
-  constructor(message: string = "Internal server error", details?: Record<string, any>) {
+  constructor(message: string = "Internal server error", details?: Record<string, unknown>) {
     super(message, "INTERNAL_ERROR", details);
     this.name = "InternalServerError";
     Object.setPrototypeOf(this, InternalServerError.prototype);
@@ -194,17 +194,17 @@ export class InternalServerError extends TestForgeError {
 export const notFound = (resource: string, id?: string) =>
   new NotFoundError(resource, id);
 
-export const badRequest = (message: string, details?: Record<string, any>) =>
+export const badRequest = (message: string, details?: Record<string, unknown>) =>
   new BadRequestError(message, details);
 
-export const conflict = (message: string, details?: Record<string, any>) =>
+export const conflict = (message: string, details?: Record<string, unknown>) =>
   new ConflictError(message, details);
 
-export const validationError = (message: string, details?: Record<string, any>) =>
+export const validationError = (message: string, details?: Record<string, unknown>) =>
   new ValidationError(message, details);
 
-export const executionError = (message: string, details?: Record<string, any>) =>
+export const executionError = (message: string, details?: Record<string, unknown>) =>
   new ExecutionError(message, details);
 
-export const internalError = (message?: string, details?: Record<string, any>) =>
+export const internalError = (message?: string, details?: Record<string, unknown>) =>
   new InternalServerError(message, details);

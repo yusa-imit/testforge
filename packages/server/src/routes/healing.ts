@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
+import { HealingRecord, LocatorStrategy, Step } from "@testforge/core";
 import { getDB } from "../db";
 import { notFound, badRequest } from "../utils/errors";
 
@@ -18,7 +19,7 @@ const app = new Hono()
     let records = await db.getAllHealingRecords();
 
     if (status) {
-      records = records.filter((r: any) => r.status === status);
+      records = records.filter((r: HealingRecord) => r.status === status);
     }
 
     return c.json({ success: true, data: records });
@@ -128,30 +129,31 @@ const app = new Hono()
       }
 
       let scenarioModified = false;
-      const updatedSteps = scenario.steps.map((step: any) => {
+      const updatedSteps = scenario.steps.map((step: Step) => {
         // 로케이터를 가진 스텝 타입인지 확인
         const hasLocator = ["click", "fill", "select", "hover", "wait", "assert"].includes(step.type);
-        if (!hasLocator || !step.config?.locator) {
+        const configWithLocator = hasLocator && "locator" in step.config ? step.config as { locator: { displayName: string; strategies: LocatorStrategy[] } } : null;
+        if (!configWithLocator?.locator) {
           return step;
         }
 
         // 동일한 displayName을 가진 로케이터인지 확인
-        if (step.config.locator.displayName !== record.locatorDisplayName) {
+        if (configWithLocator.locator.displayName !== record.locatorDisplayName) {
           return step;
         }
 
         // 로케이터 전략 업데이트
-        const currentStrategies = step.config.locator.strategies || [];
+        const currentStrategies = configWithLocator.locator.strategies || [];
 
         // 기존 전략에서 healed strategy와 동일한 타입 제거
         const filteredStrategies = currentStrategies.filter(
-          (s: any) => s.type !== record.healedStrategy.type
+          (s: LocatorStrategy) => s.type !== record.healedStrategy.type
         );
 
         // healed strategy를 최우선(priority: 1)으로 추가
         const updatedStrategies = [
           { ...record.healedStrategy, priority: 1 },
-          ...filteredStrategies.map((s: any, idx: number) => ({
+          ...filteredStrategies.map((s: LocatorStrategy, idx: number) => ({
             ...s,
             priority: idx + 2
           }))
@@ -164,7 +166,7 @@ const app = new Hono()
           config: {
             ...step.config,
             locator: {
-              ...step.config.locator,
+              ...configWithLocator.locator,
               strategies: updatedStrategies
             }
           }
@@ -173,7 +175,7 @@ const app = new Hono()
 
       // 시나리오가 수정되었으면 저장
       if (scenarioModified) {
-        await db.updateScenario(scenario.id, { steps: updatedSteps });
+        await db.updateScenario(scenario.id, { steps: updatedSteps as Step[] });
         propagatedTo.push(scenario.id);
       }
     }

@@ -91,17 +91,16 @@ export function LocatorEditor({ value, onChange }: LocatorEditorProps) {
                   value={strategy.type}
                   onValueChange={(type) => {
                     // Reset strategy with new type
-                    const baseStrategy = { type, priority: strategy.priority } as any;
-                    if (type === "testId" || type === "css" || type === "label" || type === "text") {
-                      baseStrategy.value = "";
-                      if (type === "text") baseStrategy.exact = true;
-                    } else if (type === "role") {
-                      baseStrategy.role = "";
-                      baseStrategy.name = "";
-                    } else if (type === "xpath") {
-                      baseStrategy.expression = "";
-                    }
-                    updateStrategy(index, baseStrategy);
+                    let newStrategy: LocatorStrategy;
+                    const p = strategy.priority;
+                    if (type === "testId") newStrategy = { type: "testId", value: "", priority: p };
+                    else if (type === "label") newStrategy = { type: "label", value: "", priority: p };
+                    else if (type === "text") newStrategy = { type: "text", value: "", exact: true, priority: p };
+                    else if (type === "role") newStrategy = { type: "role", role: "", name: "", priority: p };
+                    else if (type === "css") newStrategy = { type: "css", selector: "", priority: p };
+                    else if (type === "xpath") newStrategy = { type: "xpath", expression: "", priority: p };
+                    else newStrategy = { type: "api-path", path: "", priority: p };
+                    updateStrategy(index, newStrategy);
                   }}
                 >
                   <SelectTrigger className="mt-1">
@@ -122,8 +121,8 @@ export function LocatorEditor({ value, onChange }: LocatorEditorProps) {
                 <div>
                   <Label>값</Label>
                   <Input
-                    value={(strategy as any).value || ""}
-                    onChange={(e) => updateStrategy(index, { value: e.target.value } as any)}
+                    value={strategy.value || ""}
+                    onChange={(e) => updateStrategy(index, { ...strategy, value: e.target.value })}
                     placeholder="data-testid 값"
                     className="mt-1"
                   />
@@ -135,8 +134,8 @@ export function LocatorEditor({ value, onChange }: LocatorEditorProps) {
                   <div>
                     <Label>Role</Label>
                     <Input
-                      value={(strategy as any).role || ""}
-                      onChange={(e) => updateStrategy(index, { role: e.target.value } as any)}
+                      value={strategy.role || ""}
+                      onChange={(e) => updateStrategy(index, { ...strategy, role: e.target.value })}
                       placeholder="button, link, etc."
                       className="mt-1"
                     />
@@ -144,8 +143,8 @@ export function LocatorEditor({ value, onChange }: LocatorEditorProps) {
                   <div>
                     <Label>Name (선택)</Label>
                     <Input
-                      value={(strategy as any).name || ""}
-                      onChange={(e) => updateStrategy(index, { name: e.target.value } as any)}
+                      value={strategy.name || ""}
+                      onChange={(e) => updateStrategy(index, { ...strategy, name: e.target.value })}
                       placeholder="접근 가능한 이름"
                       className="mt-1"
                     />
@@ -158,8 +157,8 @@ export function LocatorEditor({ value, onChange }: LocatorEditorProps) {
                   <div>
                     <Label>텍스트</Label>
                     <Input
-                      value={(strategy as any).value || ""}
-                      onChange={(e) => updateStrategy(index, { value: e.target.value } as any)}
+                      value={strategy.value || ""}
+                      onChange={(e) => updateStrategy(index, { ...strategy, value: e.target.value })}
                       placeholder="요소 텍스트"
                       className="mt-1"
                     />
@@ -168,8 +167,8 @@ export function LocatorEditor({ value, onChange }: LocatorEditorProps) {
                     <input
                       type="checkbox"
                       id={`exact-${index}`}
-                      checked={(strategy as any).exact ?? true}
-                      onChange={(e) => updateStrategy(index, { exact: e.target.checked } as any)}
+                      checked={strategy.exact ?? true}
+                      onChange={(e) => updateStrategy(index, { ...strategy, exact: e.target.checked })}
                       className="rounded"
                     />
                     <Label htmlFor={`exact-${index}`} className="text-sm">정확히 일치</Label>
@@ -181,8 +180,8 @@ export function LocatorEditor({ value, onChange }: LocatorEditorProps) {
                 <div>
                   <Label>Label 텍스트</Label>
                   <Input
-                    value={(strategy as any).value || ""}
-                    onChange={(e) => updateStrategy(index, { value: e.target.value } as any)}
+                    value={strategy.value || ""}
+                    onChange={(e) => updateStrategy(index, { ...strategy, value: e.target.value })}
                     placeholder="label 텍스트"
                     className="mt-1"
                   />
@@ -193,8 +192,8 @@ export function LocatorEditor({ value, onChange }: LocatorEditorProps) {
                 <div>
                   <Label>CSS 선택자</Label>
                   <Input
-                    value={(strategy as any).selector || ""}
-                    onChange={(e) => updateStrategy(index, { selector: e.target.value } as any)}
+                    value={strategy.selector || ""}
+                    onChange={(e) => updateStrategy(index, { ...strategy, selector: e.target.value })}
                     placeholder=".class, #id, etc."
                     className="mt-1"
                   />
@@ -205,8 +204,8 @@ export function LocatorEditor({ value, onChange }: LocatorEditorProps) {
                 <div>
                   <Label>XPath 표현식</Label>
                   <Input
-                    value={(strategy as any).expression || ""}
-                    onChange={(e) => updateStrategy(index, { expression: e.target.value } as any)}
+                    value={strategy.expression || ""}
+                    onChange={(e) => updateStrategy(index, { ...strategy, expression: e.target.value })}
                     placeholder="//div[@class='example']"
                     className="mt-1"
                   />

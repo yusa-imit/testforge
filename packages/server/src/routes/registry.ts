@@ -65,7 +65,7 @@ const app = new Hono()
     // Apply search filter
     if (search) {
       const searchLower = search.toLowerCase();
-      elements = elements.filter((el: any) =>
+      elements = elements.filter((el: { display_name?: string; page_pattern?: string }) =>
         el.display_name?.toLowerCase().includes(searchLower) ||
         el.page_pattern?.toLowerCase().includes(searchLower)
       );
@@ -104,8 +104,9 @@ const app = new Hono()
       });
 
       return c.json({ success: true, data: element }, 201);
-    } catch (error: any) {
-      throw badRequest("Failed to create element registry entry", { error: error.message });
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      throw badRequest("Failed to create element registry entry", { error: msg });
     }
   })
 

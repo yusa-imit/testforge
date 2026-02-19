@@ -1,5 +1,6 @@
 import { hc } from "hono/client";
 import type { AppType } from "@testforge/server";
+import type { CreateScenario } from "@testforge/core";
 import axios from "axios";
 
 // Hono RPC Client (type-safe)
@@ -84,12 +85,12 @@ export async function getComponent(id: string) {
   return res.json();
 }
 
-export async function createComponent(data: any) {
+export async function createComponent(data: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
   const res = await api.api.components.$post({ json: data });
   return res.json();
 }
 
-export async function updateComponent(id: string, data: any) {
+export async function updateComponent(id: string, data: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
   const res = await api.api.components[":id"].$put({ param: { id }, json: data });
   return res.json();
 }
@@ -104,7 +105,7 @@ export async function getComponentUsages(id: string) {
   return res.json();
 }
 
-export async function updateScenario(id: string, data: any) {
+export async function updateScenario(id: string, data: Partial<CreateScenario>) {
   const res = await api.api.scenarios[":id"].$put({ param: { id }, json: data });
   return res.json();
 }

@@ -4,6 +4,13 @@ import { formatDistanceToNow } from "date-fns";
 import { ko } from "date-fns/locale";
 import { getServices, getHealingStats, getDashboardData } from "../lib/api";
 
+interface RecentFailureRun {
+  id: string;
+  scenarioId: string;
+  scenarioName: string;
+  createdAt: string;
+}
+
 export default function Dashboard() {
   const { data: servicesData } = useQuery({
     queryKey: ["services"],
@@ -112,7 +119,7 @@ export default function Dashboard() {
             <h3 className="text-lg font-medium text-gray-900">최근 실패</h3>
           </div>
           <ul className="divide-y divide-gray-200">
-            {recentFailures.map((run: any) => (
+            {recentFailures.map((run: RecentFailureRun) => (
               <li key={run.id} className="px-6 py-4 flex items-center justify-between">
                 <div className="flex items-center">
                   <span className="text-red-500 mr-3">❌</span>
@@ -157,7 +164,7 @@ export default function Dashboard() {
           </div>
         ) : (
           <ul className="divide-y divide-gray-200">
-            {services.map((service: any) => (
+            {services.map((service) => (
               <li key={service.id}>
                 <Link
                   to={`/services/${service.id}`}

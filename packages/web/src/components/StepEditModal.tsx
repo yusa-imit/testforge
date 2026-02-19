@@ -55,7 +55,7 @@ export function StepEditModal({ open, onOpenChange, step, onSave }: StepEditModa
   const [description, setDescription] = useState(step?.description || "");
   const [timeout, setTimeout] = useState<number | undefined>(step?.timeout);
   const [continueOnError, setContinueOnError] = useState(step?.continueOnError || false);
-  const [config, setConfig] = useState<any>(step?.config || {});
+  const [config, setConfig] = useState<any>(step?.config || {}); // eslint-disable-line @typescript-eslint/no-explicit-any
 
   useEffect(() => {
     if (step) {
@@ -77,7 +77,7 @@ export function StepEditModal({ open, onOpenChange, step, onSave }: StepEditModa
   const handleStepTypeChange = (newType: StepType) => {
     setStepType(newType);
     // Initialize config based on type
-    const newConfig: any = {};
+    const newConfig: any = {}; // eslint-disable-line @typescript-eslint/no-explicit-any
 
     if (["click", "fill", "select", "hover"].includes(newType)) {
       newConfig.locator = DEFAULT_LOCATOR;

@@ -43,7 +43,7 @@ export default function Services() {
   const filteredServices = useMemo(() => {
     if (!searchQuery.trim()) return services;
     const query = searchQuery.toLowerCase();
-    return services.filter((service: any) =>
+    return services.filter((service) =>
       service.name.toLowerCase().includes(query) ||
       service.description?.toLowerCase().includes(query) ||
       service.baseUrl?.toLowerCase().includes(query)
@@ -172,7 +172,7 @@ export default function Services() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredServices.map((service: any) => (
+          {filteredServices.map((service) => (
             <Link key={service.id} to={`/services/${service.id}`}>
               <Card className="hover:shadow-lg transition-shadow h-full">
                 <CardHeader>
