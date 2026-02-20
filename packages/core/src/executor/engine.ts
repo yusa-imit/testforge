@@ -8,6 +8,7 @@ import type {
   StepResult,
   RunStatus,
   StepResultStatus,
+  LocatorStrategy,
   Service,
   ElementLocator,
   Component,
@@ -38,8 +39,8 @@ export type RunEvent =
   | { type: "run:finished"; data: { status: string; summary: RunSummary } };
 
 export interface HealingInfo {
-  originalStrategy: any;
-  usedStrategy: any;
+  originalStrategy: LocatorStrategy;
+  usedStrategy: LocatorStrategy;
   confidence: number;
 }
 

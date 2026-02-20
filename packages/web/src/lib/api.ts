@@ -1,6 +1,6 @@
 import { hc } from "hono/client";
 import type { AppType } from "@testforge/server";
-import type { CreateScenario } from "@testforge/core";
+import type { CreateScenario, ElementLocator } from "@testforge/core";
 import axios from "axios";
 
 // Hono RPC Client (type-safe)
@@ -195,7 +195,7 @@ export async function createRegistryElement(data: {
   serviceId: string;
   displayName: string;
   pagePattern?: string;
-  currentLocator: any;
+  currentLocator: ElementLocator;
 }) {
   const res = await axiosClient.post("/registry", data);
   return res.data;
@@ -204,7 +204,7 @@ export async function createRegistryElement(data: {
 export async function updateRegistryElement(id: string, data: {
   displayName?: string;
   pagePattern?: string;
-  currentLocator?: any;
+  currentLocator?: ElementLocator;
   reason?: string;
 }) {
   const res = await axiosClient.put(`/registry/${id}`, data);

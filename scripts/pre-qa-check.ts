@@ -61,7 +61,7 @@ async function checkTypeScript(): Promise<CheckResult> {
       passed: true,
       duration: Date.now() - start,
     };
-  } catch (error) {
+  } catch (_error) {
     return {
       name: "TypeScript type checking",
       passed: false,
@@ -98,7 +98,7 @@ async function checkTests(): Promise<CheckResult> {
       passed: true,
       duration: Date.now() - start,
     };
-  } catch (error) {
+  } catch (_error) {
     return {
       name: "Unit tests",
       passed: false,
@@ -136,7 +136,7 @@ async function checkLint(): Promise<CheckResult> {
       passed: true,
       duration: Date.now() - start,
     };
-  } catch (error) {
+  } catch (_error) {
     return {
       name: "ESLint",
       passed: false,
@@ -206,7 +206,7 @@ async function checkBuildArtifacts(): Promise<CheckResult> {
       passed: true,
       duration: Date.now() - start,
     };
-  } catch (error) {
+  } catch (_error) {
     return {
       name: "Build artifacts",
       passed: false,
