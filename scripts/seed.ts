@@ -9,6 +9,7 @@
  */
 
 import { v4 as uuid } from "uuid";
+import { resolve } from "path";
 import { initDatabase } from "../packages/server/src/db/connection";
 import type {
   Service,
@@ -20,7 +21,10 @@ import type {
 async function seed() {
   console.log("🌱 Starting database seed...\n");
 
-  const db = await initDatabase("./packages/server/testforge.duckdb");
+  // Use absolute path from project root
+  const projectRoot = resolve(__dirname, "..");
+  const dbPath = resolve(projectRoot, "packages/server/testforge.duckdb");
+  const db = await initDatabase(dbPath);
 
   // Clear existing data
   console.log("🗑️  Clearing existing data...");

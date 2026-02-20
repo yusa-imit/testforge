@@ -16,7 +16,9 @@
     "db:seed": "bun run --cwd scripts seed.ts",
     "test": "bun test",
     "lint": "bunx eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "pre-qa": "bun run scripts/pre-qa-check.ts",
+    "validate": "bun run scripts/pre-qa-check.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
