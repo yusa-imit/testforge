@@ -3,6 +3,7 @@ import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 
 import { errorHandler } from "./middleware/errorHandler";
+import { timing } from "./middleware/timing";
 import services from "./routes/services";
 import features from "./routes/features";
 import scenarios from "./routes/scenarios";
@@ -11,9 +12,11 @@ import runs from "./routes/runs";
 import healing from "./routes/healing";
 import screenshots from "./routes/screenshots";
 import registry from "./routes/registry";
+import metrics from "./routes/metrics";
 
 const app = new Hono()
   .use("*", logger())
+  .use("*", timing)
   .use("*", cors())
   .onError(errorHandler)
   .get("/", (c) => c.json({ message: "TestForge API", version: "0.1.0" }))
@@ -25,7 +28,8 @@ const app = new Hono()
   .route("/api/runs", runs)
   .route("/api/healing", healing)
   .route("/api/screenshots", screenshots)
-  .route("/api/registry", registry);
+  .route("/api/registry", registry)
+  .route("/api/metrics", metrics);
 
 export type AppType = typeof app;
 export default app;
