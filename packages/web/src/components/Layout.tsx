@@ -8,6 +8,7 @@ const navigation = [
   { name: "Self-Healing", href: "/healing" },
   { name: "Element Registry", href: "/registry" },
   { name: "실행 이력", href: "/runs" },
+  { name: "성능 모니터링", href: "/metrics" },
 ];
 
 export default function Layout() {

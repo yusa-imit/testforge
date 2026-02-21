@@ -11,6 +11,7 @@ import Healing from "./pages/Healing";
 import ElementRegistry from "./pages/ElementRegistry";
 import Runs from "./pages/Runs";
 import RunDetail from "./pages/RunDetail";
+import Metrics from "./pages/Metrics";
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
         <Route path="/registry" element={<ElementRegistry />} />
         <Route path="/runs" element={<Runs />} />
         <Route path="/scenarios/:scenarioId/runs/:runId" element={<RunDetail />} />
+        <Route path="/metrics" element={<Metrics />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
