@@ -19,6 +19,18 @@ _(현재 미해결 이슈가 있을 때 여기에 기록)_
 
 ## 해결된 이슈
 
+### [2026-02-22 session 19] React component testing with Bun + happy-dom
+- **증상**: React Testing Library tests failing with `document is not defined`
+- **원인**: Bun test runner doesn't auto-setup DOM environment like Jest
+- **시도한 해결책**: Global happy-dom setup (`global.document = ...`) → `screen` API still failed
+- **최종 수정**: Component class 단위 테스트로 전환 (render() 대신 new ErrorBoundary() 직접)
+- **파일**: `packages/web/src/components/ErrorBoundary.test.tsx`
+- **교훈**:
+  - Bun에서 React component render 테스트는 복잡함 (DOM setup 이슈)
+  - Class component는 인스턴스 메서드 직접 테스트 가능 (render 없이)
+  - 단순 유닛 테스트로도 충분한 커버리지 확보 가능
+  - E2E 테스트나 실제 브라우저 테스트는 Playwright로 수행
+
 ### [2026-02-19 session 9] updateHealingRecord propagatedTo 빈 배열 바인딩 실패
 - **증상**: propagate 엔드포인트에서 아무 시나리오도 매칭 안 되면 500 에러
 - **원인**: `propagatedTo: []` (빈 배열)로 UPDATE 시 DuckDB VARCHAR[] 변환 실패
