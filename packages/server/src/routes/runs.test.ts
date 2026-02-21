@@ -90,6 +90,14 @@ describe("GET /api/runs", () => {
     const body = await res.json();
     expect(body.data).toHaveLength(1);
   });
+
+  it("includes scenario name in run data", async () => {
+    const { scenario } = await createTestRun("passed");
+    const res = await req("GET", "/api/runs");
+    const body = await res.json();
+    expect(body.data).toHaveLength(1);
+    expect(body.data[0].scenarioName).toBe(scenario.name);
+  });
 });
 
 describe("GET /api/runs/dashboard", () => {

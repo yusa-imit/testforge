@@ -45,9 +45,10 @@ export default function Runs() {
         }
       }
       
-      // Search filter (searches scenario ID for now)
+      // Search filter (searches both scenario name and ID)
       const matchesSearch = !searchQuery.trim() ||
-        run.scenarioId.toLowerCase().includes(searchQuery.toLowerCase());
+        run.scenarioId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (run.scenarioName || '').toLowerCase().includes(searchQuery.toLowerCase());
       
       return matchesStatus && matchesDate && matchesSearch;
     });
@@ -104,7 +105,7 @@ export default function Runs() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
           <Input
-            placeholder="시나리오 ID로 검색..."
+            placeholder="시나리오 이름 또는 ID로 검색..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
@@ -198,13 +199,16 @@ export default function Runs() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="text-xl">{getStatusIcon(run.status)}</span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4">
                     <Link
                       to={`/scenarios/${run.scenarioId}/runs/${run.id}`}
-                      className="text-sm font-medium text-blue-600 hover:text-blue-800"
+                      className="text-sm font-medium text-blue-600 hover:text-blue-800 block"
                     >
-                      {run.scenarioId.slice(0, 8)}...
+                      {run.scenarioName || `시나리오 ${run.scenarioId.slice(0, 8)}...`}
                     </Link>
+                    <span className="text-xs text-gray-400">
+                      {run.scenarioId.slice(0, 8)}...
+                    </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {run.summary && (

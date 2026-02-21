@@ -573,12 +573,19 @@ export class DuckDBDatabase {
     return rows.map(RowConverter.toTestRun);
   }
 
-  async getAllTestRuns(limit = 50): Promise<TestRun[]> {
+  async getAllTestRuns(limit = 50): Promise<(TestRun & { scenarioName: string })[]> {
     const rows = await this.db.all(
-      "SELECT * FROM test_runs ORDER BY created_at DESC LIMIT ?",
+      `SELECT t.*, s.name as scenario_name
+       FROM test_runs t
+       LEFT JOIN scenarios s ON t.scenario_id = s.id
+       ORDER BY t.created_at DESC
+       LIMIT ?`,
       [limit]
     );
-    return rows.map(RowConverter.toTestRun);
+    return rows.map((row: any) => ({
+      ...RowConverter.toTestRun(row),
+      scenarioName: row.scenario_name || `시나리오 ${row.scenario_id?.slice(0, 8)}...`,
+    }));
   }
 
   async getDashboardRuns(hours = 24): Promise<(TestRun & { scenarioName: string })[]> {
