@@ -7,6 +7,7 @@
 import { readdir, readFile } from "fs/promises";
 import { join } from "path";
 import { getDatabase } from "./connection";
+import { logger } from "../utils/logger";
 
 /**
  * Split SQL file into individual statements
@@ -80,7 +81,7 @@ export async function runMigrations(dbPath = "./testforge.duckdb"): Promise<void
   const db = getDatabase(dbPath);
   await db.connect();
 
-  console.log("[Migration] Starting database migrations...");
+  logger.info("Starting database migrations");
 
   // Get migration files
   const migrationsDir = join(__dirname, "migrations");
@@ -90,13 +91,13 @@ export async function runMigrations(dbPath = "./testforge.duckdb"): Promise<void
     .sort(); // Run in order
 
   if (sqlFiles.length === 0) {
-    console.log("[Migration] No migration files found");
+    logger.info("No migration files found");
     return;
   }
 
   // Run each migration
   for (const file of sqlFiles) {
-    console.log(`[Migration] Running ${file}...`);
+    logger.info("Running migration", { file });
     const filePath = join(migrationsDir, file);
     const sql = await readFile(filePath, "utf-8");
 
@@ -107,10 +108,10 @@ export async function runMigrations(dbPath = "./testforge.duckdb"): Promise<void
       await db.run(statement);
     }
 
-    console.log(`[Migration] ✓ ${file} completed`);
+    logger.info("Migration completed", { file });
   }
 
-  console.log("[Migration] All migrations completed successfully");
+  logger.info("All migrations completed successfully");
 }
 
 /**
@@ -119,11 +120,11 @@ export async function runMigrations(dbPath = "./testforge.duckdb"): Promise<void
 if (import.meta.main) {
   runMigrations()
     .then(() => {
-      console.log("[Migration] Done");
+      logger.info("Migration complete");
       process.exit(0);
     })
     .catch((err) => {
-      console.error("[Migration] Failed:", err);
+      logger.error("Migration failed", { error: err });
       process.exit(1);
     });
 }

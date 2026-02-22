@@ -3,6 +3,7 @@ import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { HTTPException } from "hono/http-exception";
 import { TestForgeError } from "../utils/errors";
 import { ZodError } from "zod";
+import { logger } from "../utils/logger";
 
 /**
  * Global Error Handler
@@ -52,7 +53,7 @@ export const errorHandler: HonoErrorHandler = (err, c) => {
 
     // Handle generic errors
     if (err instanceof Error) {
-      console.error("Unhandled error:", err);
+      logger.error("Unhandled error", { error: err.message, stack: err.stack });
       return c.json(
         {
           error: {
@@ -71,7 +72,7 @@ export const errorHandler: HonoErrorHandler = (err, c) => {
     }
 
     // Fallback for unknown errors
-    console.error("Unknown error type:", err);
+    logger.error("Unknown error type", { error: err });
     return c.json(
       {
         error: {

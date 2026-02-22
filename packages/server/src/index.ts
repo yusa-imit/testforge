@@ -1,9 +1,10 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { logger } from "hono/logger";
+import { logger as honoLogger } from "hono/logger";
 
 import { errorHandler } from "./middleware/errorHandler";
 import { timing } from "./middleware/timing";
+import { logger } from "./utils/logger";
 import services from "./routes/services";
 import features from "./routes/features";
 import scenarios from "./routes/scenarios";
@@ -15,7 +16,7 @@ import registry from "./routes/registry";
 import metrics from "./routes/metrics";
 
 const app = new Hono()
-  .use("*", logger())
+  .use("*", honoLogger())
   .use("*", timing)
   .use("*", cors())
   .onError(errorHandler)
@@ -36,7 +37,7 @@ export default app;
 
 const port = process.env.PORT ?? 3001;
 
-console.log(`🚀 TestForge API running at http://localhost:${port}`);
+logger.info(`TestForge API running at http://localhost:${port}`);
 
 export { app };
 

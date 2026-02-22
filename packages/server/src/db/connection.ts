@@ -6,6 +6,7 @@
  */
 
 import { Database } from "duckdb";
+import { logger } from "../utils/logger";
 
 /**
  * DuckDB Connection Wrapper
@@ -33,7 +34,7 @@ export class DuckDBConnection {
           return;
         }
         this.isConnected = true;
-        console.log(`[DB] Connected to DuckDB at ${this.dbPath}`);
+        logger.info("Connected to DuckDB", { path: this.dbPath });
         resolve();
       });
     });
@@ -97,7 +98,7 @@ export class DuckDBConnection {
         }
         this.isConnected = false;
         this.db = null;
-        console.log("[DB] Database connection closed");
+        logger.info("Database connection closed");
         resolve();
       });
     });

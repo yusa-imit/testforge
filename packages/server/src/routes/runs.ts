@@ -4,6 +4,7 @@ import { getDB } from "../db";
 import { notFound, badRequest } from "../utils/errors";
 import { ExecutionManager } from "../execution/manager";
 import type { RunEvent } from "@testforge/core";
+import { logger } from "../utils/logger";
 
 const app = new Hono()
   // GET /api/runs - 실행 목록
@@ -156,7 +157,7 @@ const app = new Hono()
           }
         } catch (error) {
           // 클라이언트 연결 끊김 등의 에러 처리
-          console.error("SSE write error:", error);
+          logger.error("SSE write error", { error, runId: id });
           closed = true;
         }
       };
@@ -176,7 +177,7 @@ const app = new Hono()
             event: "heartbeat",
           });
         } catch (error) {
-          console.error("SSE heartbeat error:", error);
+          logger.error("SSE heartbeat error", { error, runId: id });
           closed = true;
           clearInterval(heartbeatInterval);
         }

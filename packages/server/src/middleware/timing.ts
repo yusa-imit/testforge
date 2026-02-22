@@ -1,4 +1,5 @@
 import { MiddlewareHandler } from "hono";
+import { logger } from "../utils/logger";
 
 /**
  * Request Timing Middleware
@@ -64,9 +65,12 @@ export const timing: MiddlewareHandler = async (c, next) => {
 
   // Log slow requests
   if (duration > SLOW_REQUEST_THRESHOLD_MS) {
-    console.warn(
-      `[SLOW REQUEST] ${method} ${path} took ${duration}ms (status: ${statusCode})`
-    );
+    logger.warn("Slow request detected", {
+      method,
+      path,
+      duration,
+      statusCode,
+    });
   }
 };
 

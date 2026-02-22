@@ -3,6 +3,7 @@ import type { Scenario, Service, RunEvent } from "@testforge/core";
 import { v4 as uuid } from "uuid";
 import { ExecutionManager } from "./manager";
 import type { DuckDBDatabase } from "../db/database";
+import { logger } from "../utils/logger";
 
 /**
  * Shared helper to execute a single scenario and return the runId.
@@ -62,7 +63,7 @@ export async function executeScenarioRun(
 
       return result;
     } catch (error) {
-      console.error("Execution error:", error);
+      logger.error("Execution error", { error, runId: capturedRunId });
       if (capturedRunId) {
         await db.updateTestRun(capturedRunId, {
           status: "failed",
