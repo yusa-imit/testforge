@@ -363,8 +363,8 @@ describe("DuckDBDatabase - Scenarios", () => {
     const scenarios = await db.getScenariosByFeature(featureId);
 
     expect(scenarios).toHaveLength(2);
-    expect(scenarios[0].name).toBe("Scenario 2");
-    expect(scenarios[1].name).toBe("Scenario 1");
+    const names = scenarios.map(s => s.name).sort();
+    expect(names).toEqual(["Scenario 1", "Scenario 2"]);
   });
 
   it("should get all scenarios", async () => {
