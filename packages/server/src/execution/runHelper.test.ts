@@ -4,11 +4,9 @@ import { ExecutionManager } from "./manager";
 import type { Scenario, Service, Component } from "@testforge/core";
 import { DuckDBDatabase } from "../db/database";
 import { setupTestDB } from "../test-helpers/setup";
-import type { Database } from "duckdb-async";
 
 describe("runHelper - executeScenarioRun", () => {
   let db: DuckDBDatabase;
-  let rawDb: Database;
   let manager: ExecutionManager;
   let serviceId: string;
   let service: Service;
@@ -16,7 +14,6 @@ describe("runHelper - executeScenarioRun", () => {
   beforeEach(async () => {
     const setup = await setupTestDB();
     db = setup.db;
-    rawDb = setup.rawDb;
     manager = ExecutionManager.getInstance();
 
     // Clean up any existing active runs
@@ -27,6 +24,7 @@ describe("runHelper - executeScenarioRun", () => {
     service = await db.createService({
       name: "Test Service",
       baseUrl: "https://example.com",
+      defaultTimeout: 30000,
     });
     serviceId = service.id;
   });
@@ -35,10 +33,6 @@ describe("runHelper - executeScenarioRun", () => {
     // Clean up active runs
     const activeIds = manager.getActiveRunIds();
     activeIds.forEach((id) => manager.unregisterExecution(id));
-
-    if (rawDb) {
-      await rawDb.close();
-    }
   });
 
   describe("Basic Execution", () => {
@@ -46,7 +40,7 @@ describe("runHelper - executeScenarioRun", () => {
       const feature = await db.createFeature({
         serviceId,
         name: "Test Feature",
-        owners: null,
+        owners: [],
       });
 
       const scenario: Scenario = await db.createScenario({
@@ -58,9 +52,10 @@ describe("runHelper - executeScenarioRun", () => {
         steps: [
           {
             id: "step-1",
+            description: "Navigate to example.com",
             type: "navigate",
             config: { url: "https://example.com" },
-            continueOnFail: false,
+            continueOnError: false,
           },
         ],
       });
@@ -75,7 +70,7 @@ describe("runHelper - executeScenarioRun", () => {
       const feature = await db.createFeature({
         serviceId,
         name: "Test Feature",
-        owners: null,
+        owners: [],
       });
 
       const scenario: Scenario = await db.createScenario({
@@ -87,9 +82,10 @@ describe("runHelper - executeScenarioRun", () => {
         steps: [
           {
             id: "step-1",
+            description: "Navigate to example.com",
             type: "navigate",
             config: { url: "https://example.com" },
-            continueOnFail: false,
+            continueOnError: false,
           },
         ],
       });
@@ -104,7 +100,7 @@ describe("runHelper - executeScenarioRun", () => {
       const feature = await db.createFeature({
         serviceId,
         name: "Test Feature",
-        owners: null,
+        owners: [],
       });
 
       const scenario: Scenario = await db.createScenario({
@@ -116,9 +112,10 @@ describe("runHelper - executeScenarioRun", () => {
         steps: [
           {
             id: "step-1",
+            description: "Navigate to example.com",
             type: "navigate",
             config: { url: "https://example.com" },
-            continueOnFail: false,
+            continueOnError: false,
           },
         ],
       });
@@ -139,17 +136,18 @@ describe("runHelper - executeScenarioRun", () => {
       const feature = await db.createFeature({
         serviceId,
         name: "Test Feature",
-        owners: null,
+        owners: [],
       });
 
       // Create a component
       const component: Component = await db.createComponent({
         name: "Test Component",
-        type: "browser",
+        type: "flow",
         parameters: [],
         steps: [
           {
             id: "comp-step-1",
+            description: "Click submit button",
             type: "click",
             config: {
               locator: {
@@ -157,9 +155,10 @@ describe("runHelper - executeScenarioRun", () => {
                 strategies: [
                   { type: "testId", value: "submit-btn", priority: 1 },
                 ],
+                healing: { enabled: false },
               },
             },
-            continueOnFail: false,
+            continueOnError: false,
           },
         ],
       });
@@ -173,18 +172,20 @@ describe("runHelper - executeScenarioRun", () => {
         steps: [
           {
             id: "step-1",
+            description: "Navigate to example.com",
             type: "navigate",
             config: { url: "https://example.com" },
-            continueOnFail: false,
+            continueOnError: false,
           },
           {
             id: "step-2",
+            description: "Use component",
             type: "component",
             config: {
               componentId: component.id,
-              bindings: {},
+              parameters: {},
             },
-            continueOnFail: false,
+            continueOnError: false,
           },
         ],
       });
@@ -205,7 +206,7 @@ describe("runHelper - executeScenarioRun", () => {
       const feature = await db.createFeature({
         serviceId,
         name: "Test Feature",
-        owners: null,
+        owners: [],
       });
 
       const scenario: Scenario = await db.createScenario({
@@ -217,18 +218,19 @@ describe("runHelper - executeScenarioRun", () => {
         steps: [
           {
             id: "step-1",
+            description: "Navigate to example.com",
             type: "navigate",
             config: { url: "https://example.com" },
-            continueOnFail: false,
+            continueOnError: false,
           },
           {
             id: "step-2",
+            description: "Use component",
             type: "component",
             config: {
               componentId: "non-existent-component-id",
-              bindings: {},
             },
-            continueOnFail: false,
+            continueOnError: false,
           },
         ],
       });
@@ -251,7 +253,7 @@ describe("runHelper - executeScenarioRun", () => {
       const feature = await db.createFeature({
         serviceId,
         name: "Test Feature",
-        owners: null,
+        owners: [],
       });
 
       const scenario: Scenario = await db.createScenario({
@@ -263,9 +265,10 @@ describe("runHelper - executeScenarioRun", () => {
         steps: [
           {
             id: "step-1",
+            description: "Navigate to example.com",
             type: "navigate",
             config: { url: "https://example.com" },
-            continueOnFail: false,
+            continueOnError: false,
           },
         ],
       });
@@ -288,7 +291,7 @@ describe("runHelper - executeScenarioRun", () => {
       const feature = await db.createFeature({
         serviceId,
         name: "Test Feature",
-        owners: null,
+        owners: [],
       });
 
       const scenario: Scenario = await db.createScenario({
@@ -300,23 +303,26 @@ describe("runHelper - executeScenarioRun", () => {
         steps: [
           {
             id: "step-1",
+            description: "Navigate to example.com",
             type: "navigate",
             config: { url: "https://example.com" },
-            continueOnFail: false,
+            continueOnError: false,
           },
           {
             id: "step-2",
+            description: "Click button",
             type: "click",
             config: {
               locator: {
                 displayName: "Button",
                 strategies: [
                   { type: "testId", value: "old-id", priority: 1 },
-                  { type: "css", value: "button.submit", priority: 2 },
+                  { type: "css", selector: "button.submit", priority: 2 },
                 ],
+                healing: { enabled: false },
               },
             },
-            continueOnFail: false,
+            continueOnError: false,
           },
         ],
       });
@@ -327,7 +333,7 @@ describe("runHelper - executeScenarioRun", () => {
       await new Promise((resolve) => setTimeout(resolve, 3000));
 
       // Check for healing records
-      const healingRecords = await db.getHealingRecords();
+      const healingRecords = await db.getAllHealingRecords();
       // Would need actual healing to occur for this to have records
       expect(healingRecords).toBeDefined();
     });
@@ -345,7 +351,7 @@ describe("runHelper - executeScenarioRun", () => {
       const feature = await db.createFeature({
         serviceId,
         name: "Test Feature",
-        owners: null,
+        owners: [],
       });
 
       // Create scenario with invalid step that will cause error
@@ -358,9 +364,10 @@ describe("runHelper - executeScenarioRun", () => {
         steps: [
           {
             id: "step-1",
+            description: "Navigate to invalid URL",
             type: "navigate",
             config: { url: "invalid-url" }, // Invalid URL
-            continueOnFail: false,
+            continueOnError: false,
           },
         ],
       });
@@ -383,7 +390,7 @@ describe("runHelper - executeScenarioRun", () => {
       const feature = await db.createFeature({
         serviceId,
         name: "Test Feature",
-        owners: null,
+        owners: [],
       });
 
       const scenario: Scenario = await db.createScenario({
@@ -395,9 +402,10 @@ describe("runHelper - executeScenarioRun", () => {
         steps: [
           {
             id: "step-1",
+            description: "Navigate to example.com",
             type: "navigate",
             config: { url: "https://example.com" },
-            continueOnFail: false,
+            continueOnError: false,
           },
         ],
       });
@@ -418,7 +426,7 @@ describe("runHelper - executeScenarioRun", () => {
       const feature = await db.createFeature({
         serviceId,
         name: "Test Feature",
-        owners: null,
+        owners: [],
       });
 
       const scenario1: Scenario = await db.createScenario({
@@ -430,9 +438,10 @@ describe("runHelper - executeScenarioRun", () => {
         steps: [
           {
             id: "step-1",
+            description: "Navigate to example.com",
             type: "navigate",
             config: { url: "https://example.com" },
-            continueOnFail: false,
+            continueOnError: false,
           },
         ],
       });
@@ -446,9 +455,10 @@ describe("runHelper - executeScenarioRun", () => {
         steps: [
           {
             id: "step-1",
+            description: "Navigate to example.com",
             type: "navigate",
             config: { url: "https://example.com" },
-            continueOnFail: false,
+            continueOnError: false,
           },
         ],
       });
