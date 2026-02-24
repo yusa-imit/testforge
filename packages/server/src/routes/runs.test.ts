@@ -203,3 +203,155 @@ describe("DELETE /api/runs/:id (cancel)", () => {
     expect(res.status).toBe(404);
   });
 });
+
+describe("GET /api/runs/:id/stream (SSE)", () => {
+  it("returns 404 for non-existent run", async () => {
+    const res = await req("GET", "/api/runs/nonexistent-run/stream");
+    expect(res.status).toBe(404);
+    const body = await res.json();
+    expect(body.error.code).toBe("NOT_FOUND");
+  });
+
+  it("returns final state for completed run and closes immediately", async () => {
+    const { runId } = await createTestRun("passed");
+
+    // Update run with summary
+    await db.updateTestRun(runId, {
+      finishedAt: new Date(),
+      duration: 1234,
+      summary: {
+        totalSteps: 5,
+        passedSteps: 5,
+        failedSteps: 0,
+        skippedSteps: 0,
+        healedSteps: 0,
+      },
+    });
+
+    const res = await req("GET", `/api/runs/${runId}/stream`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("text/event-stream");
+
+    const text = await res.text();
+
+    // Should contain run:finished event
+    expect(text).toContain("event: message");
+    expect(text).toContain("run:finished");
+    expect(text).toContain("passed");
+  });
+
+  it("returns final state for failed run", async () => {
+    const { runId } = await createTestRun("failed");
+
+    await db.updateTestRun(runId, {
+      finishedAt: new Date(),
+      duration: 2345,
+      summary: {
+        totalSteps: 5,
+        passedSteps: 3,
+        failedSteps: 2,
+        skippedSteps: 0,
+        healedSteps: 1,
+      },
+    });
+
+    const res = await req("GET", `/api/runs/${runId}/stream`);
+    expect(res.status).toBe(200);
+
+    const text = await res.text();
+
+    // Should contain failed status
+    expect(text).toContain("run:finished");
+    expect(text).toContain("failed");
+  });
+
+  it("returns 404 error for running run without executor", async () => {
+    // Create a run marked as "running" but don't register an executor
+    const { runId } = await createTestRun("running");
+
+    const res = await req("GET", `/api/runs/${runId}/stream`);
+    expect(res.status).toBe(404);
+
+    const body = await res.json();
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe("EXECUTOR_NOT_FOUND");
+    expect(body.error.message).toContain("executor not found");
+  });
+
+  it("returns cancelled status for cancelled run", async () => {
+    const { runId } = await createTestRun("running");
+
+    // Cancel the run
+    await db.updateTestRun(runId, {
+      status: "cancelled",
+      finishedAt: new Date(),
+    });
+
+    const res = await req("GET", `/api/runs/${runId}/stream`);
+    expect(res.status).toBe(200);
+
+    const text = await res.text();
+
+    // Should contain cancelled status
+    expect(text).toContain("run:finished");
+    expect(text).toContain("cancelled");
+  });
+
+  it("includes summary in final state", async () => {
+    const { runId } = await createTestRun("passed");
+
+    const summary = {
+      totalSteps: 10,
+      passedSteps: 8,
+      failedSteps: 1,
+      skippedSteps: 1,
+      healedSteps: 2,
+    };
+
+    await db.updateTestRun(runId, {
+      finishedAt: new Date(),
+      duration: 5678,
+      summary,
+    });
+
+    const res = await req("GET", `/api/runs/${runId}/stream`);
+    expect(res.status).toBe(200);
+
+    const text = await res.text();
+
+    // Should contain summary data
+    expect(text).toContain("totalSteps");
+    expect(text).toContain("10");
+    expect(text).toContain("healedSteps");
+    expect(text).toContain("2");
+  });
+
+  it("returns correct content-type header", async () => {
+    const { runId } = await createTestRun("passed");
+
+    const res = await req("GET", `/api/runs/${runId}/stream`);
+    expect(res.status).toBe(200);
+
+    const contentType = res.headers.get("content-type");
+    expect(contentType).toBeDefined();
+    expect(contentType).toContain("text/event-stream");
+  });
+
+  it("handles runs with null summary gracefully", async () => {
+    const { runId } = await createTestRun("passed");
+
+    // Don't set summary (leave as null)
+    await db.updateTestRun(runId, {
+      finishedAt: new Date(),
+    });
+
+    const res = await req("GET", `/api/runs/${runId}/stream`);
+    expect(res.status).toBe(200);
+
+    const text = await res.text();
+
+    // Should still work with null summary
+    expect(text).toContain("run:finished");
+    expect(text).toContain("passed");
+  });
+});
