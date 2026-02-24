@@ -53,6 +53,7 @@ describe("DuckDBDatabase - Services", () => {
     const data: CreateService = {
       name: "Minimal Service",
       baseUrl: "https://minimal.com",
+      defaultTimeout: 30000,
     };
 
     const service = await db.createService(data);
@@ -67,6 +68,7 @@ describe("DuckDBDatabase - Services", () => {
     const created = await db.createService({
       name: "Get Test",
       baseUrl: "https://get.com",
+      defaultTimeout: 30000,
     });
 
     const retrieved = await db.getService(created.id);
@@ -82,11 +84,11 @@ describe("DuckDBDatabase - Services", () => {
   });
 
   it("should get all services ordered by creation date", async () => {
-    await db.createService({ name: "First", baseUrl: "https://first.com" });
+    await db.createService({ name: "First", baseUrl: "https://first.com", defaultTimeout: 30000 });
     await new Promise(resolve => setTimeout(resolve, 10));
-    await db.createService({ name: "Second", baseUrl: "https://second.com" });
+    await db.createService({ name: "Second", baseUrl: "https://second.com", defaultTimeout: 30000 });
     await new Promise(resolve => setTimeout(resolve, 10));
-    await db.createService({ name: "Third", baseUrl: "https://third.com" });
+    await db.createService({ name: "Third", baseUrl: "https://third.com", defaultTimeout: 30000 });
 
     const services = await db.getAllServices();
 
@@ -128,6 +130,7 @@ describe("DuckDBDatabase - Services", () => {
     const created = await db.createService({
       name: "To Delete",
       baseUrl: "https://delete.com",
+      defaultTimeout: 30000,
     });
 
     const deleted = await db.deleteService(created.id);
@@ -154,6 +157,7 @@ describe("DuckDBDatabase - Features", () => {
     const service = await db.createService({
       name: "Test Service",
       baseUrl: "https://test.com",
+      defaultTimeout: 30000,
     });
     serviceId = service.id;
   });
@@ -262,6 +266,7 @@ describe("DuckDBDatabase - Scenarios", () => {
     const service = await db.createService({
       name: "Test Service",
       baseUrl: "https://test.com",
+      defaultTimeout: 30000,
     });
     const feature = await db.createFeature({
       serviceId: service.id,
@@ -554,6 +559,7 @@ describe("DuckDBDatabase - Components", () => {
     const service = await db.createService({
       name: "Service",
       baseUrl: "https://test.com",
+      defaultTimeout: 30000,
     });
     const feature = await db.createFeature({
       serviceId: service.id,
@@ -625,6 +631,7 @@ describe("DuckDBDatabase - Test Runs", () => {
     const service = await db.createService({
       name: "Service",
       baseUrl: "https://test.com",
+      defaultTimeout: 30000,
     });
     const feature = await db.createFeature({
       serviceId: service.id,
@@ -790,6 +797,7 @@ describe("DuckDBDatabase - Step Results", () => {
     const service = await db.createService({
       name: "Service",
       baseUrl: "https://test.com",
+      defaultTimeout: 30000,
     });
     const feature = await db.createFeature({
       serviceId: service.id,
@@ -939,6 +947,7 @@ describe("DuckDBDatabase - Healing Records", () => {
     const service = await db.createService({
       name: "Service",
       baseUrl: "https://test.com",
+      defaultTimeout: 30000,
     });
     const feature = await db.createFeature({
       serviceId: service.id,
@@ -1236,6 +1245,7 @@ describe("DuckDBDatabase - Element Registry", () => {
     const service = await db.createService({
       name: "Test Service",
       baseUrl: "https://test.com",
+      defaultTimeout: 30000,
     });
     serviceId = service.id;
   });
