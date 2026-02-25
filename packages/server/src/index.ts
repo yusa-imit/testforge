@@ -14,6 +14,7 @@ import healing from "./routes/healing";
 import screenshots from "./routes/screenshots";
 import registry from "./routes/registry";
 import metrics from "./routes/metrics";
+import backup from "./routes/backup";
 
 const app = new Hono()
   .use("*", honoLogger())
@@ -30,7 +31,8 @@ const app = new Hono()
   .route("/api/healing", healing)
   .route("/api/screenshots", screenshots)
   .route("/api/registry", registry)
-  .route("/api/metrics", metrics);
+  .route("/api/metrics", metrics)
+  .route("/api/backup", backup);
 
 export type AppType = typeof app;
 export default app;

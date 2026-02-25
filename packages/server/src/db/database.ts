@@ -252,6 +252,11 @@ export class DuckDBDatabase {
     return row ? RowConverter.toFeature(row) : undefined;
   }
 
+  async getAllFeatures(): Promise<Feature[]> {
+    const rows = await this.db.all("SELECT * FROM features ORDER BY created_at DESC");
+    return rows.map(RowConverter.toFeature);
+  }
+
   async getFeaturesByService(serviceId: string): Promise<Feature[]> {
     const rows = await this.db.all(
       "SELECT * FROM features WHERE service_id = ? ORDER BY created_at DESC",
