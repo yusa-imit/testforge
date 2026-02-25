@@ -14,7 +14,6 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { getDB } from "../db";
 import { logger } from "../utils/logger";
-import { NotFoundError, ValidationError } from "../utils/errors";
 
 const backup = new Hono();
 

@@ -16,7 +16,7 @@ describe("DuckDBConnection", () => {
     // Clean up test databases
     try {
       rmSync(TEST_DIR, { recursive: true, force: true });
-    } catch (err) {
+    } catch (_err) {
       // Ignore cleanup errors
     }
   });
@@ -267,7 +267,7 @@ describe("getDatabase", () => {
     // Clean up test databases
     try {
       rmSync(TEST_DIR, { recursive: true, force: true });
-    } catch (err) {
+    } catch (_err) {
       // Ignore cleanup errors
     }
   });
@@ -294,12 +294,12 @@ describe("initDatabase", () => {
     try {
       const db = getDatabase(TEST_DB_PATH);
       await db.close();
-    } catch (err) {
+    } catch (_err) {
       // Ignore
     }
     try {
       rmSync(TEST_DIR, { recursive: true, force: true });
-    } catch (err) {
+    } catch (_err) {
       // Ignore cleanup errors
     }
   });

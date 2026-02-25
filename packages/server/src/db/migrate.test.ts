@@ -35,7 +35,7 @@ describe("runMigrations", () => {
           rmSync(join(MIGRATIONS_DIR, file));
         }
       }
-    } catch (err) {
+    } catch (_err) {
       // Ignore
     }
   });
@@ -50,12 +50,12 @@ describe("runMigrations", () => {
           try {
             const db = getDatabase(dbPath);
             await db.close();
-          } catch (err) {
+          } catch (_err) {
             // Ignore
           }
         }
       }
-    } catch (err) {
+    } catch (_err) {
       // Ignore
     }
 
@@ -63,7 +63,7 @@ describe("runMigrations", () => {
     try {
       rmSync(TEST_DIR, { recursive: true, force: true });
       mkdirSync(TEST_DIR, { recursive: true });
-    } catch (err) {
+    } catch (_err) {
       // Ignore
     }
   });
@@ -72,14 +72,14 @@ describe("runMigrations", () => {
     // Clean up test directory
     try {
       rmSync(TEST_DIR, { recursive: true, force: true });
-    } catch (err) {
+    } catch (_err) {
       // Ignore
     }
 
     // Remove test migrations
     try {
       rmSync(MIGRATIONS_DIR, { recursive: true, force: true });
-    } catch (err) {
+    } catch (_err) {
       // Ignore
     }
 
