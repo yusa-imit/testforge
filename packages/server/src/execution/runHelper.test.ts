@@ -155,7 +155,7 @@ describe("runHelper - executeScenarioRun", () => {
                 strategies: [
                   { type: "testId", value: "submit-btn", priority: 1 },
                 ],
-                healing: { enabled: false },
+                healing: { enabled: false, autoApprove: false, confidenceThreshold: 0.9 },
               },
             },
             continueOnError: false,
@@ -319,7 +319,7 @@ describe("runHelper - executeScenarioRun", () => {
                   { type: "testId", value: "old-id", priority: 1 },
                   { type: "css", selector: "button.submit", priority: 2 },
                 ],
-                healing: { enabled: false },
+                healing: { enabled: false, autoApprove: false, confidenceThreshold: 0.9 },
               },
             },
             continueOnError: false,

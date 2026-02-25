@@ -285,12 +285,14 @@ describe("DuckDBDatabase - Scenarios", () => {
       tags: ["smoke", "auth"],
       priority: "high",
       variables: [
-        { name: "username", value: "test@example.com", type: "string" },
+        { name: "username", defaultValue: "test@example.com", type: "string" },
       ],
       steps: [
         {
           id: uuid(),
           type: "navigate",
+          description: "Navigate to login page",
+          continueOnError: false,
           config: { url: "https://example.com/login" },
         },
       ],
@@ -401,7 +403,7 @@ describe("DuckDBDatabase - Scenarios", () => {
 
     const updated = await db.updateScenario(created.id, {
       name: "Updated",
-      steps: [{ id: uuid(), type: "navigate", config: { url: "https://test.com" } }],
+      steps: [{ id: uuid(), type: "navigate", description: "Navigate", continueOnError: false, config: { url: "https://test.com" } }],
     });
 
     expect(updated).toBeDefined();
@@ -434,8 +436,8 @@ describe("DuckDBDatabase - Scenarios", () => {
       description: "Original description",
       tags: [],
       priority: "high",
-      variables: [{ name: "var1", value: "val1", type: "string" }],
-      steps: [{ id: uuid(), type: "navigate", config: { url: "https://test.com" } }],
+      variables: [{ name: "var1", defaultValue: "val1", type: "string" }],
+      steps: [{ id: uuid(), type: "navigate", description: "Navigate", continueOnError: false, config: { url: "https://test.com" } }],
     });
 
     const duplicate = await db.duplicateScenario(original.id);
@@ -465,15 +467,53 @@ describe("DuckDBDatabase - Components", () => {
     const data: CreateComponent = {
       name: "Login Form",
       description: "Reusable login component",
-      type: "action",
+      type: "flow",
       parameters: [
         { name: "username", type: "string", required: true },
         { name: "password", type: "string", required: true },
       ],
       steps: [
-        { id: uuid(), type: "fill", config: { locator: { testId: "username-input" }, value: "${username}" } },
-        { id: uuid(), type: "fill", config: { locator: { testId: "password-input" }, value: "${password}" } },
-        { id: uuid(), type: "click", config: { locator: { testId: "login-button" } } },
+        {
+          id: uuid(),
+          type: "fill",
+          description: "Fill username",
+          continueOnError: false,
+          config: {
+            locator: {
+              displayName: "Username Input",
+              strategies: [{ type: "testId", value: "username-input", priority: 1 }],
+              healing: { enabled: true, autoApprove: false, confidenceThreshold: 0.9 }
+            },
+            value: "${username}"
+          }
+        },
+        {
+          id: uuid(),
+          type: "fill",
+          description: "Fill password",
+          continueOnError: false,
+          config: {
+            locator: {
+              displayName: "Password Input",
+              strategies: [{ type: "testId", value: "password-input", priority: 1 }],
+              healing: { enabled: true, autoApprove: false, confidenceThreshold: 0.9 }
+            },
+            value: "${password}"
+          }
+        },
+        {
+          id: uuid(),
+          type: "click",
+          description: "Click login",
+          continueOnError: false,
+          config: {
+            locator: {
+              displayName: "Login Button",
+              strategies: [{ type: "testId", value: "login-button", priority: 1 }],
+              healing: { enabled: true, autoApprove: false, confidenceThreshold: 0.9 }
+            }
+          }
+        },
       ],
     };
 
@@ -490,7 +530,7 @@ describe("DuckDBDatabase - Components", () => {
   it("should get a component by id", async () => {
     const created = await db.createComponent({
       name: "Test Component",
-      type: "action",
+      type: "flow",
       parameters: [],
       steps: [],
     });
@@ -502,9 +542,9 @@ describe("DuckDBDatabase - Components", () => {
   });
 
   it("should get all components", async () => {
-    await db.createComponent({ name: "Comp 1", type: "action", parameters: [], steps: [] });
+    await db.createComponent({ name: "Comp 1", type: "flow", parameters: [], steps: [] });
     await new Promise(resolve => setTimeout(resolve, 10));
-    await db.createComponent({ name: "Comp 2", type: "validation", parameters: [], steps: [] });
+    await db.createComponent({ name: "Comp 2", type: "assertion", parameters: [], steps: [] });
 
     const components = await db.getAllComponents();
 
@@ -516,7 +556,7 @@ describe("DuckDBDatabase - Components", () => {
   it("should update component fields", async () => {
     const created = await db.createComponent({
       name: "Original",
-      type: "action",
+      type: "flow",
       parameters: [],
       steps: [],
     });
@@ -536,7 +576,7 @@ describe("DuckDBDatabase - Components", () => {
   it("should delete a component", async () => {
     const created = await db.createComponent({
       name: "To Delete",
-      type: "action",
+      type: "flow",
       parameters: [],
       steps: [],
     });
@@ -551,7 +591,7 @@ describe("DuckDBDatabase - Components", () => {
   it("should track component usage in scenarios", async () => {
     const component = await db.createComponent({
       name: "Shared Component",
-      type: "action",
+      type: "flow",
       parameters: [],
       steps: [],
     });
@@ -575,8 +615,8 @@ describe("DuckDBDatabase - Components", () => {
       priority: "medium",
       variables: [],
       steps: [
-        { id: uuid(), type: "component", config: { componentId: component.id, bindings: {} } },
-        { id: uuid(), type: "navigate", config: { url: "https://test.com" } },
+        { id: uuid(), type: "component", description: "Use component", continueOnError: false, config: { componentId: component.id, parameters: {} } },
+        { id: uuid(), type: "navigate", description: "Navigate", continueOnError: false, config: { url: "https://test.com" } },
       ],
     });
 
@@ -587,9 +627,9 @@ describe("DuckDBDatabase - Components", () => {
       priority: "low",
       variables: [],
       steps: [
-        { id: uuid(), type: "navigate", config: { url: "https://test.com" } },
-        { id: uuid(), type: "component", config: { componentId: component.id, bindings: {} } },
-        { id: uuid(), type: "component", config: { componentId: component.id, bindings: {} } },
+        { id: uuid(), type: "navigate", description: "Navigate", continueOnError: false, config: { url: "https://test.com" } },
+        { id: uuid(), type: "component", description: "Use component", continueOnError: false, config: { componentId: component.id, parameters: {} } },
+        { id: uuid(), type: "component", description: "Use component", continueOnError: false, config: { componentId: component.id, parameters: {} } },
       ],
     });
 
@@ -609,7 +649,7 @@ describe("DuckDBDatabase - Components", () => {
   it("should return empty array for component with no usages", async () => {
     const component = await db.createComponent({
       name: "Unused Component",
-      type: "action",
+      type: "flow",
       parameters: [],
       steps: [],
     });
@@ -655,7 +695,7 @@ describe("DuckDBDatabase - Test Runs", () => {
       scenarioId,
       status: "running",
       startedAt: new Date(),
-      environment: { browser: "chromium", headless: true },
+      environment: { baseUrl: "https://example.com", variables: {} },
       createdAt: new Date(),
     };
 
@@ -674,8 +714,8 @@ describe("DuckDBDatabase - Test Runs", () => {
       startedAt: new Date(),
       finishedAt: new Date(),
       duration: 1500,
-      environment: { browser: "chromium" },
-      summary: { passed: 5, failed: 0, skipped: 0 },
+      environment: { baseUrl: "https://example.com", variables: {} },
+      summary: { totalSteps: 5, passedSteps: 5, failedSteps: 0, skippedSteps: 0, healedSteps: 0 },
       createdAt: new Date(),
     };
 
@@ -685,7 +725,7 @@ describe("DuckDBDatabase - Test Runs", () => {
     expect(retrieved).toBeDefined();
     expect(retrieved!.id).toBe(run.id);
     expect(retrieved!.duration).toBe(1500);
-    expect(retrieved!.summary).toEqual({ passed: 5, failed: 0, skipped: 0 });
+    expect(retrieved!.summary).toEqual({ totalSteps: 5, passedSteps: 5, failedSteps: 0, skippedSteps: 0, healedSteps: 0 });
   });
 
   it("should get test runs by scenario", async () => {
@@ -693,7 +733,7 @@ describe("DuckDBDatabase - Test Runs", () => {
       id: uuid(),
       scenarioId,
       status: "passed",
-      environment: {},
+      environment: { baseUrl: "https://example.com", variables: {} },
       createdAt: new Date(),
     };
 
@@ -705,7 +745,7 @@ describe("DuckDBDatabase - Test Runs", () => {
       id: uuid(),
       scenarioId,
       status: "failed",
-      environment: {},
+      environment: { baseUrl: "https://example.com", variables: {} },
       createdAt: new Date(),
     };
 
@@ -723,7 +763,7 @@ describe("DuckDBDatabase - Test Runs", () => {
       id: uuid(),
       scenarioId,
       status: "passed",
-      environment: {},
+      environment: { baseUrl: "https://example.com", variables: {} },
       createdAt: new Date(),
     };
 
@@ -741,7 +781,7 @@ describe("DuckDBDatabase - Test Runs", () => {
       scenarioId,
       status: "running",
       startedAt: new Date(),
-      environment: {},
+      environment: { baseUrl: "https://example.com", variables: {} },
       createdAt: new Date(),
     };
 
@@ -752,13 +792,13 @@ describe("DuckDBDatabase - Test Runs", () => {
       status: "passed",
       finishedAt,
       duration: 2000,
-      summary: { passed: 10, failed: 0, skipped: 1 },
+      summary: { totalSteps: 11, passedSteps: 10, failedSteps: 0, skippedSteps: 1, healedSteps: 0 },
     });
 
     expect(updated).toBeDefined();
     expect(updated!.status).toBe("passed");
     expect(updated!.duration).toBe(2000);
-    expect(updated!.summary).toEqual({ passed: 10, failed: 0, skipped: 1 });
+    expect(updated!.summary).toEqual({ totalSteps: 11, passedSteps: 10, failedSteps: 0, skippedSteps: 1, healedSteps: 0 });
   });
 
   it("should return undefined when updating non-existent run", async () => {
@@ -773,7 +813,7 @@ describe("DuckDBDatabase - Test Runs", () => {
       id: uuid(),
       scenarioId,
       status: "passed",
-      environment: {},
+      environment: { baseUrl: "https://example.com", variables: {} },
       createdAt: new Date(),
     };
 
@@ -817,7 +857,7 @@ describe("DuckDBDatabase - Step Results", () => {
       id: uuid(),
       scenarioId: scenario.id,
       status: "running",
-      environment: {},
+      environment: { baseUrl: "https://example.com", variables: {} },
       createdAt: new Date(),
     };
 
@@ -874,10 +914,8 @@ describe("DuckDBDatabase - Step Results", () => {
       status: "passed",
       duration: 180,
       healing: {
-        attempted: true,
-        success: true,
-        originalStrategy: { testId: "old-id" },
-        healedStrategy: { role: "button", text: "Submit" },
+        originalStrategy: { type: "testId", value: "old-id", priority: 1 },
+        usedStrategy: { type: "role", role: "button", name: "Submit", priority: 2 },
         confidence: 0.95,
       },
       createdAt: new Date(),
@@ -886,7 +924,6 @@ describe("DuckDBDatabase - Step Results", () => {
     const created = await db.createStepResult(result);
 
     expect(created.healing).toBeDefined();
-    expect(created.healing!.success).toBe(true);
     expect(created.healing!.confidence).toBe(0.95);
   });
 
@@ -968,7 +1005,7 @@ describe("DuckDBDatabase - Healing Records", () => {
       id: uuid(),
       scenarioId: scenario.id,
       status: "running",
-      environment: {},
+      environment: { baseUrl: "https://example.com", variables: {} },
       createdAt: new Date(),
     };
 
@@ -983,8 +1020,8 @@ describe("DuckDBDatabase - Healing Records", () => {
       stepId: uuid(),
       runId,
       locatorDisplayName: "Submit Button",
-      originalStrategy: { testId: "submit-btn" },
-      healedStrategy: { role: "button", text: "Submit" },
+      originalStrategy: { type: "testId", value: "submit-btn", priority: 1 },
+      healedStrategy: { type: "role", role: "button", name: "Submit", priority: 2 },
       trigger: "element_not_found",
       confidence: 0.92,
       status: "pending",
@@ -1006,8 +1043,8 @@ describe("DuckDBDatabase - Healing Records", () => {
       stepId: uuid(),
       runId,
       locatorDisplayName: "Login Button",
-      originalStrategy: { testId: "login" },
-      healedStrategy: { role: "button" },
+      originalStrategy: { type: "testId", value: "login", priority: 1 },
+      healedStrategy: { type: "role", role: "button", priority: 2 },
       trigger: "element_not_found",
       confidence: 0.88,
       status: "pending",
@@ -1029,8 +1066,8 @@ describe("DuckDBDatabase - Healing Records", () => {
       stepId: uuid(),
       runId,
       locatorDisplayName: "Button 1",
-      originalStrategy: { testId: "btn1" },
-      healedStrategy: { role: "button" },
+      originalStrategy: { type: "testId", value: "btn1", priority: 1 },
+      healedStrategy: { type: "role", role: "button", priority: 2 },
       trigger: "element_not_found",
       confidence: 0.9,
       status: "pending",
@@ -1047,8 +1084,8 @@ describe("DuckDBDatabase - Healing Records", () => {
       stepId: uuid(),
       runId,
       locatorDisplayName: "Button 2",
-      originalStrategy: { testId: "btn2" },
-      healedStrategy: { role: "button" },
+      originalStrategy: { type: "testId", value: "btn2", priority: 1 },
+      healedStrategy: { type: "role", role: "button", priority: 2 },
       trigger: "element_not_found",
       confidence: 0.85,
       status: "approved",
@@ -1070,8 +1107,8 @@ describe("DuckDBDatabase - Healing Records", () => {
       stepId: uuid(),
       runId,
       locatorDisplayName: "Pending",
-      originalStrategy: { testId: "p" },
-      healedStrategy: { role: "button" },
+      originalStrategy: { type: "testId", value: "p", priority: 1 },
+      healedStrategy: { type: "role", role: "button", priority: 2 },
       trigger: "element_not_found",
       confidence: 0.9,
       status: "pending",
@@ -1084,8 +1121,8 @@ describe("DuckDBDatabase - Healing Records", () => {
       stepId: uuid(),
       runId,
       locatorDisplayName: "Approved",
-      originalStrategy: { testId: "a" },
-      healedStrategy: { role: "button" },
+      originalStrategy: { type: "testId", value: "a", priority: 1 },
+      healedStrategy: { type: "role", role: "button", priority: 2 },
       trigger: "element_not_found",
       confidence: 0.95,
       status: "approved",
@@ -1110,8 +1147,8 @@ describe("DuckDBDatabase - Healing Records", () => {
       stepId: uuid(),
       runId,
       locatorDisplayName: "Test Button",
-      originalStrategy: { testId: "test" },
-      healedStrategy: { role: "button" },
+      originalStrategy: { type: "testId", value: "test", priority: 1 },
+      healedStrategy: { type: "role", role: "button", priority: 2 },
       trigger: "element_not_found",
       confidence: 0.9,
       status: "pending",
@@ -1142,8 +1179,8 @@ describe("DuckDBDatabase - Healing Records", () => {
       stepId: uuid(),
       runId,
       locatorDisplayName: "Propagated Button",
-      originalStrategy: { testId: "prop" },
-      healedStrategy: { role: "button" },
+      originalStrategy: { type: "testId", value: "prop", priority: 1 },
+      healedStrategy: { type: "role", role: "button", priority: 2 },
       trigger: "element_not_found",
       confidence: 0.95,
       status: "approved",
@@ -1172,8 +1209,8 @@ describe("DuckDBDatabase - Healing Records", () => {
         stepId: uuid(),
         runId,
         locatorDisplayName: "Pending",
-        originalStrategy: { testId: "p1" },
-        healedStrategy: { role: "button" },
+        originalStrategy: { type: "testId", value: "p1", priority: 1 },
+        healedStrategy: { type: "role", role: "button", priority: 2 },
         trigger: "element_not_found",
         confidence: 0.9,
         status: "pending",
@@ -1185,8 +1222,8 @@ describe("DuckDBDatabase - Healing Records", () => {
         stepId: uuid(),
         runId,
         locatorDisplayName: "Approved",
-        originalStrategy: { testId: "a1" },
-        healedStrategy: { role: "button" },
+        originalStrategy: { type: "testId", value: "a1", priority: 1 },
+        healedStrategy: { type: "role", role: "button", priority: 2 },
         trigger: "element_not_found",
         confidence: 0.95,
         status: "approved",
@@ -1198,8 +1235,8 @@ describe("DuckDBDatabase - Healing Records", () => {
         stepId: uuid(),
         runId,
         locatorDisplayName: "Rejected",
-        originalStrategy: { testId: "r1" },
-        healedStrategy: { role: "button" },
+        originalStrategy: { type: "testId", value: "r1", priority: 1 },
+        healedStrategy: { type: "role", role: "button", priority: 2 },
         trigger: "element_not_found",
         confidence: 0.6,
         status: "rejected",
@@ -1211,8 +1248,8 @@ describe("DuckDBDatabase - Healing Records", () => {
         stepId: uuid(),
         runId,
         locatorDisplayName: "Auto Approved",
-        originalStrategy: { testId: "aa1" },
-        healedStrategy: { role: "button" },
+        originalStrategy: { type: "testId", value: "aa1", priority: 1 },
+        healedStrategy: { type: "role", role: "button", priority: 2 },
         trigger: "element_not_found",
         confidence: 0.98,
         status: "auto_approved",
@@ -1256,13 +1293,13 @@ describe("DuckDBDatabase - Element Registry", () => {
       serviceId,
       displayName: "Login Button",
       pagePattern: "/login",
-      currentLocator: { testId: "login-btn" },
+      currentLocator: { type: "testId", value: "login-btn", priority: 1 },
     });
 
     expect(element.id).toBeDefined();
     expect(element.display_name).toBe("Login Button");
     expect(element.service_id).toBe(serviceId);
-    expect(element.currentLocator).toEqual({ testId: "login-btn" });
+    expect(element.currentLocator).toEqual({ type: "testId", value: "login-btn", priority: 1 });
     expect(element.history).toEqual([]);
     expect(element.usedIn).toEqual([]);
   });
@@ -1287,14 +1324,14 @@ describe("DuckDBDatabase - Element Registry", () => {
       id: uuid(),
       serviceId,
       displayName: "Element 1",
-      currentLocator: { testId: "el1" },
+      currentLocator: { type: "testId", value: "el1", priority: 1 },
     });
 
     await db.createRegistryElement({
       id: uuid(),
       serviceId,
       displayName: "Element 2",
-      currentLocator: { testId: "el2" },
+      currentLocator: { type: "testId", value: "el2", priority: 1 },
     });
 
     const elements = await db.getAllRegistryElements(serviceId);
@@ -1307,7 +1344,7 @@ describe("DuckDBDatabase - Element Registry", () => {
       id: uuid(),
       serviceId,
       displayName: "Changing Button",
-      currentLocator: { testId: "original" },
+      currentLocator: { type: "testId", value: "original", priority: 1 },
     });
 
     const updated = await db.updateRegistryElement(element.id, {
@@ -1318,7 +1355,7 @@ describe("DuckDBDatabase - Element Registry", () => {
     expect(updated).toBeDefined();
     expect(updated!.currentLocator).toEqual({ role: "button", text: "New" });
     expect(updated!.history).toHaveLength(1);
-    expect(updated!.history[0].locator).toEqual({ testId: "original" });
+    expect(updated!.history[0].locator).toEqual({ type: "testId", value: "original", priority: 1 });
     expect(updated!.history[0].reason).toBe("UI redesign");
   });
 
@@ -1327,7 +1364,7 @@ describe("DuckDBDatabase - Element Registry", () => {
       id: uuid(),
       serviceId,
       displayName: "Used Button",
-      currentLocator: { testId: "used" },
+      currentLocator: { type: "testId", value: "used", priority: 1 },
     });
 
     const usage = await db.addRegistryUsage(element.id, {
@@ -1363,7 +1400,7 @@ describe("DuckDBDatabase - Element Registry", () => {
       id: uuid(),
       serviceId,
       displayName: "To Delete",
-      currentLocator: { testId: "delete-me" },
+      currentLocator: { type: "testId", value: "delete-me", priority: 1 },
     });
 
     const deleted = await db.deleteRegistryElement(element.id);
@@ -1378,7 +1415,7 @@ describe("DuckDBDatabase - Element Registry", () => {
       id: uuid(),
       serviceId,
       displayName: "Unique Button",
-      currentLocator: { testId: "unique" },
+      currentLocator: { type: "testId", value: "unique", priority: 1 },
     });
 
     const found = await db.findRegistryByName("Unique Button", serviceId);

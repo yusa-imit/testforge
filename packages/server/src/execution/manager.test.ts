@@ -80,14 +80,15 @@ describe("ExecutionManager", () => {
       // Emit run:finished event
       const finishedEvent: RunEvent = {
         type: "run:finished",
-        timestamp: Date.now(),
         data: {
-          runId,
           status: "success",
-          totalSteps: 5,
-          passedSteps: 5,
-          failedSteps: 0,
-          duration: 1000,
+          summary: {
+            totalSteps: 5,
+            passedSteps: 5,
+            failedSteps: 0,
+            skippedSteps: 0,
+            healedSteps: 0,
+          },
         },
       };
       executor.emit("event", finishedEvent);
@@ -147,7 +148,6 @@ describe("ExecutionManager", () => {
       // Emit event after unregister - should not be handled
       const testEvent: RunEvent = {
         type: "run:started",
-        timestamp: Date.now(),
         data: { runId },
       };
       executor.emit("event", testEvent);
