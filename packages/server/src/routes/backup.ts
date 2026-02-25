@@ -79,7 +79,7 @@ backup.get("/export", async (c) => {
     const stepResults: any[] = [];
     if (includeRuns) {
       for (const run of runs) {
-        const results = await db.getStepResults(run.id);
+        const results = await db.getStepResultsByRun(run.id);
         stepResults.push(...results);
       }
     }
@@ -319,8 +319,15 @@ backup.post("/import", zValidator("json", importSchema), async (c) => {
     for (const run of backupData.data.runs) {
       try {
         await db.createTestRun({
+          id: run.id,
           scenarioId: run.scenarioId,
-          environment: run.environment || {},
+          status: run.status,
+          environment: run.environment || { baseUrl: "", variables: {} },
+          createdAt: new Date(run.createdAt),
+          startedAt: run.startedAt ? new Date(run.startedAt) : undefined,
+          finishedAt: run.finishedAt ? new Date(run.finishedAt) : undefined,
+          duration: run.duration,
+          summary: run.summary,
         });
         summary.imported.runs++;
       } catch (error) {
@@ -333,11 +340,13 @@ backup.post("/import", zValidator("json", importSchema), async (c) => {
     for (const result of backupData.data.stepResults) {
       try {
         await db.createStepResult({
+          id: result.id,
           runId: result.runId,
           stepId: result.stepId,
           stepIndex: result.stepIndex,
           status: result.status,
           duration: result.duration,
+          createdAt: new Date(result.createdAt),
           error: result.error,
           healing: result.healing,
           context: result.context,
@@ -353,14 +362,20 @@ backup.post("/import", zValidator("json", importSchema), async (c) => {
     for (const record of backupData.data.healingRecords) {
       try {
         await db.createHealingRecord({
+          id: record.id,
           scenarioId: record.scenarioId,
           stepId: record.stepId,
           runId: record.runId,
+          status: record.status,
           locatorDisplayName: record.locatorDisplayName,
           originalStrategy: record.originalStrategy,
           healedStrategy: record.healedStrategy,
           trigger: record.trigger,
           confidence: record.confidence,
+          createdAt: new Date(record.createdAt),
+          reviewedAt: record.reviewedAt ? new Date(record.reviewedAt) : undefined,
+          reviewedBy: record.reviewedBy,
+          propagatedTo: record.propagatedTo,
         });
         summary.imported.healingRecords++;
       } catch (error) {
