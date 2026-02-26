@@ -460,7 +460,7 @@ describe("Backup Routes", () => {
 
       // Clear and re-import - teardown and setup fresh DB
       teardown();
-      ({ db, teardown } = await setupTestDB());
+      ({ db: _db, teardown } = await setupTestDB());
 
       const importRes = await app.request("/api/backup/import", {
         method: "POST",
