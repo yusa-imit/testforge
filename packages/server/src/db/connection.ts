@@ -17,7 +17,10 @@ export class DuckDBConnection {
   private db: Database | null = null;
   private isConnected = false;
 
-  constructor(private readonly dbPath: string) {}
+  constructor(
+    private readonly dbPath: string,
+    private readonly accessMode: "READ_WRITE" | "READ_ONLY" = "READ_WRITE"
+  ) {}
 
   /**
    * Initialize database connection
@@ -28,15 +31,39 @@ export class DuckDBConnection {
     }
 
     return new Promise((resolve, reject) => {
-      this.db = new Database(this.dbPath, (err) => {
-        if (err) {
-          reject(new Error(`Failed to connect to DuckDB: ${err.message}`));
-          return;
-        }
-        this.isConnected = true;
-        logger.info("Connected to DuckDB", { path: this.dbPath });
-        resolve();
-      });
+      // DuckDB constructor: Database(path, config, callback)
+      // Config: { access_mode: 'READ_ONLY' | 'READ_WRITE' }
+      if (this.accessMode === "READ_ONLY") {
+        this.db = new Database(
+          this.dbPath,
+          { access_mode: "READ_ONLY" } as any,
+          (err) => {
+            if (err) {
+              reject(new Error(`Failed to connect to DuckDB: ${err.message}`));
+              return;
+            }
+            this.isConnected = true;
+            logger.info("Connected to DuckDB", {
+              path: this.dbPath,
+              mode: this.accessMode,
+            });
+            resolve();
+          }
+        );
+      } else {
+        this.db = new Database(this.dbPath, (err) => {
+          if (err) {
+            reject(new Error(`Failed to connect to DuckDB: ${err.message}`));
+            return;
+          }
+          this.isConnected = true;
+          logger.info("Connected to DuckDB", {
+            path: this.dbPath,
+            mode: this.accessMode,
+          });
+          resolve();
+        });
+      }
     });
   }
 
@@ -131,6 +158,16 @@ export function getDatabase(dbPath = "./testforge.duckdb"): DuckDBConnection {
  */
 export async function initDatabase(dbPath = "./testforge.duckdb"): Promise<DuckDBConnection> {
   const db = getDatabase(dbPath);
+  await db.connect();
+  return db;
+}
+
+/**
+ * Create a read-only database connection (for validation/monitoring)
+ * Does not use singleton - creates a new connection each time
+ */
+export async function createReadOnlyConnection(dbPath = "./testforge.duckdb"): Promise<DuckDBConnection> {
+  const db = new DuckDBConnection(dbPath, "READ_ONLY");
   await db.connect();
   return db;
 }

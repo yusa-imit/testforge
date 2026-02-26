@@ -371,13 +371,14 @@ async function checkSeedData(): Promise<CheckResult> {
 
   try {
     // Import database connection to check seed data directly
-    const { initDatabase } = await import("../packages/server/src/db/connection");
+    const { createReadOnlyConnection } = await import("../packages/server/src/db/connection");
     const { resolve } = await import("path");
 
     const projectRoot = process.cwd();
     const dbPath = resolve(projectRoot, "packages/server/testforge.duckdb");
 
-    const db = await initDatabase(dbPath);
+    // Use READ_ONLY connection to avoid lock conflicts with dev server
+    const db = await createReadOnlyConnection(dbPath);
 
     // Query services and components
     const services = await db.all("SELECT COUNT(*) as count FROM services");

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { DuckDBConnection, getDatabase, initDatabase } from "./connection";
+import { DuckDBConnection, getDatabase, initDatabase, createReadOnlyConnection } from "./connection";
 import { mkdirSync, rmSync } from "fs";
 import { join } from "path";
 
@@ -328,5 +328,93 @@ describe("initDatabase", () => {
     expect(result?.id).toBe(1);
 
     await db.close();
+  });
+});
+
+describe("createReadOnlyConnection", () => {
+  const READ_ONLY_TEST_DIR = join(__dirname, "__test_readonly_dbs__");
+  const READ_ONLY_DB_PATH = join(READ_ONLY_TEST_DIR, "readonly_test.duckdb");
+
+  beforeEach(async () => {
+    // Create test directory and populate with a database
+    mkdirSync(READ_ONLY_TEST_DIR, { recursive: true });
+
+    // Create and populate a test database
+    const writeConn = new DuckDBConnection(READ_ONLY_DB_PATH);
+    await writeConn.connect();
+    await writeConn.run("CREATE TABLE products (id INTEGER, name VARCHAR)");
+    await writeConn.run("INSERT INTO products VALUES (1, 'Widget'), (2, 'Gadget')");
+    await writeConn.close();
+  });
+
+  afterEach(() => {
+    // Clean up test databases
+    try {
+      rmSync(READ_ONLY_TEST_DIR, { recursive: true, force: true });
+    } catch (_err) {
+      // Ignore cleanup errors
+    }
+  });
+
+  it("should create a read-only connection successfully", async () => {
+    const readConn = await createReadOnlyConnection(READ_ONLY_DB_PATH);
+    expect(readConn).toBeDefined();
+
+    // Should be able to read data
+    const result = await readConn.all<{ id: number; name: string }>("SELECT * FROM products");
+    expect(result).toHaveLength(2);
+    expect(result[0]).toEqual({ id: 1, name: "Widget" });
+
+    await readConn.close();
+  });
+
+  it("should prevent write operations in read-only mode", async () => {
+    const readConn = await createReadOnlyConnection(READ_ONLY_DB_PATH);
+
+    // Attempting to write should fail
+    await expect(
+      readConn.run("INSERT INTO products VALUES (3, 'Doohickey')")
+    ).rejects.toThrow();
+
+    await readConn.close();
+  });
+
+  it("should allow multiple concurrent read-only connections", async () => {
+    // This simulates the pre-qa script running while dev server is active
+    const conn1 = await createReadOnlyConnection(READ_ONLY_DB_PATH);
+    const conn2 = await createReadOnlyConnection(READ_ONLY_DB_PATH);
+
+    // Both should be able to read simultaneously
+    const [result1, result2] = await Promise.all([
+      conn1.all("SELECT COUNT(*) as count FROM products"),
+      conn2.all("SELECT * FROM products WHERE id = 1"),
+    ]);
+
+    expect(result1[0]).toEqual({ count: 2n }); // DuckDB returns BigInt for COUNT
+    expect(result2[0]).toEqual({ id: 1, name: "Widget" });
+
+    await conn1.close();
+    await conn2.close();
+  });
+
+  it("should not interfere with write connections", async () => {
+    // Start a read-only connection
+    const readConn = await createReadOnlyConnection(READ_ONLY_DB_PATH);
+
+    // Read some data
+    const beforeRead = await readConn.all("SELECT COUNT(*) as count FROM products");
+    expect(beforeRead[0]).toEqual({ count: 2n }); // DuckDB returns BigInt for COUNT
+
+    // Simulate write connection (like dev server)
+    const writeConn = new DuckDBConnection(READ_ONLY_DB_PATH);
+    await writeConn.connect();
+    await writeConn.run("INSERT INTO products VALUES (3, 'Thingamajig')");
+    await writeConn.close();
+
+    // Read-only connection can still operate (but may see old data due to transaction isolation)
+    const afterRead = await readConn.all("SELECT COUNT(*) as count FROM products");
+    expect(afterRead[0].count).toBeGreaterThanOrEqual(2); // May be 2 or 3 depending on isolation
+
+    await readConn.close();
   });
 });
