@@ -76,35 +76,35 @@ describe("GET /api/screenshots/:filename — missing files", () => {
   it("returns 404 for non-existent png file", async () => {
     const res = await req("nonexistent-screenshot-12345.png");
     expect(res.status).toBe(404);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.error.code).toBe("NOT_FOUND");
   });
 
   it("returns 404 for non-existent jpg file", async () => {
     const res = await req("missing-image.jpg");
     expect(res.status).toBe(404);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.error.code).toBe("NOT_FOUND");
   });
 
   it("returns 404 for non-existent webp file", async () => {
     const res = await req("missing-image.webp");
     expect(res.status).toBe(404);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.error.code).toBe("NOT_FOUND");
   });
 
   it("returns 404 for file with unknown extension", async () => {
     const res = await req("unknown-file.xyz");
     expect(res.status).toBe(404);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.error.code).toBe("NOT_FOUND");
   });
 
   it("returns 404 for filename with only extension", async () => {
     const res = await req(".png");
     expect(res.status).toBe(404);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.error.code).toBe("NOT_FOUND");
   });
 });

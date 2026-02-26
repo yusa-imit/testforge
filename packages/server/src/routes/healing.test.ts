@@ -104,7 +104,7 @@ describe("GET /api/healing", () => {
   it("returns empty list when no records exist", async () => {
     const res = await req("GET", "/api/healing");
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.success).toBe(true);
     expect(body.data).toEqual([]);
   });
@@ -114,7 +114,7 @@ describe("GET /api/healing", () => {
     await createHealingRecord({ locatorDisplayName: "Login Button" });
     const res = await req("GET", "/api/healing");
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.success).toBe(true);
     expect(body.data).toHaveLength(2);
   });
@@ -124,7 +124,7 @@ describe("GET /api/healing", () => {
     await createHealingRecord({ status: "approved" });
     const res = await req("GET", "/api/healing?status=pending");
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.data).toHaveLength(1);
     expect(body.data[0].status).toBe("pending");
   });
@@ -135,7 +135,7 @@ describe("GET /api/healing", () => {
     await createHealingRecord({ status: "rejected" });
     const res = await req("GET", "/api/healing?status=approved");
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.data).toHaveLength(1);
     expect(body.data[0].status).toBe("approved");
   });
@@ -145,7 +145,7 @@ describe("GET /api/healing/stats", () => {
   it("returns zero stats when no records exist", async () => {
     const res = await req("GET", "/api/healing/stats");
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.success).toBe(true);
     expect(body.data.total).toBe(0);
     expect(body.data.pending).toBe(0);
@@ -162,7 +162,7 @@ describe("GET /api/healing/stats", () => {
 
     const res = await req("GET", "/api/healing/stats");
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.data.total).toBe(5);
     expect(body.data.pending).toBe(2);
     expect(body.data.approved).toBe(1);
@@ -176,7 +176,7 @@ describe("GET /api/healing/:id", () => {
     const record = await createHealingRecord();
     const res = await req("GET", `/api/healing/${record.id}`);
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.success).toBe(true);
     expect(body.data.id).toBe(record.id);
     expect(body.data.locatorDisplayName).toBe("Submit Button");
@@ -186,7 +186,7 @@ describe("GET /api/healing/:id", () => {
   it("returns 404 for unknown ID", async () => {
     const res = await req("GET", "/api/healing/nonexistent-id");
     expect(res.status).toBe(404);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.error.code).toBe("NOT_FOUND");
   });
 });
@@ -199,7 +199,7 @@ describe("POST /api/healing/:id/approve", () => {
       reviewNote: "Looks good",
     });
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.success).toBe(true);
     expect(body.data.status).toBe("approved");
     expect(body.data.reviewedBy).toBe("qa-engineer");
@@ -210,7 +210,7 @@ describe("POST /api/healing/:id/approve", () => {
     const record = await createHealingRecord({ status: "pending" });
     const res = await req("POST", `/api/healing/${record.id}/approve`, {});
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.data.status).toBe("approved");
   });
 
@@ -218,7 +218,7 @@ describe("POST /api/healing/:id/approve", () => {
     const record = await createHealingRecord({ status: "approved" });
     const res = await req("POST", `/api/healing/${record.id}/approve`, {});
     expect(res.status).toBe(400);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.error.code).toBe("BAD_REQUEST");
   });
 
@@ -236,7 +236,7 @@ describe("POST /api/healing/:id/reject", () => {
       reviewNote: "False positive",
     });
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.success).toBe(true);
     expect(body.data.status).toBe("rejected");
     expect(body.data.reviewNote).toBe("False positive");
@@ -264,7 +264,7 @@ describe("POST /api/healing/:id/propagate", () => {
     const record = await createHealingRecord({ status: "pending" });
     const res = await req("POST", `/api/healing/${record.id}/propagate`);
     expect(res.status).toBe(400);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.error.code).toBe("BAD_REQUEST");
   });
 
@@ -272,7 +272,7 @@ describe("POST /api/healing/:id/propagate", () => {
     const record = await createHealingRecord({ status: "approved" });
     const res = await req("POST", `/api/healing/${record.id}/propagate`);
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.success).toBe(true);
     expect(body.data.propagatedTo).toEqual([]);
   });
@@ -281,7 +281,7 @@ describe("POST /api/healing/:id/propagate", () => {
     const record = await createHealingRecord({ status: "auto_approved" });
     const res = await req("POST", `/api/healing/${record.id}/propagate`);
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.success).toBe(true);
   });
 });

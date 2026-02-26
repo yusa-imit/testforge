@@ -30,7 +30,7 @@ describe("errorHandler middleware", () => {
       });
 
       const res = await app.request("/test");
-      const body = await res.json();
+      const body = (await res.json()) as any;
 
       expect(res.status).toBe(404);
       expect(body).toEqual({
@@ -48,7 +48,7 @@ describe("errorHandler middleware", () => {
       });
 
       const res = await app.request("/test");
-      const body = await res.json();
+      const body = (await res.json()) as any;
 
       expect(res.status).toBe(400);
       expect(body).toEqual({
@@ -66,7 +66,7 @@ describe("errorHandler middleware", () => {
       });
 
       const res = await app.request("/test");
-      const body = await res.json();
+      const body = (await res.json()) as any;
 
       expect(res.status).toBe(400);
       expect(body).toEqual({
@@ -86,7 +86,7 @@ describe("errorHandler middleware", () => {
       });
 
       const res = await app.request("/test");
-      const body = await res.json();
+      const body = (await res.json()) as any;
 
       expect(res.status).toBe(409);
       expect(body).toEqual({
@@ -107,7 +107,7 @@ describe("errorHandler middleware", () => {
       });
 
       const res = await app.request("/test");
-      const body = await res.json();
+      const body = (await res.json()) as any;
 
       expect(res.status).toBe(404);
       expect(body).toEqual({
@@ -136,7 +136,7 @@ describe("errorHandler middleware", () => {
       });
 
       const res = await app.request("/test");
-      const body = await res.json();
+      const body = (await res.json()) as any;
 
       expect(res.status).toBe(422);
       expect(body.error.code).toBe("HEALING_FAILED");
@@ -152,7 +152,7 @@ describe("errorHandler middleware", () => {
       });
 
       const res = await app.request("/test");
-      const body = await res.json();
+      const body = (await res.json()) as any;
 
       expect(res.status).toBe(500);
       expect(body).toEqual({
@@ -170,7 +170,7 @@ describe("errorHandler middleware", () => {
       });
 
       const res = await app.request("/test");
-      const body = await res.json();
+      const body = (await res.json()) as any;
 
       expect(res.status).toBe(500);
       expect(body).toEqual({
@@ -190,7 +190,7 @@ describe("errorHandler middleware", () => {
       });
 
       const res = await app.request("/test");
-      const body = await res.json();
+      const body = (await res.json()) as any;
 
       expect(res.status).toBe(500);
       expect(body).toEqual({
@@ -223,7 +223,7 @@ describe("errorHandler middleware", () => {
         body: JSON.stringify({ name: "", email: "invalid", age: -5 }),
       });
 
-      const body = await res.json();
+      const body = (await res.json()) as any;
 
       expect(res.status).toBe(400);
       expect(body.error.code).toBe("VALIDATION_ERROR");
@@ -259,7 +259,7 @@ describe("errorHandler middleware", () => {
         body: JSON.stringify({ user: { profile: { name: "" } } }),
       });
 
-      const body = await res.json();
+      const body = (await res.json()) as any;
 
       expect(res.status).toBe(400);
       expect(body.error.details.issues[0].path).toBe("user.profile.name");
@@ -273,7 +273,7 @@ describe("errorHandler middleware", () => {
       });
 
       const res = await app.request("/test");
-      const body = await res.json();
+      const body = (await res.json()) as any;
 
       expect(res.status).toBe(403);
       expect(body).toEqual({
@@ -290,7 +290,7 @@ describe("errorHandler middleware", () => {
       });
 
       const res = await app.request("/test");
-      const body = await res.json();
+      const body = (await res.json()) as any;
 
       expect(res.status).toBe(401);
       expect(body.error.code).toBe("HTTP_ERROR");
@@ -308,7 +308,7 @@ describe("errorHandler middleware", () => {
       });
 
       const res = await app.request("/test");
-      const body = await res.json();
+      const body = (await res.json()) as any;
 
       expect(res.status).toBe(500);
       expect(body.error.code).toBe("INTERNAL_ERROR");
@@ -328,7 +328,7 @@ describe("errorHandler middleware", () => {
       });
 
       const res = await app.request("/test");
-      const body = await res.json();
+      const body = (await res.json()) as any;
 
       expect(res.status).toBe(500);
       expect(body.error.code).toBe("INTERNAL_ERROR");
@@ -348,7 +348,7 @@ describe("errorHandler middleware", () => {
       });
 
       const res = await app.request("/test");
-      const body = await res.json();
+      const body = (await res.json()) as any;
 
       expect(res.status).toBe(500);
       expect(body.error.details).toHaveProperty("stack");
@@ -377,7 +377,7 @@ describe("errorHandler middleware", () => {
       });
 
       const res = await app.request("/test");
-      const body = await res.json();
+      const body = (await res.json()) as any;
 
       expect(res.status).toBe(500);
       expect(body.error.code).toBe("INTERNAL_ERROR");
@@ -393,7 +393,7 @@ describe("errorHandler middleware", () => {
       });
 
       const res = await app.request("/test");
-      const body = await res.json();
+      const body = (await res.json()) as any;
 
       expect(res.status).toBe(500);
       expect(body.error.details).toBeUndefined();
@@ -405,7 +405,7 @@ describe("errorHandler middleware", () => {
       });
 
       const res = await app.request("/test");
-      const body = await res.json();
+      const body = (await res.json()) as any;
 
       expect(res.status).toBe(404);
       expect(body.error.message).toBe("User not found");
@@ -418,7 +418,7 @@ describe("errorHandler middleware", () => {
       });
 
       const res = await app.request("/test");
-      const body = await res.json();
+      const body = (await res.json()) as any;
 
       expect(res.status).toBe(500);
       expect(body.error.message).toBe("Internal server error");
@@ -434,7 +434,7 @@ describe("errorHandler middleware", () => {
       });
 
       const res = await app.request("/test");
-      const body = await res.json();
+      const body = (await res.json()) as any;
 
       expect(body.error.details).toEqual({
         nested: { deep: { value: 123 } },

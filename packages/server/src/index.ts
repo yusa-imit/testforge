@@ -37,14 +37,15 @@ const app = new Hono()
 export type AppType = typeof app;
 export default app;
 
-const port = process.env.PORT ?? 3001;
-
-logger.info(`TestForge API running at http://localhost:${port}`);
-
 export { app };
 
-// Bun serve
-Bun.serve({
-  port: Number(port),
-  fetch: app.fetch,
-});
+// Only start server if this is the main module (not imported in tests)
+if (import.meta.main) {
+  const port = process.env.PORT ?? 3001;
+  logger.info(`TestForge API running at http://localhost:${port}`);
+
+  Bun.serve({
+    port: Number(port),
+    fetch: app.fetch,
+  });
+}

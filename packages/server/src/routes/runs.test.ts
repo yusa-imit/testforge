@@ -70,7 +70,7 @@ describe("GET /api/runs", () => {
   it("returns empty list when no runs exist", async () => {
     const res = await req("GET", "/api/runs");
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.success).toBe(true);
     expect(body.data).toEqual([]);
   });
@@ -78,7 +78,7 @@ describe("GET /api/runs", () => {
   it("returns created runs", async () => {
     await createTestRun("passed");
     const res = await req("GET", "/api/runs");
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.data).toHaveLength(1);
     expect(body.data[0].status).toBe("passed");
   });
@@ -87,14 +87,14 @@ describe("GET /api/runs", () => {
     await createTestRun("passed");
     await createTestRun("failed");
     const res = await req("GET", "/api/runs?limit=1");
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.data).toHaveLength(1);
   });
 
   it("includes scenario name in run data", async () => {
     const { scenario } = await createTestRun("passed");
     const res = await req("GET", "/api/runs");
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.data).toHaveLength(1);
     expect(body.data[0].scenarioName).toBe(scenario.name);
   });
@@ -104,7 +104,7 @@ describe("GET /api/runs/dashboard", () => {
   it("returns dashboard stats", async () => {
     const res = await req("GET", "/api/runs/dashboard");
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.success).toBe(true);
     expect(body.data.stats).toBeDefined();
     expect(body.data.stats.total).toBeDefined();
@@ -117,7 +117,7 @@ describe("GET /api/runs/dashboard", () => {
     await createTestRun("passed");
     await createTestRun("failed");
     const res = await req("GET", "/api/runs/dashboard");
-    const body = await res.json();
+    const body = (await res.json()) as any;
     // Note: dashboard only shows runs from last 24h
     expect(body.data.stats.total).toBe(3);
     expect(body.data.stats.passed).toBe(2);
@@ -130,7 +130,7 @@ describe("GET /api/runs/:id", () => {
     const { runId } = await createTestRun("passed");
     const res = await req("GET", `/api/runs/${runId}`);
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.data.id).toBe(runId);
     expect(body.data.status).toBe("passed");
   });
@@ -138,7 +138,7 @@ describe("GET /api/runs/:id", () => {
   it("returns 404 for unknown run ID", async () => {
     const res = await req("GET", "/api/runs/nonexistent-run-id");
     expect(res.status).toBe(404);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.error.code).toBe("NOT_FOUND");
   });
 });
@@ -148,7 +148,7 @@ describe("GET /api/runs/:id/steps", () => {
     const { runId } = await createTestRun();
     const res = await req("GET", `/api/runs/${runId}/steps`);
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(Array.isArray(body.data)).toBe(true);
   });
 
@@ -166,7 +166,7 @@ describe("GET /api/runs/:id/steps", () => {
     });
     const res = await req("GET", `/api/runs/${runId}/steps`);
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.success).toBe(true);
     expect(body.data.length).toBe(1);
     expect(body.data[0].runId).toBe(runId);
@@ -186,7 +186,7 @@ describe("DELETE /api/runs/:id (cancel)", () => {
     const { runId } = await createTestRun("running");
     const res = await req("DELETE", `/api/runs/${runId}`);
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.data.status).toBe("cancelled");
   });
 
@@ -194,7 +194,7 @@ describe("DELETE /api/runs/:id (cancel)", () => {
     const { runId } = await createTestRun("passed");
     const res = await req("DELETE", `/api/runs/${runId}`);
     expect(res.status).toBe(400);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.error.code).toBe("BAD_REQUEST");
   });
 
@@ -208,7 +208,7 @@ describe("GET /api/runs/:id/stream (SSE)", () => {
   it("returns 404 for non-existent run", async () => {
     const res = await req("GET", "/api/runs/nonexistent-run/stream");
     expect(res.status).toBe(404);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.error.code).toBe("NOT_FOUND");
   });
 
@@ -272,7 +272,7 @@ describe("GET /api/runs/:id/stream (SSE)", () => {
     const res = await req("GET", `/api/runs/${runId}/stream`);
     expect(res.status).toBe(404);
 
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.success).toBe(false);
     expect(body.error.code).toBe("EXECUTOR_NOT_FOUND");
     expect(body.error.message).toContain("executor not found");

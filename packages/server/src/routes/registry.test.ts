@@ -81,7 +81,7 @@ describe("GET /api/registry", () => {
   it("returns empty list when no elements exist", async () => {
     const res = await req("GET", "/api/registry");
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.success).toBe(true);
     expect(body.data).toEqual([]);
   });
@@ -92,7 +92,7 @@ describe("GET /api/registry", () => {
     await createElement(svc.id, { displayName: "Input B" });
     const res = await req("GET", "/api/registry");
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.data).toHaveLength(2);
   });
 
@@ -104,7 +104,7 @@ describe("GET /api/registry", () => {
 
     const res = await req("GET", `/api/registry?serviceId=${svc1.id}`);
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.data).toHaveLength(1);
     expect(body.data[0].display_name).toBe("Element A");
   });
@@ -116,7 +116,7 @@ describe("GET /api/registry", () => {
 
     const res = await req("GET", "/api/registry?search=submit");
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.data).toHaveLength(1);
     expect(body.data[0].display_name).toBe("Submit Button");
   });
@@ -129,7 +129,7 @@ describe("GET /api/registry", () => {
 
     const res = await req("GET", "/api/registry?serviceId=all");
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.data).toHaveLength(2);
   });
 });
@@ -141,7 +141,7 @@ describe("GET /api/registry/:id", () => {
 
     const res = await req("GET", `/api/registry/${element.id}`);
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.success).toBe(true);
     expect(body.data.id).toBe(element.id);
     expect(body.data.display_name).toBe("My Element");
@@ -150,7 +150,7 @@ describe("GET /api/registry/:id", () => {
   it("returns 404 for unknown ID", async () => {
     const res = await req("GET", "/api/registry/nonexistent-id");
     expect(res.status).toBe(404);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.error.code).toBe("NOT_FOUND");
   });
 });
@@ -164,7 +164,7 @@ describe("POST /api/registry", () => {
       currentLocator: sampleLocator,
     });
     expect(res.status).toBe(201);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.success).toBe(true);
     expect(body.data.display_name).toBe("New Element");
     expect(body.data.service_id).toBe(svc.id);
@@ -180,7 +180,7 @@ describe("POST /api/registry", () => {
       currentLocator: sampleLocator,
     });
     expect(res.status).toBe(201);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.data.page_pattern).toBe("/dashboard/*");
   });
 
@@ -210,7 +210,7 @@ describe("PUT /api/registry/:id", () => {
       displayName: "New Name",
     });
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.success).toBe(true);
     expect(body.data.display_name).toBe("New Name");
   });
@@ -228,7 +228,7 @@ describe("PUT /api/registry/:id", () => {
       reason: "DOM refactor",
     });
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.data.history).toHaveLength(1);
     expect(body.data.history[0].reason).toBe("DOM refactor");
   });
@@ -248,7 +248,7 @@ describe("DELETE /api/registry/:id", () => {
 
     const res = await req("DELETE", `/api/registry/${element.id}`);
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.success).toBe(true);
 
     // Confirm it's gone
@@ -274,7 +274,7 @@ describe("POST /api/registry/:id/usage", () => {
       stepId,
     });
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.success).toBe(true);
     expect(body.data.usedIn).toHaveLength(1);
     expect(body.data.usedIn[0].scenarioId).toBe(scenarioId);

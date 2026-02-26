@@ -47,7 +47,7 @@ describe("Performance Metrics", () => {
       await app.request("/create", { method: "POST" });
 
       const res = await app.request("/api/metrics");
-      const data = await res.json();
+      const data = (await res.json()) as any;
 
       expect(data.totalRequests).toBeGreaterThanOrEqual(3); // At least 3 requests tracked
       expect(data.summary.length).toBeGreaterThan(0);
@@ -59,7 +59,7 @@ describe("Performance Metrics", () => {
       const res = await app.request("/api/metrics");
       expect(res.status).toBe(200);
 
-      const data = await res.json();
+      const data = (await res.json()) as any;
       expect(data).toMatchObject({
         totalRequests: expect.any(Number),
         averageDuration: expect.any(Number),
@@ -77,7 +77,7 @@ describe("Performance Metrics", () => {
       await app.request("/slow");
 
       const res = await app.request("/api/metrics");
-      const data = await res.json();
+      const data = (await res.json()) as any;
 
       expect(data.totalRequests).toBeGreaterThanOrEqual(3);
       expect(data.averageDuration).toBeGreaterThanOrEqual(0);
@@ -90,7 +90,7 @@ describe("Performance Metrics", () => {
       await app.request("/slow");
 
       const res = await app.request("/api/metrics");
-      const data = await res.json();
+      const data = (await res.json()) as any;
 
       const fastSummary = data.summary.find((s: any) => s.endpoint === "GET /fast");
       expect(fastSummary).toBeTruthy();
@@ -106,7 +106,7 @@ describe("Performance Metrics", () => {
       await app.request("/slow");
 
       const res = await app.request("/api/metrics");
-      const data = await res.json();
+      const data = (await res.json()) as any;
 
       expect(data.recentMetrics.length).toBeGreaterThan(0);
       // Most recent requests should include /fast and /slow
@@ -120,7 +120,7 @@ describe("Performance Metrics", () => {
       await app.request("/slow");
 
       const res = await app.request("/api/metrics");
-      const data = await res.json();
+      const data = (await res.json()) as any;
 
       expect(data.summary.length).toBeGreaterThan(1);
       // First should be slowest
@@ -140,7 +140,7 @@ describe("Performance Metrics", () => {
 
       await app.request("/very-slow");
       const res = await app.request("/api/metrics");
-      const data = await res.json();
+      const data = (await res.json()) as any;
 
       expect(data.slowRequests).toBeGreaterThan(0);
     });
@@ -151,7 +151,7 @@ describe("Performance Metrics", () => {
       const res = await app.request("/api/metrics/health");
       expect(res.status).toBe(200);
 
-      const data = await res.json();
+      const data = (await res.json()) as any;
       expect(data).toMatchObject({
         status: "ok",
         timestamp: expect.any(String),
@@ -161,7 +161,7 @@ describe("Performance Metrics", () => {
 
     it("should return valid ISO timestamp", async () => {
       const res = await app.request("/api/metrics/health");
-      const data = await res.json();
+      const data = (await res.json()) as any;
 
       // Should be parseable as a date
       const timestamp = new Date(data.timestamp);
@@ -170,7 +170,7 @@ describe("Performance Metrics", () => {
 
     it("should return positive uptime", async () => {
       const res = await app.request("/api/metrics/health");
-      const data = await res.json();
+      const data = (await res.json()) as any;
 
       expect(data.uptime).toBeGreaterThan(0);
     });
@@ -184,7 +184,7 @@ describe("Performance Metrics", () => {
       }
 
       const res = await app.request("/api/metrics");
-      const data = await res.json();
+      const data = (await res.json()) as any;
 
       // Should cap at 100 + 1 (for the metrics request)
       expect(data.totalRequests).toBeLessThanOrEqual(101);
@@ -197,7 +197,7 @@ describe("Performance Metrics", () => {
       await app.request("/create", { method: "POST" });
 
       const res = await app.request("/api/metrics");
-      const data = await res.json();
+      const data = (await res.json()) as any;
 
       const postSummary = data.summary.find((s: any) => s.endpoint === "POST /create");
       expect(postSummary).toBeTruthy();

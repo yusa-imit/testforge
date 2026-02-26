@@ -58,7 +58,7 @@ describe("GET /api/features/:id", () => {
     const feature = await createFeature(service.id);
     const res = await req("GET", `/api/features/${feature.id}`);
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.success).toBe(true);
     expect(body.data.id).toBe(feature.id);
     expect(body.data.name).toBe("Login Feature");
@@ -68,7 +68,7 @@ describe("GET /api/features/:id", () => {
   it("returns 404 for unknown ID", async () => {
     const res = await req("GET", "/api/features/nonexistent-id");
     expect(res.status).toBe(404);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.error.code).toBe("NOT_FOUND");
   });
 });
@@ -85,7 +85,7 @@ describe("PUT /api/features/:id", () => {
       name: "Updated Feature",
     });
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.success).toBe(true);
     expect(body.data.name).toBe("Updated Feature");
     expect(body.data.serviceId).toBe(service.id);
@@ -109,7 +109,7 @@ describe("DELETE /api/features/:id", () => {
     const feature = await createFeature(service.id);
     const res = await req("DELETE", `/api/features/${feature.id}`);
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.success).toBe(true);
 
     // Confirm it's gone
@@ -133,7 +133,7 @@ describe("GET /api/features/:featureId/scenarios", () => {
     const feature = await createFeature(service.id);
     const res = await req("GET", `/api/features/${feature.id}/scenarios`);
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.success).toBe(true);
     expect(body.data).toEqual([]);
   });
@@ -145,7 +145,7 @@ describe("GET /api/features/:featureId/scenarios", () => {
     await db.createScenario({ featureId: feature.id, name: "Scenario B", steps: [], priority: "medium", tags: [], variables: [] });
     const res = await req("GET", `/api/features/${feature.id}/scenarios`);
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.data).toHaveLength(2);
     const names = body.data.map((s: { name: string }) => s.name).sort();
     expect(names).toEqual(["Scenario A", "Scenario B"]);
@@ -171,7 +171,7 @@ describe("POST /api/features/:featureId/scenarios", () => {
       steps: [],
     });
     expect(res.status).toBe(201);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.success).toBe(true);
     expect(body.data.name).toBe("Login Test");
     expect(body.data.featureId).toBe(feature.id);
@@ -207,7 +207,7 @@ describe("POST /api/features/:id/run", () => {
   it("returns 404 for unknown feature", async () => {
     const res = await req("POST", "/api/features/nonexistent-id/run");
     expect(res.status).toBe(404);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.error.code).toBe("NOT_FOUND");
   });
 
@@ -216,7 +216,7 @@ describe("POST /api/features/:id/run", () => {
     const feature = await createFeature(service.id);
     const res = await req("POST", `/api/features/${feature.id}/run`);
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.success).toBe(true);
     expect(body.data.runIds).toEqual([]);
     expect(body.data.message).toBe("No scenarios to run.");

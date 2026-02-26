@@ -28,7 +28,7 @@ describe("Backup Routes", () => {
       const res = await app.request("/api/backup/info");
 
       expect(res.status).toBe(200);
-      const data = await res.json();
+      const data = (await res.json()) as any;
 
       expect(data).toHaveProperty("counts");
       expect(data.counts).toHaveProperty("services");
@@ -45,7 +45,7 @@ describe("Backup Routes", () => {
       const res = await app.request("/api/backup/info");
 
       expect(res.status).toBe(200);
-      const data = await res.json();
+      const data = (await res.json()) as any;
 
       expect(data.counts.services).toBe(0);
       expect(data.counts.features).toBe(0);
@@ -82,7 +82,7 @@ describe("Backup Routes", () => {
       const res = await app.request("/api/backup/info");
 
       expect(res.status).toBe(200);
-      const data = await res.json();
+      const data = (await res.json()) as any;
 
       expect(data.counts.services).toBe(1);
       expect(data.counts.components).toBe(1);
@@ -94,7 +94,7 @@ describe("Backup Routes", () => {
       const res = await app.request("/api/backup/export");
 
       expect(res.status).toBe(200);
-      const data = await res.json();
+      const data = (await res.json()) as any;
 
       expect(data).toHaveProperty("version");
       expect(data).toHaveProperty("timestamp");
@@ -118,7 +118,7 @@ describe("Backup Routes", () => {
           defaultTimeout: 30000,
         }),
       });
-      const service = await serviceRes.json();
+      const service = (await serviceRes.json()) as any;
 
       // Create feature
       await app.request("/api/features", {
@@ -135,7 +135,7 @@ describe("Backup Routes", () => {
       const res = await app.request("/api/backup/export");
 
       expect(res.status).toBe(200);
-      const data = await res.json();
+      const data = (await res.json()) as any;
 
       expect(data.metadata.servicesCount).toBe(1);
       expect(data.metadata.featuresCount).toBe(1);
@@ -158,7 +158,7 @@ describe("Backup Routes", () => {
       const res = await app.request("/api/backup/export?includeRuns=false");
 
       expect(res.status).toBe(200);
-      const data = await res.json();
+      const data = (await res.json()) as any;
 
       expect(data.data.runs).toEqual([]);
       expect(data.data.stepResults).toEqual([]);
@@ -169,7 +169,7 @@ describe("Backup Routes", () => {
       const res = await app.request("/api/backup/export?includeHealing=false");
 
       expect(res.status).toBe(200);
-      const data = await res.json();
+      const data = (await res.json()) as any;
 
       expect(data.data.healingRecords).toEqual([]);
       expect(data.metadata.healingRecordsCount).toBe(0);
@@ -226,7 +226,7 @@ describe("Backup Routes", () => {
       });
 
       expect(res.status).toBe(200);
-      const result = await res.json();
+      const result = (await res.json()) as any;
 
       expect(result.message).toBe("Database import completed");
       expect(result.summary.imported.services).toBe(1);
@@ -234,7 +234,7 @@ describe("Backup Routes", () => {
 
       // Verify service was imported
       const services = await app.request("/api/services");
-      const servicesData = await services.json();
+      const servicesData = (await services.json()) as any;
       expect(servicesData.success).toBe(true);
       expect(servicesData.data).toHaveLength(1);
       expect(servicesData.data[0].name).toBe("Imported Service");
@@ -303,7 +303,7 @@ describe("Backup Routes", () => {
       });
 
       expect(res.status).toBe(200);
-      const result = await res.json();
+      const result = (await res.json()) as any;
 
       expect(result.summary.imported.services).toBe(2);
       expect(result.summary.imported.features).toBe(1);
@@ -324,7 +324,7 @@ describe("Backup Routes", () => {
       });
 
       const servicesRes = await app.request("/api/services");
-      const servicesData = await servicesRes.json();
+      const servicesData = (await servicesRes.json()) as any;
       const existingId = servicesData.data[0].id;
 
       // Try to import with same ID
@@ -373,7 +373,7 @@ describe("Backup Routes", () => {
       });
 
       expect(res.status).toBe(200);
-      const result = await res.json();
+      const result = (await res.json()) as any;
 
       expect(result.summary.mode).toBe("merge");
       expect(result.summary.skipped.services).toBe(1);
@@ -381,7 +381,7 @@ describe("Backup Routes", () => {
 
       // Verify original service unchanged
       const updatedServices = await app.request("/api/services");
-      const updatedServicesData = await updatedServices.json();
+      const updatedServicesData = (await updatedServices.json()) as any;
       const original = updatedServicesData.data.find((s: any) => s.id === existingId);
       expect(original.name).toBe("Existing Service");
     });
@@ -417,7 +417,7 @@ describe("Backup Routes", () => {
       });
 
       expect(res.status).toBe(200);
-      const result = await res.json();
+      const result = (await res.json()) as any;
 
       expect(result.summary.imported.services).toBe(0);
       expect(result.summary.imported.features).toBe(0);
@@ -437,7 +437,7 @@ describe("Backup Routes", () => {
           defaultTimeout: 30000,
         }),
       });
-      const service = await serviceRes.json();
+      const service = (await serviceRes.json()) as any;
 
       await app.request("/api/features", {
         method: "POST",
@@ -452,7 +452,7 @@ describe("Backup Routes", () => {
 
       // Export
       const exportRes = await app.request("/api/backup/export");
-      const exportData = await exportRes.json();
+      const exportData = (await exportRes.json()) as any;
 
       // Verify export has feature data
       expect(exportData.metadata.featuresCount).toBe(1);
@@ -472,14 +472,14 @@ describe("Backup Routes", () => {
 
       // Verify data restored
       const servicesRes = await app.request("/api/services");
-      const servicesData = await servicesRes.json();
+      const servicesData = (await servicesRes.json()) as any;
       expect(servicesData.success).toBe(true);
       expect(servicesData.data).toHaveLength(1);
       expect(servicesData.data[0].name).toBe("Round Trip Service");
 
       const restoredServiceId = servicesData.data[0].id;
       const featuresRes = await app.request(`/api/services/${restoredServiceId}/features`);
-      const featuresData = await featuresRes.json();
+      const featuresData = (await featuresRes.json()) as any;
       expect(featuresData.success).toBe(true);
       expect(featuresData.data).toHaveLength(1);
       expect(featuresData.data[0].name).toBe("Round Trip Feature");

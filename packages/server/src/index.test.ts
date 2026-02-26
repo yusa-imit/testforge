@@ -75,7 +75,7 @@ describe("Main App Integration", () => {
       const res = await app.request("/api/services");
 
       expect(res.status).toBe(200);
-      const json = await res.json();
+      const json = (await res.json()) as any;
       expect(json).toHaveProperty("success");
       expect(json.success).toBe(true);
       expect(json).toHaveProperty("data");
@@ -86,7 +86,7 @@ describe("Main App Integration", () => {
       const res = await app.request("/api/components");
 
       expect(res.status).toBe(200);
-      const json = await res.json();
+      const json = (await res.json()) as any;
       expect(json).toHaveProperty("success");
       expect(json.success).toBe(true);
       expect(json).toHaveProperty("data");
@@ -97,7 +97,7 @@ describe("Main App Integration", () => {
       const res = await app.request("/api/runs");
 
       expect(res.status).toBe(200);
-      const json = await res.json();
+      const json = (await res.json()) as any;
       expect(json).toHaveProperty("success");
       expect(json.success).toBe(true);
       expect(json).toHaveProperty("data");
@@ -108,7 +108,7 @@ describe("Main App Integration", () => {
       const res = await app.request("/api/healing");
 
       expect(res.status).toBe(200);
-      const json = await res.json();
+      const json = (await res.json()) as any;
       expect(json).toHaveProperty("success");
       expect(json.success).toBe(true);
       expect(json).toHaveProperty("data");
@@ -120,7 +120,7 @@ describe("Main App Integration", () => {
 
       // Should return 404 for non-existent screenshot
       expect(res.status).toBe(404);
-      const json = await res.json();
+      const json = (await res.json()) as any;
       expect(json).toHaveProperty("error");
       expect(json.error).toHaveProperty("code");
       expect(json.error.code).toBe("NOT_FOUND");
@@ -130,7 +130,7 @@ describe("Main App Integration", () => {
       const res = await app.request("/api/registry");
 
       expect(res.status).toBe(200);
-      const json = await res.json();
+      const json = (await res.json()) as any;
       expect(json).toHaveProperty("success");
       expect(json.success).toBe(true);
       expect(json).toHaveProperty("data");
@@ -141,7 +141,7 @@ describe("Main App Integration", () => {
       const res = await app.request("/api/metrics");
 
       expect(res.status).toBe(200);
-      const json = await res.json();
+      const json = (await res.json()) as any;
       // Metrics endpoint returns raw data, not wrapped in success/data
       expect(json).toHaveProperty("totalRequests");
       expect(json).toHaveProperty("summary");
@@ -152,7 +152,7 @@ describe("Main App Integration", () => {
       const res = await app.request("/api/metrics/health");
 
       expect(res.status).toBe(200);
-      const json = await res.json();
+      const json = (await res.json()) as any;
       expect(json).toHaveProperty("status");
       expect(json.status).toBe("ok");
       expect(json).toHaveProperty("timestamp");
@@ -172,7 +172,7 @@ describe("Main App Integration", () => {
       const res = await app.request("/api/services/00000000-0000-0000-0000-000000000000");
 
       expect(res.status).toBe(404);
-      const json = await res.json();
+      const json = (await res.json()) as any;
       expect(json).toHaveProperty("error");
       expect(json.error).toHaveProperty("code");
       expect(json.error.code).toBe("NOT_FOUND");
@@ -192,7 +192,7 @@ describe("Main App Integration", () => {
       });
 
       expect(res.status).toBe(400);
-      const json = await res.json();
+      const json = (await res.json()) as any;
       expect(json).toHaveProperty("error");
       // zValidator returns error object structure
       expect(json.error).toBeTruthy();
@@ -214,7 +214,7 @@ describe("Main App Integration", () => {
       });
 
       expect(res.status).toBe(201);
-      const json = await res.json();
+      const json = (await res.json()) as any;
       expect(json).toHaveProperty("success");
       expect(json.success).toBe(true);
       expect(json).toHaveProperty("data");

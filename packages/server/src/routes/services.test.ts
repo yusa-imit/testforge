@@ -49,7 +49,7 @@ describe("GET /api/services", () => {
   it("returns empty list when no services exist", async () => {
     const res = await req("GET", "/api/services");
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.success).toBe(true);
     expect(body.data).toEqual([]);
   });
@@ -58,7 +58,7 @@ describe("GET /api/services", () => {
     await db.createService(servicePayload);
     const res = await req("GET", "/api/services");
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.success).toBe(true);
     expect(body.data).toHaveLength(1);
     expect(body.data[0].name).toBe("My App");
@@ -69,7 +69,7 @@ describe("POST /api/services", () => {
   it("creates a service with valid data", async () => {
     const res = await req("POST", "/api/services", servicePayload);
     expect(res.status).toBe(201);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.success).toBe(true);
     expect(body.data.name).toBe("My App");
     expect(body.data.baseUrl).toBe("https://example.com");
@@ -79,7 +79,7 @@ describe("POST /api/services", () => {
   it("returns 400 for missing required fields", async () => {
     const res = await req("POST", "/api/services", { description: "No name" });
     expect(res.status).toBe(400);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.error).toBeTruthy();
   });
 
@@ -97,7 +97,7 @@ describe("GET /api/services/:id", () => {
     const service = await db.createService(servicePayload);
     const res = await req("GET", `/api/services/${service.id}`);
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.success).toBe(true);
     expect(body.data.id).toBe(service.id);
     expect(body.data.name).toBe("My App");
@@ -106,7 +106,7 @@ describe("GET /api/services/:id", () => {
   it("returns 404 for unknown ID", async () => {
     const res = await req("GET", "/api/services/nonexistent-id");
     expect(res.status).toBe(404);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.error.code).toBe("NOT_FOUND");
   });
 });
@@ -118,7 +118,7 @@ describe("PUT /api/services/:id", () => {
       name: "Updated Name",
     });
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.success).toBe(true);
     expect(body.data.name).toBe("Updated Name");
     expect(body.data.baseUrl).toBe("https://example.com");
@@ -137,7 +137,7 @@ describe("DELETE /api/services/:id", () => {
     const service = await db.createService(servicePayload);
     const res = await req("DELETE", `/api/services/${service.id}`);
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.success).toBe(true);
 
     // Confirm it's gone
@@ -156,7 +156,7 @@ describe("GET /api/services/:serviceId/features", () => {
     const service = await db.createService(servicePayload);
     const res = await req("GET", `/api/services/${service.id}/features`);
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.data).toEqual([]);
   });
 
@@ -170,7 +170,7 @@ describe("GET /api/services/:serviceId/features", () => {
     });
     const res = await req("GET", `/api/services/${service.id}/features`);
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.data).toHaveLength(1);
     expect(body.data[0].name).toBe("Feature A");
   });
@@ -190,7 +190,7 @@ describe("POST /api/services/:serviceId/features", () => {
       serviceId: service.id,
     });
     expect(res.status).toBe(201);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.success).toBe(true);
     expect(body.data.name).toBe("Login Feature");
     expect(body.data.serviceId).toBe(service.id);

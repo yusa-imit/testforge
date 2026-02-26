@@ -43,7 +43,7 @@ describe("GET /api/components", () => {
   it("returns empty list when no components exist", async () => {
     const res = await req("GET", "/api/components");
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.success).toBe(true);
     expect(body.data).toEqual([]);
   });
@@ -51,7 +51,7 @@ describe("GET /api/components", () => {
   it("returns created components", async () => {
     await db.createComponent(componentPayload);
     const res = await req("GET", "/api/components");
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.data).toHaveLength(1);
     expect(body.data[0].name).toBe("Login Flow");
   });
@@ -61,7 +61,7 @@ describe("POST /api/components", () => {
   it("creates a component with valid data", async () => {
     const res = await req("POST", "/api/components", componentPayload);
     expect(res.status).toBe(201);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.success).toBe(true);
     expect(body.data.name).toBe("Login Flow");
     expect(body.data.type).toBe("flow");
@@ -85,7 +85,7 @@ describe("GET /api/components/:id", () => {
     const component = await db.createComponent(componentPayload);
     const res = await req("GET", `/api/components/${component.id}`);
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.data.id).toBe(component.id);
     expect(body.data.name).toBe("Login Flow");
   });
@@ -93,7 +93,7 @@ describe("GET /api/components/:id", () => {
   it("returns 404 for unknown ID", async () => {
     const res = await req("GET", "/api/components/nonexistent-id");
     expect(res.status).toBe(404);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.error.code).toBe("NOT_FOUND");
   });
 });
@@ -106,7 +106,7 @@ describe("PUT /api/components/:id", () => {
       description: "Updated desc",
     });
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.data.name).toBe("Updated Login Flow");
   });
 
@@ -123,7 +123,7 @@ describe("DELETE /api/components/:id", () => {
     const component = await db.createComponent(componentPayload);
     const res = await req("DELETE", `/api/components/${component.id}`);
     expect(res.status).toBe(200);
-    expect((await res.json()).success).toBe(true);
+    expect(((await res.json()) as any).success).toBe(true);
 
     const getRes = await req("GET", `/api/components/${component.id}`);
     expect(getRes.status).toBe(404);
