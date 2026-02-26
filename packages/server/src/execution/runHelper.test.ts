@@ -327,7 +327,7 @@ describe("runHelper - executeScenarioRun", () => {
         ],
       });
 
-      const runId = await executeScenarioRun(scenario, service, db);
+      const _runId = await executeScenarioRun(scenario, service, db);
 
       // Wait for execution to complete
       await new Promise((resolve) => setTimeout(resolve, 3000));

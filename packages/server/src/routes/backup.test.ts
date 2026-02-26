@@ -9,11 +9,11 @@ import app from "../index";
 import { setupTestDB } from "../test-helpers/setup";
 import type { DuckDBDatabase } from "../db/database";
 
-let db: DuckDBDatabase;
+let _db: DuckDBDatabase;
 let teardown: () => void;
 
 beforeEach(async () => {
-  ({ db, teardown } = await setupTestDB());
+  ({ db: _db, teardown } = await setupTestDB());
   process.env.NODE_ENV = "test";
 });
 
