@@ -171,3 +171,11 @@ export async function createReadOnlyConnection(dbPath = "./testforge.duckdb"): P
   await db.connect();
   return db;
 }
+
+/**
+ * Reset database singleton (for testing only)
+ * Clears the singleton instance so a new connection can be created
+ */
+export function resetDatabaseInstance(): void {
+  dbInstance = null;
+}

@@ -157,6 +157,14 @@ class RowConverter {
 export class DuckDBDatabase {
   constructor(private db: DuckDBConnection) {}
 
+  /**
+   * Close database connection
+   * Used for graceful shutdown
+   */
+  async close(): Promise<void> {
+    await this.db.close();
+  }
+
   // ============================================
   // Services
   // ============================================

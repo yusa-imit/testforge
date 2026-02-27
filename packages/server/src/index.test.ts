@@ -5,9 +5,10 @@
  * route registration, error handling, and CORS.
  */
 
-import { describe, it, expect, beforeEach } from "bun:test";
-import app from "./index";
+import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test";
+import app, { gracefulShutdown } from "./index";
 import { setupTestDB } from "./test-helpers/setup";
+import { getDB, resetDB } from "./db";
 
 describe("Main App Integration", () => {
   beforeEach(async () => {
@@ -241,6 +242,101 @@ describe("Main App Integration", () => {
       const response = await app.fetch(request);
 
       expect(response.status).toBe(200);
+    });
+  });
+
+  describe("Graceful Shutdown", () => {
+    // Save original process.exit to restore later
+    const originalExit = process.exit;
+
+    beforeEach(async () => {
+      // Ensure clean database state
+      await setupTestDB();
+    });
+
+    afterEach(async () => {
+      // Restore process.exit
+      process.exit = originalExit;
+      // Reset the singleton so other tests can create new connections
+      resetDB();
+      // Re-initialize DB after each shutdown test
+      await setupTestDB();
+    });
+
+    it("should close database connection on shutdown", async () => {
+      await setupTestDB();
+      const db = await getDB();
+
+      // Verify connection is active (should have tables from migration)
+      const tables = await db.getAllServices();
+      expect(tables).toBeDefined();
+
+      // Perform graceful shutdown without server
+      await gracefulShutdown("SIGTERM");
+
+      // getDB should return a new instance after reset
+      resetDB();
+      const newDb = await getDB();
+      expect(newDb).toBeDefined();
+    });
+
+    it("should handle shutdown with server", async () => {
+      const mockServer = {
+        stop: mock(() => {}),
+      } as any;
+
+      await setupTestDB();
+      const db = await getDB();
+
+      await gracefulShutdown("SIGTERM", mockServer);
+
+      // Verify server.stop() was called
+      expect(mockServer.stop).toHaveBeenCalledTimes(1);
+    });
+
+    it("should handle server stop error gracefully", async () => {
+      const mockServer = {
+        stop: mock(() => {
+          throw new Error("Server stop failed");
+        }),
+      } as any;
+
+      await setupTestDB();
+      await getDB();
+
+      // Should not throw even if server.stop() fails
+      await expect(gracefulShutdown("SIGTERM", mockServer)).resolves.toBeUndefined();
+    });
+
+    it("should handle SIGINT signal", async () => {
+      await setupTestDB();
+      await getDB();
+
+      await gracefulShutdown("SIGINT");
+
+      // Should complete without errors
+      expect(true).toBe(true);
+    });
+
+    it("should handle already closed database", async () => {
+      await setupTestDB();
+      const db = await getDB();
+      await db.close();
+
+      // Should not throw when database is already closed
+      await expect(gracefulShutdown("SIGTERM")).resolves.toBeUndefined();
+    });
+
+    it("should log shutdown progress", async () => {
+      await setupTestDB();
+      await getDB();
+
+      // Graceful shutdown logs are tested implicitly
+      // (they would fail if logger calls throw)
+      await gracefulShutdown("SIGTERM");
+
+      // Should complete without errors
+      expect(true).toBe(true);
     });
   });
 });

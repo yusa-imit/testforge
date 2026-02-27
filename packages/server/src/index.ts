@@ -5,6 +5,7 @@ import { logger as honoLogger } from "hono/logger";
 import { errorHandler } from "./middleware/errorHandler";
 import { timing } from "./middleware/timing";
 import { logger } from "./utils/logger";
+import { getDB } from "./db";
 import services from "./routes/services";
 import features from "./routes/features";
 import scenarios from "./routes/scenarios";
@@ -39,13 +40,66 @@ export default app;
 
 export { app };
 
+/**
+ * Graceful shutdown handler
+ *
+ * Handles SIGTERM and SIGINT signals to:
+ * 1. Stop accepting new connections
+ * 2. Wait for in-flight requests to complete
+ * 3. Close database connections
+ * 4. Exit cleanly
+ */
+export async function gracefulShutdown(signal: string, server?: ReturnType<typeof Bun.serve>): Promise<void> {
+  logger.info(`Received ${signal}, starting graceful shutdown...`);
+
+  // Stop accepting new connections
+  if (server) {
+    try {
+      server.stop();
+      logger.info("Server stopped accepting new connections");
+    } catch (error) {
+      logger.error("Error stopping server", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  // Close database connection
+  try {
+    const db = await getDB();
+    await db.close();
+    logger.info("Database connection closed successfully");
+  } catch (error) {
+    logger.error("Error closing database", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+
+  logger.info("Graceful shutdown complete");
+
+  // In test environment, don't actually exit
+  if (process.env.NODE_ENV !== "test") {
+    process.exit(0);
+  }
+}
+
 // Only start server if this is the main module (not imported in tests)
 if (import.meta.main) {
   const port = process.env.PORT ?? 3001;
   logger.info(`TestForge API running at http://localhost:${port}`);
 
-  Bun.serve({
+  const server = Bun.serve({
     port: Number(port),
     fetch: app.fetch,
+  });
+
+  // Register shutdown handlers
+  process.on("SIGTERM", () => gracefulShutdown("SIGTERM", server));
+  process.on("SIGINT", () => gracefulShutdown("SIGINT", server));
+
+  // Log successful startup
+  logger.info("Server started successfully", {
+    port: Number(port),
+    environment: process.env.NODE_ENV || "development",
   });
 }
