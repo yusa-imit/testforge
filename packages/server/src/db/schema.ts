@@ -173,6 +173,23 @@ export const elementRegistryTable = `
 `;
 
 /**
+ * Component Usages Table
+ *
+ * Tracks which scenarios use which components for efficient lookup.
+ * Replaces O(n) scan of all scenarios with direct index lookup.
+ * Note: DuckDB does not support CASCADE - deletes handled in application layer
+ */
+export const componentUsagesTable = `
+  CREATE TABLE IF NOT EXISTS component_usages (
+    id VARCHAR PRIMARY KEY,
+    component_id VARCHAR NOT NULL REFERENCES components(id),
+    scenario_id VARCHAR NOT NULL REFERENCES scenarios(id),
+    step_index INTEGER NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  )
+`;
+
+/**
  * Indexes for performance optimization
  *
  * DuckDB automatically creates indexes for foreign keys,
@@ -201,6 +218,10 @@ export const indexes = [
   // Element registry indexes
   'CREATE INDEX IF NOT EXISTS idx_element_registry_service_id ON element_registry(service_id)',
   'CREATE INDEX IF NOT EXISTS idx_element_registry_display_name ON element_registry(display_name)',
+
+  // Component usages indexes
+  'CREATE INDEX IF NOT EXISTS idx_component_usages_component_id ON component_usages(component_id)',
+  'CREATE INDEX IF NOT EXISTS idx_component_usages_scenario_id ON component_usages(scenario_id)',
 ];
 
 /**
@@ -215,4 +236,5 @@ export const allTables = [
   stepResultsTable,
   healingRecordsTable,
   elementRegistryTable,
+  componentUsagesTable,
 ];

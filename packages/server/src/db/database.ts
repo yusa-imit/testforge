@@ -331,6 +331,9 @@ export class DuckDBDatabase {
       ]
     );
 
+    // Update component usages index
+    await this.updateComponentUsagesForScenario(id, data.steps || []);
+
     const row = await this.db.get("SELECT * FROM scenarios WHERE id = ?", [id]);
     return RowConverter.toScenario(row);
   }
@@ -383,6 +386,8 @@ export class DuckDBDatabase {
     if (data.steps !== undefined) {
       updates.push("steps = ?");
       params.push(JSON.stringify(data.steps));
+      // Update component usages index when steps change
+      await this.updateComponentUsagesForScenario(id, data.steps);
     }
 
     updates.push("version = version + 1");
@@ -402,6 +407,8 @@ export class DuckDBDatabase {
   async deleteScenario(id: string): Promise<boolean> {
     const existing = await this.getScenario(id);
     if (!existing) return false;
+    // Delete component usages first (CASCADE not supported in DuckDB)
+    await this.db.run("DELETE FROM component_usages WHERE scenario_id = ?", [id]);
     await this.db.run("DELETE FROM scenarios WHERE id = ?", [id]);
     return true;
   }
@@ -430,6 +437,9 @@ export class DuckDBDatabase {
         now,
       ]
     );
+
+    // Update component usages index for duplicated scenario
+    await this.updateComponentUsagesForScenario(newId, original.steps);
 
     return this.getScenario(newId);
   }
@@ -515,30 +525,66 @@ export class DuckDBDatabase {
   async deleteComponent(id: string): Promise<boolean> {
     const existing = await this.getComponent(id);
     if (!existing) return false;
+    // Delete component usages first (CASCADE not supported in DuckDB)
+    await this.db.run("DELETE FROM component_usages WHERE component_id = ?", [id]);
     await this.db.run("DELETE FROM components WHERE id = ?", [id]);
     return true;
   }
 
+  /**
+   * Get component usages using indexed lookup instead of O(n) scan
+   */
   async getComponentUsages(componentId: string): Promise<{ scenarioId: string; stepIndices: number[] }[]> {
-    const scenarios = await this.getAllScenarios();
-    const usages: { scenarioId: string; stepIndices: number[] }[] = [];
+    const rows = await this.db.all(
+      `SELECT scenario_id, step_index
+       FROM component_usages
+       WHERE component_id = ?
+       ORDER BY scenario_id, step_index`,
+      [componentId]
+    );
 
-    for (const scenario of scenarios) {
-      const indices: number[] = [];
-      scenario.steps.forEach((step, index) => {
-        if (
-          step.type === "component" &&
-          (step.config as { componentId: string }).componentId === componentId
-        ) {
-          indices.push(index);
-        }
-      });
-      if (indices.length > 0) {
-        usages.push({ scenarioId: scenario.id, stepIndices: indices });
+    // Group by scenario_id
+    const usageMap = new Map<string, number[]>();
+    for (const row of rows) {
+      const scenarioId = row.scenario_id as string;
+      const stepIndex = row.step_index as number;
+
+      if (!usageMap.has(scenarioId)) {
+        usageMap.set(scenarioId, []);
       }
+      usageMap.get(scenarioId)!.push(stepIndex);
     }
 
-    return usages;
+    return Array.from(usageMap.entries()).map(([scenarioId, stepIndices]) => ({
+      scenarioId,
+      stepIndices,
+    }));
+  }
+
+  /**
+   * Update component_usages table for a scenario
+   * This maintains the index used by getComponentUsages
+   */
+  private async updateComponentUsagesForScenario(scenarioId: string, steps: any[]): Promise<void> {
+    // Delete existing usages for this scenario
+    await this.db.run("DELETE FROM component_usages WHERE scenario_id = ?", [scenarioId]);
+
+    // Insert new usages
+    for (let stepIndex = 0; stepIndex < steps.length; stepIndex++) {
+      const step = steps[stepIndex];
+      if (step.type === "component" && step.config?.componentId) {
+        // Only insert if component exists (to satisfy FK constraint)
+        const component = await this.getComponent(step.config.componentId);
+        if (component) {
+          const id = uuid();
+          await this.db.run(
+            `INSERT INTO component_usages (id, component_id, scenario_id, step_index, created_at)
+             VALUES (?, ?, ?, ?, ?)`,
+            [id, step.config.componentId, scenarioId, stepIndex, new Date()]
+          );
+        }
+      }
+    }
   }
 
   // ============================================
