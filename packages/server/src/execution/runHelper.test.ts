@@ -20,10 +20,10 @@ describe("runHelper - executeScenarioRun", () => {
     const activeIds = manager.getActiveRunIds();
     activeIds.forEach((id) => manager.unregisterExecution(id));
 
-    // Create test service
+    // Create test service - use about:blank to avoid slow network calls in tests
     service = await db.createService({
       name: "Test Service",
-      baseUrl: "https://example.com",
+      baseUrl: "about:blank",
       defaultTimeout: 30000,
     });
     serviceId = service.id;

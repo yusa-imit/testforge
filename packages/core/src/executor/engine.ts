@@ -122,18 +122,18 @@ export class TestExecutor extends EventEmitter {
     } as RunEvent);
 
     try {
-      // 브라우저 초기화
-      await this.initBrowser(headless, timeout);
-
-      // 기본 URL로 이동
-      await this.page!.goto(service.baseUrl);
-
-      // 스텝 확장 (컴포넌트 포함)
+      // 스텝 확장 (컴포넌트 포함) - 브라우저 초기화 전에 수행하여 빠른 실패 가능
       const expandedSteps = await this.expandSteps(
         scenario.steps,
         run.environment.variables,
         componentLoader
       );
+
+      // 브라우저 초기화
+      await this.initBrowser(headless, timeout);
+
+      // 기본 URL로 이동
+      await this.page!.goto(service.baseUrl);
 
       // 스텝 실행
       for (let i = 0; i < expandedSteps.length; i++) {

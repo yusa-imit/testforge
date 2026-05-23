@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from "bun:test";
 import { runMigrations } from "./migrate";
-import { getDatabase } from "./connection";
+import { getDatabase, resetDatabaseInstance } from "./connection";
 import { mkdirSync, rmSync, writeFileSync, existsSync, readdirSync, copyFileSync } from "fs";
 import { join } from "path";
 
@@ -41,23 +41,16 @@ describe("runMigrations", () => {
   });
 
   afterEach(async () => {
-    // Close any open database connections after each test
+    // Close the current singleton connection (getDatabase returns the same instance regardless of path)
     try {
-      const testFiles = readdirSync(TEST_DIR);
-      for (const file of testFiles) {
-        if (file.endsWith('.duckdb')) {
-          const dbPath = join(TEST_DIR, file);
-          try {
-            const db = getDatabase(dbPath);
-            await db.close();
-          } catch (_err) {
-            // Ignore
-          }
-        }
-      }
+      const db = getDatabase();
+      await db.close();
     } catch (_err) {
       // Ignore
     }
+
+    // Reset singleton so the next test gets a fresh connection to its own DB file
+    resetDatabaseInstance();
 
     // Clean up test databases
     try {
