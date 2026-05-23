@@ -15,9 +15,24 @@
 
 ## 알려진 이슈
 
-_(현재 미해결 이슈가 있을 때 여기에 기록)_
+_(현재 미해결 이슈 없음)_
 
 ## 해결된 이슈
+
+### [2026-05-24 session 42] runMigrations tests - "Table already exists"
+- **증상**: migrate.test.ts의 8개 테스트가 "Catalog Error: Table with name X already exists!" 에러
+- **원인**: `getDatabase(dbPath)` 가 싱글톤 패턴이라 경로를 무시하고 첫 번째 연결을 반환. 각 테스트가 새 DB 파일을 만들지만 모두 같은 연결을 공유
+- **수정**: afterEach에서 `db.close()` 후 `resetDatabaseInstance()` 호출
+- **파일**: `packages/server/src/db/migrate.test.ts`
+- **교훈**: 싱글톤 DB 연결을 사용하는 테스트는 각 테스트 후 반드시 싱글톤을 리셋해야 함
+
+### [2026-05-24 session 42] runHelper tests - timeout/status check failure
+- **증상**: "missing component" 및 "invalid URL" 테스트가 3초 타임아웃 후 assertions 실패
+- **원인**: engine.ts에서 expandSteps가 브라우저 초기화 + example.com 네트워크 요청 이후에 실행됨. 총 실행 시간이 3초 근처여서 race condition 발생
+- **수정 1**: engine.ts에서 expandSteps를 initBrowser 전으로 이동 → 컴포넌트 없는 경우 브라우저 없이 즉시 실패
+- **수정 2**: runHelper.test.ts 서비스 baseUrl을 `about:blank`로 변경 → 초기 네트워크 호출 제거
+- **파일**: `packages/core/src/executor/engine.ts`, `packages/server/src/execution/runHelper.test.ts`
+- **교훈**: expandSteps는 브라우저 상태가 필요 없으므로 브라우저 초기화 전에 수행하는 것이 옳음. 테스트에서 외부 네트워크 의존성은 flaky 원인이 됨
 
 ### [2026-02-22 session 19] React component testing with Bun + happy-dom
 - **증상**: React Testing Library tests failing with `document is not defined`

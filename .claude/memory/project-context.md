@@ -32,26 +32,16 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 - Search & Filtering
 - Element Registry
 
-## 최근 완료 (Session 27 - 2026-02-24)
+## 최근 완료 (Session 42 - 2026-05-24)
 
-✅ **Database Layer Unit Tests** - Comprehensive coverage for DuckDBDatabase class
-- Created database.test.ts with 57 comprehensive test cases (54 pass, 3 skip)
-- Tests cover ALL database operations:
-  - Services CRUD (create, read, update, delete)
-  - Features CRUD with service relationships
-  - Scenarios CRUD with duplication support
-  - Components CRUD with usage tracking
-  - Test runs and step results
-  - Healing records with stats and propagation
-  - Element registry with history and usage
-- Total test count: 557 tests (539 pass, 18 skip, 0 fail)
-- +54 new passing database tests
-- Note: 3 tests skipped due to DuckDB driver VARCHAR[] binding limitations (functionality works via HTTP API)
-- All database layer now has direct unit test coverage (~1000 LOC)
+✅ **8 Failing Tests Fixed** - All tests now green (650 pass, 26 skip, 0 fail)
+- engine.ts: moved expandSteps before initBrowser → missing-component errors fail fast without browser
+- migrate.test.ts: added resetDatabaseInstance() in afterEach → singleton cleared between tests
+- runHelper.test.ts: changed service baseUrl to about:blank → avoids slow example.com network calls
+- Root causes: DuckDB singleton not reset between migration tests; browser init + network call before step expansion
 
 ## 다음 우선순위
 
-- 안정성 개선 및 버그 수정
 - 성능 최적화
 - 테스트 커버리지 향상
 - 사용자 피드백 반영
