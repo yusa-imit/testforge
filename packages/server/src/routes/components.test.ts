@@ -3,6 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import { v4 as uuid } from "uuid";
 import type { CreateComponent } from "@testforge/core";
 import app from "../index";
 import { setupTestDB } from "../test-helpers/setup";
@@ -132,5 +133,106 @@ describe("DELETE /api/components/:id", () => {
   it("returns 404 for unknown ID", async () => {
     const res = await req("DELETE", "/api/components/nonexistent-id");
     expect(res.status).toBe(404);
+  });
+});
+
+describe("GET /api/components/:id/usages", () => {
+  it("returns usages for a component not used in any scenario", async () => {
+    const component = await db.createComponent(componentPayload);
+    const res = await req("GET", `/api/components/${component.id}/usages`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.success).toBe(true);
+    expect(body.data.component.id).toBe(component.id);
+    expect(body.data.usedBy).toEqual([]);
+    expect(body.data.totalUsages).toBe(0);
+  });
+
+  it("returns usages for a component used in scenarios", async () => {
+    const component = await db.createComponent(componentPayload);
+    const service = await db.createService({ name: "S", baseUrl: "http://x", defaultTimeout: 30000 });
+    const feature = await db.createFeature({ serviceId: service.id, name: "F", owners: [] });
+
+    // Create scenario that uses this component
+    const scenario = await db.createScenario({
+      featureId: feature.id,
+      name: "Uses Component",
+      tags: [],
+      priority: "medium",
+      variables: [],
+      steps: [
+        {
+          id: uuid(),
+          type: "component",
+          description: "Run login flow",
+          continueOnError: false,
+          config: { componentId: component.id, parameters: {} },
+        },
+      ],
+    });
+
+    const res = await req("GET", `/api/components/${component.id}/usages`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.success).toBe(true);
+    expect(body.data.usedBy).toHaveLength(1);
+    expect(body.data.usedBy[0].scenarioId).toBe(scenario.id);
+    expect(body.data.usedBy[0].stepIndices).toContain(0);
+    expect(body.data.totalUsages).toBe(1);
+  });
+
+  it("returns 404 for unknown component", async () => {
+    const res = await req("GET", "/api/components/nonexistent-id/usages");
+    expect(res.status).toBe(404);
+    const body = (await res.json()) as any;
+    expect(body.error.code).toBe("NOT_FOUND");
+  });
+});
+
+describe("Component types and parameters", () => {
+  it("creates components with all valid types", async () => {
+    const types = ["flow", "assertion", "setup", "teardown"] as const;
+    for (const type of types) {
+      const res = await req("POST", "/api/components", {
+        name: `${type} component`,
+        type,
+        parameters: [],
+        steps: [],
+      });
+      expect(res.status).toBe(201);
+      const body = (await res.json()) as any;
+      expect(body.data.type).toBe(type);
+    }
+  });
+
+  it("returns 400 for invalid component type", async () => {
+    const res = await req("POST", "/api/components", {
+      name: "Bad type",
+      type: "invalid-type",
+      parameters: [],
+      steps: [],
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("updates component parameters", async () => {
+    const component = await db.createComponent({
+      name: "Parameterized",
+      type: "flow",
+      parameters: [{ name: "url", type: "string", required: true }],
+      steps: [],
+    });
+
+    const res = await req("PUT", `/api/components/${component.id}`, {
+      parameters: [
+        { name: "url", type: "string", required: true },
+        { name: "timeout", type: "number", required: false, defaultValue: 5000 },
+      ],
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.data.parameters).toHaveLength(2);
+    expect(body.data.parameters[1].name).toBe("timeout");
+    expect(body.data.parameters[1].defaultValue).toBe(5000);
   });
 });
