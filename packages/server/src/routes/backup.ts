@@ -206,7 +206,7 @@ backup.post("/import", zValidator("json", importSchema), async (c) => {
     // Instead, we let individual create operations handle conflicts
     // This prevents data loss if import fails partway through
 
-    // Import services
+    // Import services (preserving original IDs for FK integrity)
     for (const service of backupData.data.services) {
       try {
         if (mode === "merge") {
@@ -216,11 +216,14 @@ backup.post("/import", zValidator("json", importSchema), async (c) => {
             continue;
           }
         }
-        await db.createService({
+        await db.importService({
+          id: service.id,
           name: service.name,
           description: service.description,
           baseUrl: service.baseUrl,
-          defaultTimeout: service.defaultTimeout,
+          defaultTimeout: service.defaultTimeout ?? 30000,
+          createdAt: new Date(service.createdAt ?? Date.now()),
+          updatedAt: new Date(service.updatedAt ?? Date.now()),
         });
         summary.imported.services++;
       } catch (error) {
@@ -232,7 +235,7 @@ backup.post("/import", zValidator("json", importSchema), async (c) => {
       }
     }
 
-    // Import features
+    // Import features (preserving original IDs for FK integrity)
     for (const feature of backupData.data.features) {
       try {
         if (mode === "merge") {
@@ -242,11 +245,14 @@ backup.post("/import", zValidator("json", importSchema), async (c) => {
             continue;
           }
         }
-        await db.createFeature({
+        await db.importFeature({
+          id: feature.id,
           serviceId: feature.serviceId,
           name: feature.name,
           description: feature.description,
           owners: feature.owners || [],
+          createdAt: new Date(feature.createdAt ?? Date.now()),
+          updatedAt: new Date(feature.updatedAt ?? Date.now()),
         });
         summary.imported.features++;
       } catch (error) {
@@ -258,7 +264,7 @@ backup.post("/import", zValidator("json", importSchema), async (c) => {
       }
     }
 
-    // Import scenarios
+    // Import scenarios (preserving original IDs for FK integrity)
     for (const scenario of backupData.data.scenarios) {
       try {
         if (mode === "merge") {
@@ -268,14 +274,18 @@ backup.post("/import", zValidator("json", importSchema), async (c) => {
             continue;
           }
         }
-        await db.createScenario({
+        await db.importScenario({
+          id: scenario.id,
           featureId: scenario.featureId,
           name: scenario.name,
           description: scenario.description,
           tags: scenario.tags || [],
-          priority: scenario.priority,
+          priority: scenario.priority || "medium",
           variables: scenario.variables || {},
           steps: scenario.steps || [],
+          version: scenario.version ?? 1,
+          createdAt: new Date(scenario.createdAt ?? Date.now()),
+          updatedAt: new Date(scenario.updatedAt ?? Date.now()),
         });
         summary.imported.scenarios++;
       } catch (error) {
@@ -287,7 +297,7 @@ backup.post("/import", zValidator("json", importSchema), async (c) => {
       }
     }
 
-    // Import components
+    // Import components (preserving original IDs for FK integrity)
     for (const component of backupData.data.components) {
       try {
         if (mode === "merge") {
@@ -297,12 +307,15 @@ backup.post("/import", zValidator("json", importSchema), async (c) => {
             continue;
           }
         }
-        await db.createComponent({
+        await db.importComponent({
+          id: component.id,
           name: component.name,
           description: component.description,
           type: component.type,
           parameters: component.parameters || [],
           steps: component.steps || [],
+          createdAt: new Date(component.createdAt ?? Date.now()),
+          updatedAt: new Date(component.updatedAt ?? Date.now()),
         });
         summary.imported.components++;
       } catch (error) {

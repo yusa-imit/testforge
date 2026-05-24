@@ -237,6 +237,17 @@ export class DuckDBDatabase {
     return true;
   }
 
+  async importService(data: Service): Promise<Service> {
+    await this.db.run(
+      `INSERT INTO services (id, name, description, base_url, default_timeout, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [data.id, data.name, data.description ?? null, data.baseUrl, data.defaultTimeout ?? 30000,
+       new Date(data.createdAt), new Date(data.updatedAt)]
+    );
+    const row = await this.db.get("SELECT * FROM services WHERE id = ?", [data.id]);
+    return RowConverter.toService(row);
+  }
+
   // ============================================
   // Features
   // ============================================
@@ -311,6 +322,18 @@ export class DuckDBDatabase {
     if (!existing) return false;
     await this.db.run("DELETE FROM features WHERE id = ?", [id]);
     return true;
+  }
+
+  async importFeature(data: Feature): Promise<Feature> {
+    await this.db.run(
+      `INSERT INTO features (id, service_id, name, description, owners, created_at, updated_at)
+       VALUES (?, ?, ?, ?, CAST(? AS VARCHAR[]), ?, ?)`,
+      [data.id, data.serviceId, data.name, data.description ?? null,
+       data.owners?.length ? JSON.stringify(data.owners) : null,
+       new Date(data.createdAt), new Date(data.updatedAt)]
+    );
+    const row = await this.db.get("SELECT * FROM features WHERE id = ?", [data.id]);
+    return RowConverter.toFeature(row);
   }
 
   // ============================================
@@ -419,6 +442,25 @@ export class DuckDBDatabase {
     await this.db.run("DELETE FROM component_usages WHERE scenario_id = ?", [id]);
     await this.db.run("DELETE FROM scenarios WHERE id = ?", [id]);
     return true;
+  }
+
+  async importScenario(data: Scenario): Promise<Scenario> {
+    await this.db.run(
+      `INSERT INTO scenarios (id, feature_id, name, description, tags, priority, variables, steps, version, created_at, updated_at)
+       VALUES (?, ?, ?, ?, CAST(? AS VARCHAR[]), ?, ?, ?, ?, ?, ?)`,
+      [
+        data.id, data.featureId, data.name, data.description ?? null,
+        data.tags?.length ? JSON.stringify(data.tags) : null,
+        data.priority || "medium",
+        JSON.stringify(data.variables || {}),
+        JSON.stringify(data.steps || []),
+        data.version ?? 1,
+        new Date(data.createdAt), new Date(data.updatedAt),
+      ]
+    );
+    await this.updateComponentUsagesForScenario(data.id, data.steps || []);
+    const row = await this.db.get("SELECT * FROM scenarios WHERE id = ?", [data.id]);
+    return RowConverter.toScenario(row);
   }
 
   async duplicateScenario(id: string): Promise<Scenario | undefined> {
@@ -537,6 +579,21 @@ export class DuckDBDatabase {
     await this.db.run("DELETE FROM component_usages WHERE component_id = ?", [id]);
     await this.db.run("DELETE FROM components WHERE id = ?", [id]);
     return true;
+  }
+
+  async importComponent(data: Component): Promise<Component> {
+    await this.db.run(
+      `INSERT INTO components (id, name, description, type, parameters, steps, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        data.id, data.name, data.description ?? null, data.type,
+        JSON.stringify(data.parameters || []),
+        JSON.stringify(data.steps || []),
+        new Date(data.createdAt), new Date(data.updatedAt),
+      ]
+    );
+    const row = await this.db.get("SELECT * FROM components WHERE id = ?", [data.id]);
+    return RowConverter.toComponent(row);
   }
 
   /**

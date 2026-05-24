@@ -53,7 +53,7 @@ describe("Backup Routes", () => {
       expect(data.counts.components).toBe(0);
     });
 
-    it.skip("should return correct counts after creating entities", async () => {
+    it("should return correct counts after creating entities", async () => {
       // Create a service
       await app.request("/api/services", {
         method: "POST",
@@ -66,14 +66,14 @@ describe("Backup Routes", () => {
         }),
       });
 
-      // Create a component
+      // Create a component (valid types: flow | assertion | setup | teardown)
       await app.request("/api/components", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: "Test Component",
           description: "Test",
-          type: "action",
+          type: "flow",
           parameters: [],
           steps: [],
         }),
@@ -106,7 +106,7 @@ describe("Backup Routes", () => {
       expect(data.data.services).toEqual([]);
     });
 
-    it.skip("should export database with services and features", async () => {
+    it("should export database with services and features", async () => {
       // Create service
       const serviceRes = await app.request("/api/services", {
         method: "POST",
@@ -120,12 +120,12 @@ describe("Backup Routes", () => {
       });
       const service = (await serviceRes.json()) as any;
 
-      // Create feature
-      await app.request("/api/features", {
+      // Create feature under the service (serviceId required in body by schema)
+      await app.request(`/api/services/${service.data.id}/features`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          serviceId: service.id,
+          serviceId: service.data.id,
           name: "Checkout",
           description: "Payment flow",
           owners: ["qa@example.com"],
@@ -240,7 +240,7 @@ describe("Backup Routes", () => {
       expect(servicesData.data[0].name).toBe("Imported Service");
     });
 
-    it.skip("should import multiple entities correctly", async () => {
+    it("should import multiple entities correctly", async () => {
       const backup = {
         version: "1.0.0",
         timestamp: new Date().toISOString(),
@@ -310,7 +310,7 @@ describe("Backup Routes", () => {
       expect(result.summary.imported.components).toBe(1);
     });
 
-    it.skip("should skip existing entities in merge mode", async () => {
+    it("should skip existing entities in merge mode", async () => {
       // Create initial service
       await app.request("/api/services", {
         method: "POST",
@@ -425,7 +425,7 @@ describe("Backup Routes", () => {
   });
 
   describe("Export and Import Round-Trip", () => {
-    it.skip("should preserve data through export-import cycle", async () => {
+    it("should preserve data through export-import cycle", async () => {
       // Create test data
       const serviceRes = await app.request("/api/services", {
         method: "POST",
@@ -439,11 +439,11 @@ describe("Backup Routes", () => {
       });
       const service = (await serviceRes.json()) as any;
 
-      await app.request("/api/features", {
+      await app.request(`/api/services/${service.data.id}/features`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          serviceId: service.id,
+          serviceId: service.data.id,
           name: "Round Trip Feature",
           description: "Test",
           owners: ["test@example.com"],
