@@ -705,13 +705,14 @@ export class DuckDBDatabase {
   }
 
   async getDashboardRuns(hours = 24): Promise<(TestRun & { scenarioName: string })[]> {
+    const cutoff = new Date(Date.now() - hours * 60 * 60 * 1000);
     const rows = await this.db.all(
       `SELECT t.*, s.name as scenario_name
        FROM test_runs t
        LEFT JOIN scenarios s ON t.scenario_id = s.id
-       WHERE t.created_at >= CURRENT_TIMESTAMP - INTERVAL '${hours} hours'
+       WHERE t.created_at >= ?
        ORDER BY t.created_at DESC`,
-      []
+      [cutoff]
     );
     return rows.map((row: any) => ({
       ...RowConverter.toTestRun(row),
@@ -838,6 +839,14 @@ export class DuckDBDatabase {
   async getPendingHealingRecords(): Promise<HealingRecord[]> {
     const rows = await this.db.all(
       "SELECT * FROM healing_records WHERE status = 'pending' ORDER BY created_at DESC"
+    );
+    return rows.map(RowConverter.toHealingRecord);
+  }
+
+  async getHealingRecordsByStatus(status: string): Promise<HealingRecord[]> {
+    const rows = await this.db.all(
+      "SELECT * FROM healing_records WHERE status = ? ORDER BY created_at DESC",
+      [status]
     );
     return rows.map(RowConverter.toHealingRecord);
   }

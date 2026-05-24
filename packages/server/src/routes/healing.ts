@@ -16,11 +16,9 @@ const app = new Hono()
     const db = await getDB();
     const status = c.req.query("status");
 
-    let records = await db.getAllHealingRecords();
-
-    if (status) {
-      records = records.filter((r: HealingRecord) => r.status === status);
-    }
+    const records = status
+      ? await db.getHealingRecordsByStatus(status)
+      : await db.getAllHealingRecords();
 
     return c.json({ success: true, data: records });
   })

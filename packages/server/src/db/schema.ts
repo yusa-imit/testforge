@@ -222,6 +222,11 @@ export const indexes = [
   // Component usages indexes
   'CREATE INDEX IF NOT EXISTS idx_component_usages_component_id ON component_usages(component_id)',
   'CREATE INDEX IF NOT EXISTS idx_component_usages_scenario_id ON component_usages(scenario_id)',
+
+  // Composite indexes for common filter+sort patterns
+  'CREATE INDEX IF NOT EXISTS idx_test_runs_scenario_created ON test_runs(scenario_id, created_at DESC)',
+  'CREATE INDEX IF NOT EXISTS idx_healing_status_created ON healing_records(status, created_at DESC)',
+  'CREATE INDEX IF NOT EXISTS idx_step_results_run_index ON step_results(run_id, step_index ASC)',
 ];
 
 /**

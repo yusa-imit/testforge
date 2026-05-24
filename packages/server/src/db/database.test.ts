@@ -821,6 +821,33 @@ describe("DuckDBDatabase - Test Runs", () => {
     expect(dashboardRuns.length).toBeGreaterThanOrEqual(1);
     expect(dashboardRuns[0].scenarioName).toBeDefined();
   });
+
+  it("should exclude runs older than the time window", async () => {
+    const recentRun: TestRun = {
+      id: uuid(),
+      scenarioId,
+      status: "passed",
+      environment: { baseUrl: "https://example.com", variables: {} },
+      createdAt: new Date(),
+    };
+
+    const oldRun: TestRun = {
+      id: uuid(),
+      scenarioId,
+      status: "failed",
+      environment: { baseUrl: "https://example.com", variables: {} },
+      createdAt: new Date(Date.now() - 48 * 60 * 60 * 1000), // 48h ago
+    };
+
+    await db.createTestRun(recentRun);
+    await db.createTestRun(oldRun);
+
+    const dashboardRuns = await db.getDashboardRuns(24);
+
+    const ids = dashboardRuns.map((r) => r.id);
+    expect(ids).toContain(recentRun.id);
+    expect(ids).not.toContain(oldRun.id);
+  });
 });
 
 // ============================================
@@ -1264,6 +1291,43 @@ describe("DuckDBDatabase - Healing Records", () => {
     expect(stats.approved).toBeGreaterThanOrEqual(1);
     expect(stats.rejected).toBeGreaterThanOrEqual(1);
     expect(stats.autoApproved).toBeGreaterThanOrEqual(1);
+  });
+
+  it("should filter healing records by status using getHealingRecordsByStatus", async () => {
+    const makeRecord = (status: string): HealingRecord => ({
+      id: uuid(),
+      scenarioId,
+      stepId: uuid(),
+      runId,
+      locatorDisplayName: `Button ${status}`,
+      originalStrategy: { type: "testId", value: "old", priority: 1 },
+      healedStrategy: { type: "role", role: "button", priority: 2 },
+      trigger: "element_not_found",
+      confidence: 0.9,
+      status: status as any,
+      createdAt: new Date(),
+    });
+
+    await db.createHealingRecord(makeRecord("pending"));
+    await db.createHealingRecord(makeRecord("pending"));
+    await db.createHealingRecord(makeRecord("approved"));
+    await db.createHealingRecord(makeRecord("rejected"));
+
+    const pending = await db.getHealingRecordsByStatus("pending");
+    expect(pending).toHaveLength(2);
+    expect(pending.every((r) => r.status === "pending")).toBe(true);
+
+    const approved = await db.getHealingRecordsByStatus("approved");
+    expect(approved).toHaveLength(1);
+    expect(approved[0].status).toBe("approved");
+
+    const rejected = await db.getHealingRecordsByStatus("rejected");
+    expect(rejected).toHaveLength(1);
+  });
+
+  it("should return empty array for status with no matching records", async () => {
+    const records = await db.getHealingRecordsByStatus("auto_approved");
+    expect(records).toEqual([]);
   });
 });
 
