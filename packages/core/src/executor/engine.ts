@@ -139,6 +139,27 @@ export class TestExecutor extends EventEmitter {
       for (let i = 0; i < expandedSteps.length; i++) {
         const step = expandedSteps[i];
 
+        // disabled 스텝 건너뛰기
+        if (step.disabled) {
+          const skippedResult: StepResult = {
+            id: uuid(),
+            runId: run.id,
+            stepId: step.id,
+            stepIndex: i,
+            status: "skipped",
+            duration: 0,
+            context: { consoleLog: ["Step is disabled"] },
+            createdAt: new Date(),
+          };
+          stepResults.push(skippedResult);
+          onStepComplete?.(skippedResult);
+          this.emit("event", {
+            type: "step:passed",
+            data: { stepIndex: i, duration: 0 },
+          } as RunEvent);
+          continue;
+        }
+
         // Emit step started event (PRD Section 4.2)
         this.emit("event", {
           type: "step:started",
@@ -147,15 +168,39 @@ export class TestExecutor extends EventEmitter {
 
         onStepStart?.(step, i);
 
-        const result = await this.executeStep(
-          step,
-          i,
-          run.id,
-          run.environment.variables,
-          timeout
-        );
+        // 재시도 로직 (step.retries 횟수만큼 실패 시 재시도)
+        const maxAttempts = (step.retries ?? 0) + 1;
+        const retryDelay = step.retryDelay ?? 1000;
+        let result: StepResult;
+        let attempts = 0;
 
-        stepResults.push(result);
+        do {
+          if (attempts > 0) {
+            await new Promise((resolve) => setTimeout(resolve, retryDelay));
+          }
+          result = await this.executeStep(
+            step,
+            i,
+            run.id,
+            run.environment.variables,
+            timeout
+          );
+          attempts++;
+        } while (result!.status === "failed" && attempts < maxAttempts);
+
+        // 재시도가 발생한 경우 context에 기록
+        if (attempts > 1) {
+          const retryMsg =
+            result!.status !== "failed"
+              ? `Passed after ${attempts - 1} retr${attempts - 1 === 1 ? "y" : "ies"}`
+              : `Failed after ${attempts} attempt${attempts === 1 ? "" : "s"} (${step.retries} retr${step.retries === 1 ? "y" : "ies"} exhausted)`;
+          result!.context = {
+            ...result!.context,
+            consoleLog: [...(result!.context?.consoleLog ?? []), retryMsg],
+          };
+        }
+
+        stepResults.push(result!);
 
         // Healing 이벤트 처리
         if (result.healing) {

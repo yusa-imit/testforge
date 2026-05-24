@@ -45,6 +45,15 @@ class TestExecutorTestable extends TestExecutor {
 }
 
 // Helper factories
+const makeStep = (overrides: Partial<Step> = {}): Step => ({
+  id: "00000000-0000-0000-0000-000000000001",
+  type: "navigate",
+  description: "Navigate to page",
+  continueOnError: false,
+  config: { url: "https://example.com" },
+  ...overrides,
+});
+
 const _makeStep = (overrides: Partial<Step> = {}): Step => ({
   id: "00000000-0000-0000-0000-000000000001",
   type: "navigate",
@@ -377,5 +386,83 @@ describe("TestExecutor.bindComponentParameters", () => {
     );
     // Provided param takes precedence over both default and inherited variable
     expect(result.env).toBe("production");
+  });
+});
+
+// ============================================================
+// Step.disabled field — schema-level behavior
+// ============================================================
+describe("Step.disabled field", () => {
+  it("step factory omits disabled by default (optional, falsy = enabled)", () => {
+    const step = makeStep();
+    expect(step.disabled).toBeFalsy();
+  });
+
+  it("step factory supports disabled: true", () => {
+    const step = makeStep({ disabled: true });
+    expect(step.disabled).toBe(true);
+  });
+
+  it("step factory supports disabled: false (explicit)", () => {
+    const step = makeStep({ disabled: false });
+    expect(step.disabled).toBe(false);
+  });
+});
+
+// ============================================================
+// Step.retries and retryDelay field — schema-level behavior
+// ============================================================
+describe("Step.retries field", () => {
+  it("step factory omits retries by default (optional)", () => {
+    const step = makeStep();
+    expect(step.retries).toBeUndefined();
+  });
+
+  it("step factory supports custom retries", () => {
+    const step = makeStep({ retries: 3 });
+    expect(step.retries).toBe(3);
+  });
+
+  it("step factory omits retryDelay by default (optional)", () => {
+    const step = makeStep();
+    expect(step.retryDelay).toBeUndefined();
+  });
+
+  it("step factory supports custom retryDelay", () => {
+    const step = makeStep({ retryDelay: 500 });
+    expect(step.retryDelay).toBe(500);
+  });
+});
+
+// ============================================================
+// determineRunStatus — skipped steps do not cause failure
+// ============================================================
+describe("TestExecutor.determineRunStatus with disabled (skipped) steps", () => {
+  const executor = new TestExecutorTestable();
+
+  it("returns 'passed' when all steps are skipped", () => {
+    const results = [
+      makeStepResult("skipped"),
+      makeStepResult("skipped"),
+    ];
+    expect(executor.testDetermineRunStatus(results)).toBe("passed");
+  });
+
+  it("returns 'passed' when mix of passed and skipped", () => {
+    const results = [
+      makeStepResult("passed"),
+      makeStepResult("skipped"),
+      makeStepResult("passed"),
+    ];
+    expect(executor.testDetermineRunStatus(results)).toBe("passed");
+  });
+
+  it("returns 'failed' even if some steps are skipped", () => {
+    const results = [
+      makeStepResult("passed"),
+      makeStepResult("skipped"),
+      makeStepResult("failed"),
+    ];
+    expect(executor.testDetermineRunStatus(results)).toBe("failed");
   });
 });

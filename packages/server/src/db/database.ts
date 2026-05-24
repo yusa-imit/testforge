@@ -247,8 +247,8 @@ export class DuckDBDatabase {
 
     await this.db.run(
       `INSERT INTO features (id, service_id, name, description, owners, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [id, data.serviceId, data.name, data.description ?? null, data.owners?.length ? data.owners : null, now, now]
+       VALUES (?, ?, ?, ?, CAST(? AS VARCHAR[]), ?, ?)`,
+      [id, data.serviceId, data.name, data.description ?? null, data.owners?.length ? JSON.stringify(data.owners) : null, now, now]
     );
 
     const row = await this.db.get("SELECT * FROM features WHERE id = ?", [id]);
@@ -289,8 +289,8 @@ export class DuckDBDatabase {
       params.push(data.description);
     }
     if (data.owners !== undefined) {
-      updates.push("owners = ?");
-      params.push(data.owners?.length ? data.owners : null);
+      updates.push("owners = CAST(? AS VARCHAR[])");
+      params.push(data.owners?.length ? JSON.stringify(data.owners) : null);
     }
 
     updates.push("updated_at = ?");
@@ -323,13 +323,13 @@ export class DuckDBDatabase {
 
     await this.db.run(
       `INSERT INTO scenarios (id, feature_id, name, description, tags, priority, variables, steps, version, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, CAST(? AS VARCHAR[]), ?, ?, ?, ?, ?, ?)`,
       [
         id,
         data.featureId,
         data.name,
         data.description ?? null,
-        data.tags?.length ? data.tags : null,
+        data.tags?.length ? JSON.stringify(data.tags) : null,
         data.priority || "medium",
         JSON.stringify(data.variables || []),
         JSON.stringify(data.steps || []),
@@ -380,8 +380,8 @@ export class DuckDBDatabase {
       params.push(data.description);
     }
     if (data.tags !== undefined) {
-      updates.push("tags = ?");
-      params.push(data.tags?.length ? data.tags : null);
+      updates.push("tags = CAST(? AS VARCHAR[])");
+      params.push(data.tags?.length ? JSON.stringify(data.tags) : null);
     }
     if (data.priority !== undefined) {
       updates.push("priority = ?");
@@ -430,13 +430,13 @@ export class DuckDBDatabase {
 
     await this.db.run(
       `INSERT INTO scenarios (id, feature_id, name, description, tags, priority, variables, steps, version, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, CAST(? AS VARCHAR[]), ?, ?, ?, ?, ?, ?)`,
       [
         newId,
         original.featureId,
         `${original.name} (복사본)`,
         original.description ?? null,
-        original.tags?.length ? original.tags : null,
+        original.tags?.length ? JSON.stringify(original.tags) : null,
         original.priority,
         JSON.stringify(original.variables),
         JSON.stringify(original.steps),
@@ -809,8 +809,8 @@ export class DuckDBDatabase {
       params.push(data.reviewNote);
     }
     if (data.propagatedTo !== undefined) {
-      updates.push("propagated_to = ?");
-      params.push(data.propagatedTo?.length ? data.propagatedTo : null);
+      updates.push("propagated_to = CAST(? AS VARCHAR[])");
+      params.push(data.propagatedTo?.length ? JSON.stringify(data.propagatedTo) : null);
     }
 
     if (updates.length === 0) return existing;

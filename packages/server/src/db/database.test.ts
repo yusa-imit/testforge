@@ -162,9 +162,7 @@ describe("DuckDBDatabase - Features", () => {
     serviceId = service.id;
   });
 
-  it.skip("should create a feature with all fields (skipped: DuckDB array binding issue)", async () => {
-    // NOTE: DuckDB's node.js driver has issues with VARCHAR[] parameter binding
-    // This test is skipped but the functionality works via HTTP API
+  it("should create a feature with all fields", async () => {
     const data: CreateFeature = {
       serviceId,
       name: "Login Feature",
@@ -276,8 +274,7 @@ describe("DuckDBDatabase - Scenarios", () => {
     featureId = feature.id;
   });
 
-  it.skip("should create a scenario with all fields (skipped: DuckDB array binding issue)", async () => {
-    // NOTE: DuckDB's node.js driver has issues with VARCHAR[] parameter binding
+  it("should create a scenario with all fields", async () => {
     const data: CreateScenario = {
       featureId,
       name: "Login Test",
@@ -1171,8 +1168,7 @@ describe("DuckDBDatabase - Healing Records", () => {
     expect(updated!.reviewNote).toBe("Looks good");
   });
 
-  it.skip("should update healing record with propagation info (skipped: DuckDB array binding issue)", async () => {
-    // NOTE: DuckDB's node.js driver has issues with VARCHAR[] parameter binding
+  it("should update healing record with propagation info", async () => {
     const record: HealingRecord = {
       id: uuid(),
       scenarioId,

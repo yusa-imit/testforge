@@ -6,6 +6,7 @@ import {
   stepTypeSchema,
   healingStatusSchema,
   runStatusSchema,
+  stepSchema,
 } from "./index";
 
 describe("Zod Schemas", () => {
@@ -208,5 +209,96 @@ describe("Zod Schemas", () => {
         expect(result.success).toBe(true);
       });
     }
+  });
+
+  describe("stepSchema — retries, retryDelay, disabled", () => {
+    const validStep = {
+      id: "550e8400-e29b-41d4-a716-446655440001",
+      type: "navigate",
+      description: "Go to home",
+      continueOnError: false,
+      config: { url: "https://example.com" },
+    };
+
+    it("parses without retries (field is optional)", () => {
+      const result = stepSchema.safeParse(validStep);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.retries).toBeUndefined();
+      }
+    });
+
+    it("parses without retryDelay (field is optional)", () => {
+      const result = stepSchema.safeParse(validStep);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.retryDelay).toBeUndefined();
+      }
+    });
+
+    it("parses without disabled (field is optional)", () => {
+      const result = stepSchema.safeParse(validStep);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.disabled).toBeUndefined();
+      }
+    });
+
+    it("accepts retries 0 through 10", () => {
+      for (const n of [0, 1, 5, 10]) {
+        const result = stepSchema.safeParse({ ...validStep, retries: n });
+        expect(result.success).toBe(true);
+        if (result.success) expect(result.data.retries).toBe(n);
+      }
+    });
+
+    it("rejects retries > 10", () => {
+      const result = stepSchema.safeParse({ ...validStep, retries: 11 });
+      expect(result.success).toBe(false);
+    });
+
+    it("rejects negative retries", () => {
+      const result = stepSchema.safeParse({ ...validStep, retries: -1 });
+      expect(result.success).toBe(false);
+    });
+
+    it("rejects non-integer retries", () => {
+      const result = stepSchema.safeParse({ ...validStep, retries: 1.5 });
+      expect(result.success).toBe(false);
+    });
+
+    it("accepts disabled: true", () => {
+      const result = stepSchema.safeParse({ ...validStep, disabled: true });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.disabled).toBe(true);
+      }
+    });
+
+    it("accepts disabled: false", () => {
+      const result = stepSchema.safeParse({ ...validStep, disabled: false });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.disabled).toBe(false);
+      }
+    });
+
+    it("accepts custom retryDelay", () => {
+      const result = stepSchema.safeParse({ ...validStep, retryDelay: 500 });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.retryDelay).toBe(500);
+      }
+    });
+
+    it("accepts retryDelay: 0 (no delay)", () => {
+      const result = stepSchema.safeParse({ ...validStep, retryDelay: 0 });
+      expect(result.success).toBe(true);
+    });
+
+    it("rejects negative retryDelay", () => {
+      const result = stepSchema.safeParse({ ...validStep, retryDelay: -100 });
+      expect(result.success).toBe(false);
+    });
   });
 });

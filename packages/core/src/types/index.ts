@@ -265,6 +265,9 @@ export const stepSchema = z.object({
   description: z.string(),
   timeout: z.number().optional(),
   continueOnError: z.boolean().default(false),
+  retries: z.number().int().min(0).max(10).optional(),
+  retryDelay: z.number().int().min(0).optional(),
+  disabled: z.boolean().optional(),
   config: stepConfigSchema,
 });
 
