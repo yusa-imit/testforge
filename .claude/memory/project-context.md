@@ -32,6 +32,29 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 - Search & Filtering
 - Element Registry
 
+## 최근 완료 (Session 45 - 2026-05-24)
+
+✅ **Security + Performance fixes** - Tests: 706 pass, 16 skip, 0 fail (+3 tests)
+
+**1. SQL injection fix** (packages/server/src/db/database.ts)
+- `getDashboardRuns` used `INTERVAL '${hours} hours'` string interpolation
+- Changed to parameterized cutoff: `WHERE t.created_at >= ?` with a computed Date object
+
+**2. Healing status filter optimization** (packages/server/src/routes/healing.ts)
+- `GET /api/healing?status=X` previously fetched ALL records then filtered in JS
+- Now calls `getHealingRecordsByStatus(status)` which uses DB-level WHERE clause
+- New method added to DuckDBDatabase
+
+**3. Composite indexes** (packages/server/src/db/schema.ts + migration 0004)
+- `test_runs(scenario_id, created_at DESC)` - speeds up getTestRunsByScenario
+- `healing_records(status, created_at DESC)` - speeds up filtered healing list
+- `step_results(run_id, step_index ASC)` - speeds up getStepResultsByRun
+
+**4. New tests** (+3 tests in database.test.ts):
+- getDashboardRuns excludes runs older than the time window
+- getHealingRecordsByStatus filters correctly by status
+- getHealingRecordsByStatus returns empty array for unmatched status
+
 ## 최근 완료 (Session 44 - 2026-05-24)
 
 ✅ **Test Coverage Expansion** - Tests: 703 pass, 16 skip, 0 fail (+28 tests from session 43's 675)
@@ -56,7 +79,7 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 
 ## 다음 우선순위
 
-- 성능 최적화 (DB 인덱스, 쿼리 최적화)
+- updateComponentUsagesForScenario N+1 queries (checks each component exists in loop)
 - Remaining 16 skipped tests are browser-integration (Playwright required, legitimately skipped)
 - 사용자 피드백 반영
 
