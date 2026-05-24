@@ -631,23 +631,34 @@ export class DuckDBDatabase {
    * This maintains the index used by getComponentUsages
    */
   private async updateComponentUsagesForScenario(scenarioId: string, steps: any[]): Promise<void> {
-    // Delete existing usages for this scenario
     await this.db.run("DELETE FROM component_usages WHERE scenario_id = ?", [scenarioId]);
 
-    // Insert new usages
-    for (let stepIndex = 0; stepIndex < steps.length; stepIndex++) {
-      const step = steps[stepIndex];
+    // Collect unique component IDs referenced by steps to validate in one batch query
+    const componentSteps: Array<{ stepIndex: number; componentId: string }> = [];
+    for (let i = 0; i < steps.length; i++) {
+      const step = steps[i];
       if (step.type === "component" && step.config?.componentId) {
-        // Only insert if component exists (to satisfy FK constraint)
-        const component = await this.getComponent(step.config.componentId);
-        if (component) {
-          const id = uuid();
-          await this.db.run(
-            `INSERT INTO component_usages (id, component_id, scenario_id, step_index, created_at)
-             VALUES (?, ?, ?, ?, ?)`,
-            [id, step.config.componentId, scenarioId, stepIndex, new Date()]
-          );
-        }
+        componentSteps.push({ stepIndex: i, componentId: step.config.componentId });
+      }
+    }
+    if (componentSteps.length === 0) return;
+
+    const uniqueIds = [...new Set(componentSteps.map((s) => s.componentId))];
+    const placeholders = uniqueIds.map(() => "?").join(", ");
+    const existing = await this.db.all(
+      `SELECT id FROM components WHERE id IN (${placeholders})`,
+      uniqueIds
+    );
+    const validIds = new Set(existing.map((r) => r.id as string));
+
+    const now = new Date();
+    for (const { stepIndex, componentId } of componentSteps) {
+      if (validIds.has(componentId)) {
+        await this.db.run(
+          `INSERT INTO component_usages (id, component_id, scenario_id, step_index, created_at)
+           VALUES (?, ?, ?, ?, ?)`,
+          [uuid(), componentId, scenarioId, stepIndex, now]
+        );
       }
     }
   }

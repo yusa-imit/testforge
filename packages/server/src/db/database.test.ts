@@ -655,6 +655,92 @@ describe("DuckDBDatabase - Components", () => {
 
     expect(usages).toEqual([]);
   });
+
+  it("should skip component steps referencing non-existent component IDs", async () => {
+    const service = await db.createService({ name: "S", baseUrl: "https://t.com", defaultTimeout: 30000 });
+    const feature = await db.createFeature({ serviceId: service.id, name: "F", owners: [] });
+
+    const nonExistentId = uuid();
+    const scenario = await db.createScenario({
+      featureId: feature.id,
+      name: "Scenario with ghost component",
+      tags: [],
+      priority: "medium",
+      variables: [],
+      steps: [
+        { id: uuid(), type: "component", description: "Missing", continueOnError: false, config: { componentId: nonExistentId, parameters: {} } },
+      ],
+    });
+
+    // component_usages should not have been inserted (FK would fail)
+    const usages = await db.getComponentUsages(nonExistentId);
+    expect(usages).toEqual([]);
+  });
+
+  it("should handle mixed valid and invalid component IDs in one scenario", async () => {
+    const service = await db.createService({ name: "S", baseUrl: "https://t.com", defaultTimeout: 30000 });
+    const feature = await db.createFeature({ serviceId: service.id, name: "F", owners: [] });
+
+    const validComponent = await db.createComponent({ name: "Valid", type: "flow", parameters: [], steps: [] });
+    const ghostId = uuid();
+
+    const scenario = await db.createScenario({
+      featureId: feature.id,
+      name: "Mixed scenario",
+      tags: [],
+      priority: "medium",
+      variables: [],
+      steps: [
+        { id: uuid(), type: "component", description: "Valid", continueOnError: false, config: { componentId: validComponent.id, parameters: {} } },
+        { id: uuid(), type: "component", description: "Ghost", continueOnError: false, config: { componentId: ghostId, parameters: {} } },
+        { id: uuid(), type: "component", description: "Valid again", continueOnError: false, config: { componentId: validComponent.id, parameters: {} } },
+      ],
+    });
+
+    const usages = await db.getComponentUsages(validComponent.id);
+    expect(usages).toHaveLength(1);
+    expect(usages[0].scenarioId).toBe(scenario.id);
+    expect(usages[0].stepIndices).toEqual([0, 2]);
+
+    const ghostUsages = await db.getComponentUsages(ghostId);
+    expect(ghostUsages).toEqual([]);
+  });
+
+  it("should update component usages when scenario steps are updated", async () => {
+    const service = await db.createService({ name: "S", baseUrl: "https://t.com", defaultTimeout: 30000 });
+    const feature = await db.createFeature({ serviceId: service.id, name: "F", owners: [] });
+
+    const comp1 = await db.createComponent({ name: "Comp1", type: "flow", parameters: [], steps: [] });
+    const comp2 = await db.createComponent({ name: "Comp2", type: "flow", parameters: [], steps: [] });
+
+    const scenario = await db.createScenario({
+      featureId: feature.id,
+      name: "Updateable Scenario",
+      tags: [],
+      priority: "medium",
+      variables: [],
+      steps: [
+        { id: uuid(), type: "component", description: "C1", continueOnError: false, config: { componentId: comp1.id, parameters: {} } },
+      ],
+    });
+
+    let usages1 = await db.getComponentUsages(comp1.id);
+    expect(usages1[0].stepIndices).toEqual([0]);
+
+    // Update scenario steps to use comp2 instead
+    await db.updateScenario(scenario.id, {
+      steps: [
+        { id: uuid(), type: "component", description: "C2", continueOnError: false, config: { componentId: comp2.id, parameters: {} } },
+      ],
+    });
+
+    usages1 = await db.getComponentUsages(comp1.id);
+    expect(usages1).toEqual([]);
+
+    const usages2 = await db.getComponentUsages(comp2.id);
+    expect(usages2).toHaveLength(1);
+    expect(usages2[0].stepIndices).toEqual([0]);
+  });
 });
 
 // ============================================
