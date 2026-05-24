@@ -1426,3 +1426,217 @@ describe("DuckDBDatabase - Element Registry", () => {
     expect(result).toBeNull();
   });
 });
+
+// ============================================
+// Import Methods (ID-preserving)
+// ============================================
+
+describe("DuckDBDatabase - Import Methods", () => {
+  it("should import service with original ID preserved", async () => {
+    const originalId = uuid();
+    const originalCreatedAt = new Date("2024-01-01T00:00:00Z");
+    const originalUpdatedAt = new Date("2024-06-01T00:00:00Z");
+
+    const imported = await db.importService({
+      id: originalId,
+      name: "Imported Service",
+      description: "From backup",
+      baseUrl: "https://example.com",
+      defaultTimeout: 5000,
+      createdAt: originalCreatedAt,
+      updatedAt: originalUpdatedAt,
+    });
+
+    expect(imported.id).toBe(originalId);
+    expect(imported.name).toBe("Imported Service");
+    expect(imported.description).toBe("From backup");
+    expect(imported.baseUrl).toBe("https://example.com");
+    expect(imported.defaultTimeout).toBe(5000);
+
+    const retrieved = await db.getService(originalId);
+    expect(retrieved).toBeDefined();
+    expect(retrieved!.id).toBe(originalId);
+  });
+
+  it("should import feature with original ID and FK integrity preserved", async () => {
+    const serviceId = uuid();
+    await db.importService({
+      id: serviceId,
+      name: "Parent Service",
+      description: null,
+      baseUrl: "https://example.com",
+      defaultTimeout: 30000,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const featureId = uuid();
+    const imported = await db.importFeature({
+      id: featureId,
+      serviceId,
+      name: "Imported Feature",
+      description: "Feature from backup",
+      owners: ["alice@example.com", "bob@example.com"],
+      createdAt: new Date("2024-01-01T00:00:00Z"),
+      updatedAt: new Date(),
+    });
+
+    expect(imported.id).toBe(featureId);
+    expect(imported.serviceId).toBe(serviceId);
+    expect(imported.name).toBe("Imported Feature");
+    expect(imported.owners).toEqual(["alice@example.com", "bob@example.com"]);
+
+    const retrieved = await db.getFeature(featureId);
+    expect(retrieved).toBeDefined();
+    expect(retrieved!.id).toBe(featureId);
+    expect(retrieved!.serviceId).toBe(serviceId);
+  });
+
+  it("should import feature with empty owners", async () => {
+    const serviceId = uuid();
+    await db.importService({
+      id: serviceId,
+      name: "Service",
+      description: null,
+      baseUrl: "https://example.com",
+      defaultTimeout: 30000,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const featureId = uuid();
+    const imported = await db.importFeature({
+      id: featureId,
+      serviceId,
+      name: "Feature No Owners",
+      description: null,
+      owners: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    expect(imported.id).toBe(featureId);
+    expect(imported.owners).toEqual([]);
+  });
+
+  it("should import scenario with original ID and FK integrity preserved", async () => {
+    const serviceId = uuid();
+    await db.importService({
+      id: serviceId,
+      name: "Service",
+      description: null,
+      baseUrl: "https://example.com",
+      defaultTimeout: 30000,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const featureId = uuid();
+    await db.importFeature({
+      id: featureId,
+      serviceId,
+      name: "Feature",
+      description: null,
+      owners: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const scenarioId = uuid();
+    const imported = await db.importScenario({
+      id: scenarioId,
+      featureId,
+      name: "Imported Scenario",
+      description: "Scenario from backup",
+      tags: ["smoke", "regression"],
+      priority: "high",
+      variables: { apiUrl: "https://api.example.com" },
+      steps: [],
+      version: 3,
+      createdAt: new Date("2024-01-01T00:00:00Z"),
+      updatedAt: new Date(),
+    });
+
+    expect(imported.id).toBe(scenarioId);
+    expect(imported.featureId).toBe(featureId);
+    expect(imported.name).toBe("Imported Scenario");
+    expect(imported.tags).toEqual(["smoke", "regression"]);
+    expect(imported.priority).toBe("high");
+    expect(imported.version).toBe(3);
+
+    const retrieved = await db.getScenario(scenarioId);
+    expect(retrieved).toBeDefined();
+    expect(retrieved!.id).toBe(scenarioId);
+  });
+
+  it("should import component with original ID preserved", async () => {
+    const componentId = uuid();
+    const imported = await db.importComponent({
+      id: componentId,
+      name: "Imported Component",
+      description: "Component from backup",
+      type: "flow",
+      parameters: [{ name: "url", type: "string", required: true }],
+      steps: [],
+      createdAt: new Date("2024-01-01T00:00:00Z"),
+      updatedAt: new Date(),
+    });
+
+    expect(imported.id).toBe(componentId);
+    expect(imported.name).toBe("Imported Component");
+    expect(imported.type).toBe("flow");
+    expect(imported.parameters).toHaveLength(1);
+
+    const retrieved = await db.getComponent(componentId);
+    expect(retrieved).toBeDefined();
+    expect(retrieved!.id).toBe(componentId);
+  });
+
+  it("should import a complete hierarchy and maintain FK integrity", async () => {
+    const serviceId = uuid();
+    const featureId = uuid();
+    const scenarioId = uuid();
+
+    await db.importService({
+      id: serviceId,
+      name: "Root Service",
+      description: null,
+      baseUrl: "https://example.com",
+      defaultTimeout: 30000,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    await db.importFeature({
+      id: featureId,
+      serviceId,
+      name: "Root Feature",
+      description: null,
+      owners: ["owner@example.com"],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    await db.importScenario({
+      id: scenarioId,
+      featureId,
+      name: "Root Scenario",
+      description: null,
+      tags: [],
+      priority: "medium",
+      variables: {},
+      steps: [],
+      version: 1,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const scenarios = await db.getScenariosByFeature(featureId);
+    expect(scenarios).toHaveLength(1);
+    expect(scenarios[0].id).toBe(scenarioId);
+
+    const features = await db.getFeaturesByService(serviceId);
+    expect(features).toHaveLength(1);
+    expect(features[0].id).toBe(featureId);
+  });
+});
