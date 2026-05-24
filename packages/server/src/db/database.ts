@@ -452,7 +452,7 @@ export class DuckDBDatabase {
         data.id, data.featureId, data.name, data.description ?? null,
         data.tags?.length ? JSON.stringify(data.tags) : null,
         data.priority || "medium",
-        JSON.stringify(data.variables || {}),
+        JSON.stringify(data.variables ?? []),
         JSON.stringify(data.steps || []),
         data.version ?? 1,
         new Date(data.createdAt), new Date(data.updatedAt),
