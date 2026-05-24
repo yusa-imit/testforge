@@ -32,6 +32,16 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 - Search & Filtering
 - Element Registry
 
+## 최근 완료 (Session 46 - 2026-05-25)
+
+✅ **N+1 query fix in updateComponentUsagesForScenario** - Tests: 709 pass, 16 skip, 0 fail (+3 tests)
+
+**Batch component existence check** (packages/server/src/db/database.ts)
+- `updateComponentUsagesForScenario` called `getComponent()` once per component step (N queries)
+- Changed to collect all unique component IDs, run a single `SELECT id FROM components WHERE id IN (...)` query, then check existence from a Set
+- Early return when no component steps exist (avoids DB round-trip entirely)
+- Added 4 new tests: ghost IDs skipped, mixed valid/invalid, update sync
+
 ## 최근 완료 (Session 45 - 2026-05-24)
 
 ✅ **Security + Performance fixes** - Tests: 706 pass, 16 skip, 0 fail (+3 tests)
@@ -79,9 +89,9 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 
 ## 다음 우선순위
 
-- updateComponentUsagesForScenario N+1 queries (checks each component exists in loop)
 - Remaining 16 skipped tests are browser-integration (Playwright required, legitimately skipped)
 - 사용자 피드백 반영
+- Any new PRD items or feature requests
 
 ## 주요 파일 경로
 
