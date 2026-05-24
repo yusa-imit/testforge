@@ -205,3 +205,37 @@ describe("POST /api/services/:serviceId/features", () => {
     expect(res.status).toBe(404);
   });
 });
+
+// ──────────────────────────────────────────────────────────────────────────────
+// POST /api/services/:id/run
+// ──────────────────────────────────────────────────────────────────────────────
+
+describe("POST /api/services/:id/run", () => {
+  it("returns 404 for unknown service", async () => {
+    const res = await req("POST", "/api/services/nonexistent-id/run");
+    expect(res.status).toBe(404);
+    const body = (await res.json()) as any;
+    expect(body.error.code).toBe("NOT_FOUND");
+  });
+
+  it("returns 200 with empty runIds when service has no features", async () => {
+    const service = await db.createService(servicePayload);
+    const res = await req("POST", `/api/services/${service.id}/run`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.success).toBe(true);
+    expect(body.data.runIds).toEqual([]);
+    expect(body.data.message).toBe("No scenarios to run.");
+  });
+
+  it("returns 200 with empty runIds when service has features but no scenarios", async () => {
+    const service = await db.createService(servicePayload);
+    await db.createFeature({ serviceId: service.id, name: "Empty Feature", owners: [] });
+    const res = await req("POST", `/api/services/${service.id}/run`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.success).toBe(true);
+    expect(body.data.runIds).toEqual([]);
+    expect(body.data.message).toBe("No scenarios to run.");
+  });
+});
