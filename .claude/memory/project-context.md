@@ -32,29 +32,32 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 - Search & Filtering
 - Element Registry
 
-## 최근 완료 (Session 43 - 2026-05-24)
+## 최근 완료 (Session 44 - 2026-05-24)
 
-✅ **Step retry/disabled + DuckDB array fix** - Tests: 675 pass, 23 skip, 0 fail (+25 tests)
+✅ **Test Coverage Expansion** - Tests: 703 pass, 16 skip, 0 fail (+28 tests from session 43's 675)
 
-**1. Step.retries / retryDelay / disabled fields added** (packages/core/src/types/index.ts)
-- All three fields are optional in TypeScript (backward compatible)
-- Engine skips disabled steps (returns status=skipped immediately)
-- Engine retries failed steps up to `retries` times with `retryDelay` ms between attempts
-- Retry outcome logged in StepResult.context.consoleLog
+**1. Backup import now preserves entity IDs** (packages/server/src/db/database.ts)
+- Added importService/importFeature/importScenario/importComponent methods
+- These accept full entity objects with original IDs for FK integrity during restore
+- backup.ts updated to use these ID-preserving methods
+- 5 previously-skipped backup tests now pass
 
-**2. DuckDB VARCHAR[] binding fix** (packages/server/src/db/database.ts)
-- Root cause: duckdb node.js driver converts JS arrays to comma-separated strings
-- Fix: use `CAST(? AS VARCHAR[])` in SQL + `JSON.stringify(array)` as parameter value
-- Affected: owners (features), tags (scenarios), propagatedTo (healing_records)
-- 3 previously-skipped database tests are now active and passing
+**2. Connection tests fixed** (packages/server/src/db/connection.test.ts)
+- Added resetDatabaseInstance() to afterEach — 2 previously-skipped tests now pass
 
-**Previous (Session 42 - 2026-05-24):**
-✅ **8 Failing Tests Fixed** - All tests green (650 pass, 26 skip, 0 fail)
+**3. New test coverage** (net +25 tests):
+- database.test.ts: 9 tests for importService/Feature/Scenario/Component methods
+- scenarios.test.ts: 6 tests for step retry/disabled fields and tags/priority
+- components.test.ts: 8 tests for usages endpoint and type validation
+- services.test.ts: 3 tests for POST /api/services/:id/run endpoint
+
+**Previous (Session 43 - 2026-05-24):**
+✅ **Step retry/disabled + DuckDB array fix** - Tests: 675 pass, 23 skip, 0 fail
 
 ## 다음 우선순위
 
-- 성능 최적화
-- 테스트 커버리지 향상 (23 skipped tests remain - mostly browser-integration)
+- 성능 최적화 (DB 인덱스, 쿼리 최적화)
+- Remaining 16 skipped tests are browser-integration (Playwright required, legitimately skipped)
 - 사용자 피드백 반영
 
 ## 주요 파일 경로
