@@ -32,18 +32,29 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 - Search & Filtering
 - Element Registry
 
-## 최근 완료 (Session 42 - 2026-05-24)
+## 최근 완료 (Session 43 - 2026-05-24)
 
-✅ **8 Failing Tests Fixed** - All tests now green (650 pass, 26 skip, 0 fail)
-- engine.ts: moved expandSteps before initBrowser → missing-component errors fail fast without browser
-- migrate.test.ts: added resetDatabaseInstance() in afterEach → singleton cleared between tests
-- runHelper.test.ts: changed service baseUrl to about:blank → avoids slow example.com network calls
-- Root causes: DuckDB singleton not reset between migration tests; browser init + network call before step expansion
+✅ **Step retry/disabled + DuckDB array fix** - Tests: 675 pass, 23 skip, 0 fail (+25 tests)
+
+**1. Step.retries / retryDelay / disabled fields added** (packages/core/src/types/index.ts)
+- All three fields are optional in TypeScript (backward compatible)
+- Engine skips disabled steps (returns status=skipped immediately)
+- Engine retries failed steps up to `retries` times with `retryDelay` ms between attempts
+- Retry outcome logged in StepResult.context.consoleLog
+
+**2. DuckDB VARCHAR[] binding fix** (packages/server/src/db/database.ts)
+- Root cause: duckdb node.js driver converts JS arrays to comma-separated strings
+- Fix: use `CAST(? AS VARCHAR[])` in SQL + `JSON.stringify(array)` as parameter value
+- Affected: owners (features), tags (scenarios), propagatedTo (healing_records)
+- 3 previously-skipped database tests are now active and passing
+
+**Previous (Session 42 - 2026-05-24):**
+✅ **8 Failing Tests Fixed** - All tests green (650 pass, 26 skip, 0 fail)
 
 ## 다음 우선순위
 
 - 성능 최적화
-- 테스트 커버리지 향상
+- 테스트 커버리지 향상 (23 skipped tests remain - mostly browser-integration)
 - 사용자 피드백 반영
 
 ## 주요 파일 경로

@@ -59,6 +59,13 @@ _(현재 미해결 이슈 없음)_
 - **수정**: 테스트 beforeEach에서 service→feature→scenario→test_run 전체 계층 생성 후 ID 사용
 - **파일**: `packages/server/src/routes/healing.test.ts`
 
+### [2026-05-24 session 43] DuckDB VARCHAR[] non-empty array binding failure
+- **증상**: createFeature(owners: ["alice","bob"]), createScenario(tags: ["smoke"]), updateHealingRecord(propagatedTo: [...]) 모두 "Conversion Error: Type VARCHAR with value 'a,b' can't be cast to VARCHAR[]"
+- **원인**: duckdb node.js 드라이버가 JS 배열을 파라미터로 받으면 자동으로 comma-joined string으로 변환 ("a,b"). 이 string이 VARCHAR[]로 캐스팅 불가
+- **수정**: SQL에서 `CAST(? AS VARCHAR[])` 사용, 파라미터로 `JSON.stringify(array)` 전달. DuckDB는 JSON 배열 문자열을 VARCHAR[]로 캐스팅 가능
+- **파일**: `packages/server/src/db/database.ts` (createFeature, updateFeature, createScenario, updateScenario, duplicateScenario, updateHealingRecord)
+- **교훈**: DuckDB node.js 드라이버의 배열 바인딩은 항상 `CAST(? AS VARCHAR[])` + `JSON.stringify` 패턴 사용
+
 ### [2026-02-19] DuckDB VARCHAR[] 빈 배열 바인딩 실패
 - **증상**: `createFeature`, `createScenario` 호출 시 owners/tags가 빈 배열이면 `Conversion Error: Type VARCHAR with value '' can't be cast to VARCHAR[]`
 - **원인**: DuckDB 드라이버가 JS 빈 배열 `[]`을 VARCHAR[]로 변환 불가. `null`은 정상 처리됨
