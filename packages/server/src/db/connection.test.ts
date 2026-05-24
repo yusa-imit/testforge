@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { DuckDBConnection, getDatabase, initDatabase, createReadOnlyConnection } from "./connection";
+import { DuckDBConnection, getDatabase, initDatabase, createReadOnlyConnection, resetDatabaseInstance } from "./connection";
 import { mkdirSync, rmSync } from "fs";
 import { join } from "path";
 
@@ -297,6 +297,7 @@ describe("initDatabase", () => {
     } catch (_err) {
       // Ignore
     }
+    resetDatabaseInstance();
     try {
       rmSync(TEST_DIR, { recursive: true, force: true });
     } catch (_err) {
@@ -304,8 +305,7 @@ describe("initDatabase", () => {
     }
   });
 
-  it.skip("should initialize and connect database", async () => {
-    // Skip: singleton caching causes issues when running in parallel with migrate tests
+  it("should initialize and connect database", async () => {
     const db = await initDatabase(TEST_DB_PATH);
     expect(db).toBeDefined();
 
@@ -316,8 +316,7 @@ describe("initDatabase", () => {
     await db.close();
   });
 
-  it.skip("should return connected instance", async () => {
-    // Skip: singleton caching causes issues when running in parallel with migrate tests
+  it("should return connected instance", async () => {
     const db = await initDatabase(TEST_DB_PATH);
 
     // Should be able to execute queries immediately
