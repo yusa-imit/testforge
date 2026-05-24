@@ -215,6 +215,164 @@ describe("GET /api/scenarios/:id/runs", () => {
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
+// Step fields: disabled, retries, retryDelay
+// ──────────────────────────────────────────────────────────────────────────────
+
+describe("Steps with retry and disabled fields", () => {
+  it("persists disabled=true on a step through PUT", async () => {
+    const service = await createService();
+    const feature = await createFeature(service.id);
+    const scenario = await createScenario(feature.id);
+
+    const steps = [
+      {
+        id: uuid(),
+        type: "click",
+        description: "Click button",
+        disabled: true,
+        continueOnError: false,
+        config: {
+          locator: {
+            displayName: "Submit",
+            strategies: [{ type: "testId", value: "submit-btn", priority: 1 }],
+            healing: { enabled: false, autoApprove: false, confidenceThreshold: 0.9 },
+          },
+        },
+      },
+    ];
+
+    const res = await req("PUT", `/api/scenarios/${scenario.id}`, { steps });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.success).toBe(true);
+    expect(body.data.steps).toHaveLength(1);
+    expect(body.data.steps[0].disabled).toBe(true);
+  });
+
+  it("persists retries and retryDelay on a step through PUT", async () => {
+    const service = await createService();
+    const feature = await createFeature(service.id);
+    const scenario = await createScenario(feature.id);
+
+    const steps = [
+      {
+        id: uuid(),
+        type: "click",
+        description: "Click with retry",
+        retries: 3,
+        retryDelay: 500,
+        continueOnError: false,
+        config: {
+          locator: {
+            displayName: "Button",
+            strategies: [{ type: "css", selector: "button.submit", priority: 1 }],
+            healing: { enabled: true, autoApprove: false, confidenceThreshold: 0.85 },
+          },
+        },
+      },
+    ];
+
+    const res = await req("PUT", `/api/scenarios/${scenario.id}`, { steps });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.success).toBe(true);
+    expect(body.data.steps[0].retries).toBe(3);
+    expect(body.data.steps[0].retryDelay).toBe(500);
+  });
+
+  it("persists mixed enabled and disabled steps through PUT", async () => {
+    const service = await createService();
+    const feature = await createFeature(service.id);
+    const scenario = await createScenario(feature.id);
+
+    const steps = [
+      {
+        id: uuid(),
+        type: "navigate",
+        description: "Navigate to page",
+        disabled: false,
+        continueOnError: false,
+        config: { url: "https://example.com" },
+      },
+      {
+        id: uuid(),
+        type: "navigate",
+        description: "Disabled navigate",
+        disabled: true,
+        continueOnError: false,
+        config: { url: "https://example.com/disabled" },
+      },
+    ];
+
+    const res = await req("PUT", `/api/scenarios/${scenario.id}`, { steps });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.data.steps).toHaveLength(2);
+    expect(body.data.steps[0].disabled).toBe(false);
+    expect(body.data.steps[1].disabled).toBe(true);
+  });
+
+  it("step without disabled/retries omits those fields", async () => {
+    const service = await createService();
+    const feature = await createFeature(service.id);
+    const scenario = await createScenario(feature.id);
+
+    const steps = [
+      {
+        id: uuid(),
+        type: "navigate",
+        description: "Navigate",
+        continueOnError: false,
+        config: { url: "https://example.com" },
+      },
+    ];
+
+    const res = await req("PUT", `/api/scenarios/${scenario.id}`, { steps });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    const step = body.data.steps[0];
+    // disabled and retries are optional - undefined means not disabled / no retry
+    expect(step.disabled).toBeUndefined();
+    expect(step.retries).toBeUndefined();
+    expect(step.retryDelay).toBeUndefined();
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Scenario tags and priority
+// ──────────────────────────────────────────────────────────────────────────────
+
+describe("Scenario tags and priority", () => {
+  it("persists tags through PUT", async () => {
+    const service = await createService();
+    const feature = await createFeature(service.id);
+    const scenario = await createScenario(feature.id);
+
+    const res = await req("PUT", `/api/scenarios/${scenario.id}`, {
+      name: scenario.name,
+      tags: ["smoke", "regression", "login"],
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.data.tags).toEqual(["smoke", "regression", "login"]);
+  });
+
+  it("persists priority through PUT", async () => {
+    const service = await createService();
+    const feature = await createFeature(service.id);
+    const scenario = await createScenario(feature.id);
+
+    const res = await req("PUT", `/api/scenarios/${scenario.id}`, {
+      name: scenario.name,
+      priority: "critical",
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.data.priority).toBe("critical");
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
 // POST /api/scenarios/:id/run
 // ──────────────────────────────────────────────────────────────────────────────
 
