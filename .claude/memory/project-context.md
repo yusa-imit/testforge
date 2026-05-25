@@ -32,6 +32,24 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 - Search & Filtering
 - Element Registry
 
+## 최근 완료 (Session 48 - 2026-05-26)
+
+✅ **GET /api/runs filtering + NaN limit fix** - Tests: 727 pass, 16 skip, 0 fail (+14 tests)
+
+**scenarioId/status filters for GET /api/runs** (PRD Section 4.1 "필터링")
+- `getAllTestRuns()` extended with optional `{ scenarioId?, status? }` filters
+- Builds dynamic WHERE clause with parameterized conditions
+- NaN/invalid limit falls back to 50 (fixes potential error with `?limit=invalid`)
+- Route parses `scenarioId` and `status` query params and passes to DB layer
+- +10 route tests: filter combinations, invalid limit, healed stats, recentFailures
+- +5 DB tests: scenarioId filter, status filter, combined filters
+
+**Files changed:**
+- `packages/server/src/db/database.ts` - getAllTestRuns with filters + NaN guard
+- `packages/server/src/routes/runs.ts` - scenarioId/status query param support
+- `packages/server/src/db/database.test.ts` - 5 new filter tests
+- `packages/server/src/routes/runs.test.ts` - 10 new route tests
+
 ## 최근 완료 (Session 47 - 2026-05-25)
 
 ✅ **N+1 query fix in POST /api/services/:id/run** - Tests: 713 pass, 16 skip, 0 fail (+4 tests)
