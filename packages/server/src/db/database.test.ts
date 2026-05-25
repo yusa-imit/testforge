@@ -259,6 +259,7 @@ describe("DuckDBDatabase - Features", () => {
 
 describe("DuckDBDatabase - Scenarios", () => {
   let featureId: string;
+  let serviceId: string;
 
   beforeEach(async () => {
     const service = await db.createService({
@@ -266,6 +267,7 @@ describe("DuckDBDatabase - Scenarios", () => {
       baseUrl: "https://test.com",
       defaultTimeout: 30000,
     });
+    serviceId = service.id;
     const feature = await db.createFeature({
       serviceId: service.id,
       name: "Test Feature",
@@ -384,6 +386,33 @@ describe("DuckDBDatabase - Scenarios", () => {
     const scenarios = await db.getAllScenarios();
 
     expect(scenarios.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("should get scenarios by service via JOIN", async () => {
+    await db.createScenario({ featureId, name: "S1", tags: [], priority: "medium", variables: [], steps: [] });
+    await db.createScenario({ featureId, name: "S2", tags: [], priority: "high", variables: [], steps: [] });
+
+    const scenarios = await db.getScenariosByService(serviceId);
+    const names = scenarios.map(s => s.name).sort();
+    expect(names).toEqual(["S1", "S2"]);
+  });
+
+  it("getScenariosByService returns empty array for unknown service", async () => {
+    const scenarios = await db.getScenariosByService("no-such-service-id");
+    expect(scenarios).toEqual([]);
+  });
+
+  it("getScenariosByService isolates between services", async () => {
+    const otherService = await db.createService({ name: "Other Service", baseUrl: "https://other.example.com", defaultTimeout: 30000 });
+    const otherFeature = await db.createFeature({ serviceId: otherService.id, name: "Other Feature", owners: [] });
+    await db.createScenario({ featureId: otherFeature.id, name: "Other Scenario", tags: [], priority: "low", variables: [], steps: [] });
+
+    await db.createScenario({ featureId, name: "My Scenario", tags: [], priority: "medium", variables: [], steps: [] });
+
+    const mine = await db.getScenariosByService(serviceId);
+    const theirs = await db.getScenariosByService(otherService.id);
+    expect(mine.map(s => s.name)).toEqual(["My Scenario"]);
+    expect(theirs.map(s => s.name)).toEqual(["Other Scenario"]);
   });
 
   it("should update scenario and increment version", async () => {

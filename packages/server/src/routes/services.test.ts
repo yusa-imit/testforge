@@ -238,4 +238,22 @@ describe("POST /api/services/:id/run", () => {
     expect(body.data.runIds).toEqual([]);
     expect(body.data.message).toBe("No scenarios to run.");
   });
+
+  it("includes all scenarios from multiple features in run count", async () => {
+    const service = await db.createService(servicePayload);
+    const f1 = await db.createFeature({ serviceId: service.id, name: "Feature 1", owners: [] });
+    const f2 = await db.createFeature({ serviceId: service.id, name: "Feature 2", owners: [] });
+    const scenarioBase = { tags: [] as string[], priority: "medium" as const, variables: [] as any[], steps: [] as any[] };
+    await db.createScenario({ featureId: f1.id, name: "Scenario A", ...scenarioBase });
+    await db.createScenario({ featureId: f2.id, name: "Scenario B", ...scenarioBase });
+
+    const res = await req("POST", `/api/services/${service.id}/run`);
+    expect(res.status).toBe(202);
+    const body = (await res.json()) as any;
+    expect(body.success).toBe(true);
+    expect(body.data.runIds).toHaveLength(2);
+    expect(body.data.total).toBe(2);
+    expect(body.data.message).toContain("2 scenario(s)");
+    expect(body.data.message).toContain("2 feature(s)");
+  });
 });

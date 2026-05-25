@@ -85,12 +85,7 @@ const app = new Hono()
       throw notFound("Service", id);
     }
 
-    const features = await db.getFeaturesByService(id);
-    const allScenarios = [];
-    for (const feature of features) {
-      const scenarios = await db.getScenariosByFeature(feature.id);
-      allScenarios.push(...scenarios);
-    }
+    const allScenarios = await db.getScenariosByService(id);
 
     if (allScenarios.length === 0) {
       return c.json({
@@ -106,6 +101,7 @@ const app = new Hono()
       runIds.push(runId);
     }
 
+    const features = await db.getFeaturesByService(id);
     return c.json(
       {
         success: true,

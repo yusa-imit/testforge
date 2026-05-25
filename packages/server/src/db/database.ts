@@ -387,6 +387,17 @@ export class DuckDBDatabase {
     return rows.map(RowConverter.toScenario);
   }
 
+  async getScenariosByService(serviceId: string): Promise<Scenario[]> {
+    const rows = await this.db.all(
+      `SELECT s.* FROM scenarios s
+       JOIN features f ON s.feature_id = f.id
+       WHERE f.service_id = ?
+       ORDER BY s.created_at DESC`,
+      [serviceId]
+    );
+    return rows.map(RowConverter.toScenario);
+  }
+
   async updateScenario(id: string, data: Partial<CreateScenario>): Promise<Scenario | undefined> {
     const existing = await this.getScenario(id);
     if (!existing) return undefined;
