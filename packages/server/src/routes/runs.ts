@@ -7,12 +7,14 @@ import type { RunEvent } from "@testforge/core";
 import { logger } from "../utils/logger";
 
 const app = new Hono()
-  // GET /api/runs - 실행 목록
+  // GET /api/runs - 실행 목록 (PRD Section 4.1: 필터링 지원)
   .get("/", async (c) => {
     const db = await getDB();
     const limitParam = c.req.query("limit");
     const limit = limitParam ? parseInt(limitParam, 10) : 50;
-    const runs = await db.getAllTestRuns(limit);
+    const scenarioId = c.req.query("scenarioId") || undefined;
+    const status = c.req.query("status") || undefined;
+    const runs = await db.getAllTestRuns(limit, { scenarioId, status });
     return c.json({ success: true, data: runs });
   })
 

@@ -98,6 +98,71 @@ describe("GET /api/runs", () => {
     expect(body.data).toHaveLength(1);
     expect(body.data[0].scenarioName).toBe(scenario.name);
   });
+
+  it("filters by scenarioId", async () => {
+    const { scenario: s1 } = await createTestRun("passed");
+    const { scenario: s2 } = await createTestRun("failed");
+
+    const res = await req("GET", `/api/runs?scenarioId=${s1.id}`);
+    const body = (await res.json()) as any;
+    expect(body.success).toBe(true);
+    expect(body.data).toHaveLength(1);
+    expect(body.data[0].scenarioId).toBe(s1.id);
+    expect(body.data[0].scenarioId).not.toBe(s2.id);
+  });
+
+  it("filters by status=passed", async () => {
+    await createTestRun("passed");
+    await createTestRun("passed");
+    await createTestRun("failed");
+
+    const res = await req("GET", "/api/runs?status=passed");
+    const body = (await res.json()) as any;
+    expect(body.success).toBe(true);
+    expect(body.data).toHaveLength(2);
+    expect(body.data.every((r: any) => r.status === "passed")).toBe(true);
+  });
+
+  it("filters by status=failed", async () => {
+    await createTestRun("passed");
+    await createTestRun("failed");
+
+    const res = await req("GET", "/api/runs?status=failed");
+    const body = (await res.json()) as any;
+    expect(body.success).toBe(true);
+    expect(body.data).toHaveLength(1);
+    expect(body.data[0].status).toBe("failed");
+  });
+
+  it("combines scenarioId and status filters", async () => {
+    const { scenario } = await createTestRun("passed");
+    await createTestRun("passed");  // different scenario, same status
+
+    const res = await req("GET", `/api/runs?scenarioId=${scenario.id}&status=passed`);
+    const body = (await res.json()) as any;
+    expect(body.success).toBe(true);
+    expect(body.data).toHaveLength(1);
+    expect(body.data[0].scenarioId).toBe(scenario.id);
+    expect(body.data[0].status).toBe("passed");
+  });
+
+  it("returns empty list when scenarioId has no matching runs", async () => {
+    await createTestRun("passed");
+    const fakeId = "00000000-0000-0000-0000-000000000000";
+
+    const res = await req("GET", `/api/runs?scenarioId=${fakeId}`);
+    const body = (await res.json()) as any;
+    expect(body.success).toBe(true);
+    expect(body.data).toEqual([]);
+  });
+
+  it("falls back to default limit 50 when limit param is invalid", async () => {
+    const res = await req("GET", "/api/runs?limit=invalid");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.success).toBe(true);
+    expect(Array.isArray(body.data)).toBe(true);
+  });
 });
 
 describe("GET /api/runs/dashboard", () => {
@@ -122,6 +187,55 @@ describe("GET /api/runs/dashboard", () => {
     expect(body.data.stats.total).toBe(3);
     expect(body.data.stats.passed).toBe(2);
     expect(body.data.stats.failed).toBe(1);
+  });
+
+  it("counts healed steps from run summaries", async () => {
+    const { runId } = await createTestRun("passed");
+    await db.updateTestRun(runId, {
+      finishedAt: new Date(),
+      duration: 1234,
+      summary: { totalSteps: 5, passedSteps: 4, failedSteps: 0, skippedSteps: 0, healedSteps: 2 },
+    });
+
+    const res = await req("GET", "/api/runs/dashboard");
+    const body = (await res.json()) as any;
+    expect(body.data.stats.healed).toBe(2);
+  });
+
+  it("sums healed steps across multiple runs", async () => {
+    const { runId: r1 } = await createTestRun("passed");
+    const { runId: r2 } = await createTestRun("passed");
+    await db.updateTestRun(r1, {
+      finishedAt: new Date(),
+      summary: { totalSteps: 3, passedSteps: 3, failedSteps: 0, skippedSteps: 0, healedSteps: 1 },
+    });
+    await db.updateTestRun(r2, {
+      finishedAt: new Date(),
+      summary: { totalSteps: 4, passedSteps: 4, failedSteps: 0, skippedSteps: 0, healedSteps: 3 },
+    });
+
+    const res = await req("GET", "/api/runs/dashboard");
+    const body = (await res.json()) as any;
+    expect(body.data.stats.healed).toBe(4);
+  });
+
+  it("returns recentFailures list with up to 5 entries", async () => {
+    for (let i = 0; i < 7; i++) {
+      await createTestRun("failed");
+    }
+
+    const res = await req("GET", "/api/runs/dashboard");
+    const body = (await res.json()) as any;
+    expect(body.data.recentFailures).toHaveLength(5);
+    expect(body.data.recentFailures.every((r: any) => r.status === "failed")).toBe(true);
+  });
+
+  it("returns empty recentFailures when no failures", async () => {
+    await createTestRun("passed");
+
+    const res = await req("GET", "/api/runs/dashboard");
+    const body = (await res.json()) as any;
+    expect(body.data.recentFailures).toEqual([]);
   });
 });
 

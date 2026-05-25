@@ -887,6 +887,118 @@ describe("DuckDBDatabase - Test Runs", () => {
     expect(runs[0].scenarioName).toBe("Test Scenario");
   });
 
+  it("should filter getAllTestRuns by scenarioId", async () => {
+    const run1: TestRun = {
+      id: uuid(),
+      scenarioId,
+      status: "passed",
+      environment: { baseUrl: "https://example.com", variables: {} },
+      createdAt: new Date(),
+    };
+
+    // Get featureId from existing scenario to create a sibling scenario
+    const existingScenario = await db.getScenario(scenarioId);
+    const otherScenario = await db.createScenario({
+      featureId: existingScenario!.featureId,
+      name: "Other Scenario",
+      steps: [],
+      variables: [],
+      tags: [],
+      priority: "medium",
+    });
+    const run2: TestRun = {
+      id: uuid(),
+      scenarioId: otherScenario.id,
+      status: "failed",
+      environment: { baseUrl: "https://example.com", variables: {} },
+      createdAt: new Date(),
+    };
+
+    await db.createTestRun(run1);
+    await db.createTestRun(run2);
+
+    const filtered = await db.getAllTestRuns(50, { scenarioId });
+
+    expect(filtered.length).toBe(1);
+    expect(filtered[0].scenarioId).toBe(scenarioId);
+  });
+
+  it("should filter getAllTestRuns by status", async () => {
+    const passedRun: TestRun = {
+      id: uuid(),
+      scenarioId,
+      status: "passed",
+      environment: { baseUrl: "https://example.com", variables: {} },
+      createdAt: new Date(),
+    };
+    const failedRun: TestRun = {
+      id: uuid(),
+      scenarioId,
+      status: "failed",
+      environment: { baseUrl: "https://example.com", variables: {} },
+      createdAt: new Date(),
+    };
+
+    await db.createTestRun(passedRun);
+    await db.createTestRun(failedRun);
+
+    const passed = await db.getAllTestRuns(50, { status: "passed" });
+    const failed = await db.getAllTestRuns(50, { status: "failed" });
+
+    expect(passed.every((r) => r.status === "passed")).toBe(true);
+    expect(failed.every((r) => r.status === "failed")).toBe(true);
+    expect(passed.length).toBeGreaterThanOrEqual(1);
+    expect(failed.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("should combine scenarioId and status filters in getAllTestRuns", async () => {
+    const run1: TestRun = {
+      id: uuid(),
+      scenarioId,
+      status: "passed",
+      environment: { baseUrl: "https://example.com", variables: {} },
+      createdAt: new Date(),
+    };
+    const run2: TestRun = {
+      id: uuid(),
+      scenarioId,
+      status: "failed",
+      environment: { baseUrl: "https://example.com", variables: {} },
+      createdAt: new Date(),
+    };
+
+    await db.createTestRun(run1);
+    await db.createTestRun(run2);
+
+    const filtered = await db.getAllTestRuns(50, { scenarioId, status: "passed" });
+
+    expect(filtered.every((r) => r.scenarioId === scenarioId && r.status === "passed")).toBe(true);
+    expect(filtered.length).toBe(1);
+  });
+
+  it("getAllTestRuns returns all runs when no filters given", async () => {
+    const r1: TestRun = {
+      id: uuid(),
+      scenarioId,
+      status: "passed",
+      environment: { baseUrl: "https://example.com", variables: {} },
+      createdAt: new Date(),
+    };
+    const r2: TestRun = {
+      id: uuid(),
+      scenarioId,
+      status: "failed",
+      environment: { baseUrl: "https://example.com", variables: {} },
+      createdAt: new Date(),
+    };
+
+    await db.createTestRun(r1);
+    await db.createTestRun(r2);
+
+    const all = await db.getAllTestRuns(50);
+    expect(all.length).toBe(2);
+  });
+
   it("should update test run status and summary", async () => {
     const run: TestRun = {
       id: uuid(),

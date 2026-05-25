@@ -711,14 +711,34 @@ export class DuckDBDatabase {
     return rows.map(RowConverter.toTestRun);
   }
 
-  async getAllTestRuns(limit = 50): Promise<(TestRun & { scenarioName: string })[]> {
+  async getAllTestRuns(
+    limit = 50,
+    filters: { scenarioId?: string; status?: string } = {}
+  ): Promise<(TestRun & { scenarioName: string })[]> {
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+
+    if (filters.scenarioId) {
+      conditions.push("t.scenario_id = ?");
+      params.push(filters.scenarioId);
+    }
+    if (filters.status) {
+      conditions.push("t.status = ?");
+      params.push(filters.status);
+    }
+
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+    const safeLimit = Number.isFinite(limit) && limit > 0 ? limit : 50;
+    params.push(safeLimit);
+
     const rows = await this.db.all(
       `SELECT t.*, s.name as scenario_name
        FROM test_runs t
        LEFT JOIN scenarios s ON t.scenario_id = s.id
+       ${where}
        ORDER BY t.created_at DESC
        LIMIT ?`,
-      [limit]
+      params
     );
     return rows.map((row: any) => ({
       ...RowConverter.toTestRun(row),
