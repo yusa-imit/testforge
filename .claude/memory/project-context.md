@@ -32,6 +32,16 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 - Search & Filtering
 - Element Registry
 
+## 최근 완료 (Session 47 - 2026-05-25)
+
+✅ **N+1 query fix in POST /api/services/:id/run** - Tests: 713 pass, 16 skip, 0 fail (+4 tests)
+
+**getScenariosByService JOIN query** (packages/server/src/db/database.ts)
+- `POST /api/services/:id/run` called `getScenariosByFeature` once per feature (N+1 queries)
+- Added `getScenariosByService(serviceId)` using JOIN: `SELECT s.* FROM scenarios s JOIN features f ON s.feature_id = f.id WHERE f.service_id = ?`
+- Services route updated to use single query instead of loop
+- Added 4 new tests: service isolation, multi-feature run count, unknown service, cross-service isolation
+
 ## 최근 완료 (Session 46 - 2026-05-25)
 
 ✅ **N+1 query fix in updateComponentUsagesForScenario** - Tests: 709 pass, 16 skip, 0 fail (+3 tests)
