@@ -32,6 +32,24 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 - Search & Filtering
 - Element Registry
 
+## 최근 완료 (Session 49 - 2026-05-26)
+
+✅ **GET /api/runs featureId/serviceId filters** - Tests: 733 pass, 16 skip, 0 fail (+6 tests)
+
+**featureId/serviceId filters for GET /api/runs** (eliminates N+1 on detail pages)
+- `getAllTestRuns()` extended with optional `featureId` and `serviceId` filters
+- `featureId`: filters via existing scenarios JOIN (`s.feature_id = ?`)
+- `serviceId`: conditionally adds `JOIN features f ON s.feature_id = f.id` then `f.service_id = ?`
+- Route parses `featureId` and `serviceId` query params
+- +4 DB tests: featureId filter, serviceId filter, empty result, cross-service isolation
+- +3 route tests: featureId filter, serviceId filter, empty featureId result
+
+**Files changed:**
+- `packages/server/src/db/database.ts` - getAllTestRuns with featureId/serviceId filters
+- `packages/server/src/routes/runs.ts` - featureId/serviceId query param support
+- `packages/server/src/db/database.test.ts` - 4 new filter tests
+- `packages/server/src/routes/runs.test.ts` - 3 new route tests
+
 ## 최근 완료 (Session 48 - 2026-05-26)
 
 ✅ **GET /api/runs filtering + NaN limit fix** - Tests: 727 pass, 16 skip, 0 fail (+14 tests)
