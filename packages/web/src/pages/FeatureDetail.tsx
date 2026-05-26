@@ -9,10 +9,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "../hooks/use-toast";
 
 export default function FeatureDetail() {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [isCreating, setIsCreating] = useState(false);
   const [scenarioName, setScenarioName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -35,10 +37,17 @@ export default function FeatureDetail() {
     onSuccess: (data) => {
       const responseData = data?.data;
       const total = responseData && 'total' in responseData ? responseData.total : responseData?.runIds?.length || 0;
-      alert(`${total}개 시나리오 실행이 시작되었습니다. 실행 이력 페이지에서 확인하세요.`);
+      toast({
+        title: "실행 시작",
+        description: `${total}개 시나리오 실행이 시작되었습니다. 실행 이력 페이지에서 확인하세요.`,
+      });
     },
     onError: (error: Error) => {
-      alert(error.message || "기능 실행 중 오류가 발생했습니다.");
+      toast({
+        title: "실행 실패",
+        description: error.message || "기능 실행 중 오류가 발생했습니다.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -82,15 +91,6 @@ export default function FeatureDetail() {
       return matchesSearch && matchesPriority;
     });
   }, [scenarios, searchQuery, priorityFilter]);
-
-  // Get unique tags for potential tag filtering
-  const _allTags = useMemo(() => {
-    const tagSet = new Set<string>();
-    scenarios.forEach((scenario) => {
-      scenario.tags?.forEach((tag: string) => tagSet.add(tag));
-    });
-    return Array.from(tagSet);
-  }, [scenarios]);
 
   if (featureLoading || scenariosLoading) {
     return <div className="text-center py-12">로딩 중...</div>;

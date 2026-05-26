@@ -11,19 +11,18 @@ export default function Runs() {
   const [dateFilter, setDateFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
 
+  const serverStatus = statusFilter !== "all" ? statusFilter : undefined;
+
   const { data, isLoading } = useQuery({
-    queryKey: ["runs", 100],
-    queryFn: () => getRuns(100),
+    queryKey: ["runs", 200, serverStatus],
+    queryFn: () => getRuns(200, serverStatus ? { status: serverStatus } : undefined),
   });
 
   const runs = useMemo(() => data?.data ?? [], [data]);
 
-  // Filter runs based on status, date, and search query
+  // Client-side filters for date and search (not supported server-side)
   const filteredRuns = useMemo(() => {
     return runs.filter((run) => {
-      // Status filter
-      const matchesStatus = statusFilter === "all" || run.status === statusFilter;
-      
       // Date filter
       let matchesDate = true;
       if (dateFilter !== "all") {
@@ -31,7 +30,7 @@ export default function Runs() {
         const now = new Date();
         const diffMs = now.getTime() - runDate.getTime();
         const diffDays = diffMs / (1000 * 60 * 60 * 24);
-        
+
         switch (dateFilter) {
           case "1d":
             matchesDate = diffDays <= 1;
@@ -44,15 +43,15 @@ export default function Runs() {
             break;
         }
       }
-      
+
       // Search filter (searches both scenario name and ID)
       const matchesSearch = !searchQuery.trim() ||
         run.scenarioId.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (run.scenarioName || '').toLowerCase().includes(searchQuery.toLowerCase());
-      
-      return matchesStatus && matchesDate && matchesSearch;
+
+      return matchesDate && matchesSearch;
     });
-  }, [runs, statusFilter, dateFilter, searchQuery]);
+  }, [runs, dateFilter, searchQuery]);
 
   if (isLoading) {
     return <div className="text-center py-12">로딩 중...</div>;
@@ -70,21 +69,6 @@ export default function Runs() {
         return "⏹️";
       default:
         return "⏳";
-    }
-  };
-
-  const _getStatusColor = (status: string) => {
-    switch (status) {
-      case "passed":
-        return "bg-green-100 text-green-800";
-      case "failed":
-        return "bg-red-100 text-red-800";
-      case "running":
-        return "bg-blue-100 text-blue-800";
-      case "cancelled":
-        return "bg-gray-100 text-gray-800";
-      default:
-        return "bg-yellow-100 text-yellow-800";
     }
   };
 

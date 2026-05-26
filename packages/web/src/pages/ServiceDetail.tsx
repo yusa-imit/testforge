@@ -7,10 +7,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useToast } from "../hooks/use-toast";
 
 export default function ServiceDetail() {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [isCreating, setIsCreating] = useState(false);
   const [featureName, setFeatureName] = useState("");
 
@@ -31,10 +33,17 @@ export default function ServiceDetail() {
     onSuccess: (data) => {
       const responseData = data?.data;
       const total = responseData && 'total' in responseData ? responseData.total : responseData?.runIds?.length || 0;
-      alert(`${total}개 시나리오 실행이 시작되었습니다. 실행 이력 페이지에서 확인하세요.`);
+      toast({
+        title: "실행 시작",
+        description: `${total}개 시나리오 실행이 시작되었습니다. 실행 이력 페이지에서 확인하세요.`,
+      });
     },
     onError: (error: Error) => {
-      alert(error.message || "서비스 실행 중 오류가 발생했습니다.");
+      toast({
+        title: "실행 실패",
+        description: error.message || "서비스 실행 중 오류가 발생했습니다.",
+        variant: "destructive",
+      });
     },
   });
 

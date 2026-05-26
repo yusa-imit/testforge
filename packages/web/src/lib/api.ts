@@ -75,8 +75,11 @@ export async function getHealingStats() {
   return res.json();
 }
 
-export async function getRuns(limit = 50) {
-  const res = await api.api.runs.$get({ query: { limit: String(limit) } });
+export async function getRuns(limit = 50, filters?: { status?: string; scenarioId?: string }) {
+  const query: Record<string, string> = { limit: String(limit) };
+  if (filters?.status) query.status = filters.status;
+  if (filters?.scenarioId) query.scenarioId = filters.scenarioId;
+  const res = await api.api.runs.$get({ query });
   return res.json();
 }
 
