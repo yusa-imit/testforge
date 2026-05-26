@@ -32,6 +32,41 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 - Search & Filtering
 - Element Registry
 
+## 최근 완료 (Session 50 - 2026-05-27)
+
+✅ **UX improvements + offset pagination** - Tests: 738 pass, 16 skip, 0 fail (+5 tests)
+
+**1. alert() → toast() in ServiceDetail/FeatureDetail** (consistent UX)
+- `ServiceDetail.tsx` & `FeatureDetail.tsx`: replaced browser `alert()` with `useToast` hook
+- Success/error feedback now shows non-blocking toast notifications (already used in ScenarioEditor)
+
+**2. Server-side status filter in Runs.tsx**
+- `getRuns()` in `api.ts` now accepts optional `{ status, scenarioId }` filters
+- `Runs.tsx` passes `status` filter to server (reduces data transfer), date/search remain client-side
+- Removed unused `_getStatusColor` function from Runs.tsx
+
+**3. offset pagination for GET /api/runs**
+- `getAllTestRuns()` now accepts `offset` (3rd param, default 0) with safe fallback for invalid values
+- Query: `LIMIT ? OFFSET ?` - proper cursor-based pagination
+- Route parses `?offset=` query param
+- +3 DB tests, +2 route tests
+
+**4. Components.tsx search & shadcn cleanup**
+- Added search input with name/description/type filtering and result count
+- Replaced raw `<button>` with shadcn `Button` component
+- Consistent with Services.tsx, FeatureDetail.tsx patterns
+
+**Files changed:**
+- `packages/server/src/db/database.ts` - offset param in getAllTestRuns
+- `packages/server/src/routes/runs.ts` - offset query param
+- `packages/server/src/db/database.test.ts` - 3 offset tests
+- `packages/server/src/routes/runs.test.ts` - 2 offset route tests
+- `packages/web/src/lib/api.ts` - getRuns accepts filters
+- `packages/web/src/pages/Runs.tsx` - server-side status filter
+- `packages/web/src/pages/ServiceDetail.tsx` - toast notifications
+- `packages/web/src/pages/FeatureDetail.tsx` - toast notifications, removed _allTags
+- `packages/web/src/pages/Components.tsx` - search + consistent Button
+
 ## 최근 완료 (Session 49 - 2026-05-26)
 
 ✅ **GET /api/runs featureId/serviceId filters** - Tests: 733 pass, 16 skip, 0 fail (+6 tests)
