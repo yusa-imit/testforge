@@ -11,12 +11,14 @@ const app = new Hono()
   .get("/", async (c) => {
     const db = await getDB();
     const limitParam = c.req.query("limit");
+    const offsetParam = c.req.query("offset");
     const limit = limitParam ? parseInt(limitParam, 10) : 50;
+    const offset = offsetParam ? parseInt(offsetParam, 10) : 0;
     const scenarioId = c.req.query("scenarioId") || undefined;
     const status = c.req.query("status") || undefined;
     const featureId = c.req.query("featureId") || undefined;
     const serviceId = c.req.query("serviceId") || undefined;
-    const runs = await db.getAllTestRuns(limit, { scenarioId, status, featureId, serviceId });
+    const runs = await db.getAllTestRuns(limit, { scenarioId, status, featureId, serviceId }, offset);
     return c.json({ success: true, data: runs });
   })
 

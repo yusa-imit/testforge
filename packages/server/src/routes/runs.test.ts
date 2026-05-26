@@ -222,6 +222,42 @@ describe("GET /api/runs", () => {
     expect(body.success).toBe(true);
     expect(body.data).toEqual([]);
   });
+
+  it("offset paginates results", async () => {
+    const { scenarioId: sid } = await createTestRun("passed");
+    // Create two more runs with the same scenario (createTestRun creates new service/feature/scenario each time)
+    const { scenarioId: sid2 } = await createTestRun("passed");
+    const { scenarioId: sid3 } = await createTestRun("passed");
+
+    const all = await req("GET", "/api/runs?limit=10");
+    const allBody = (await all.json()) as any;
+    const totalCount = allBody.data.length;
+    expect(totalCount).toBeGreaterThanOrEqual(3);
+
+    // offset=1 should skip the first run
+    const paged = await req("GET", "/api/runs?limit=10&offset=1");
+    expect(paged.status).toBe(200);
+    const pagedBody = (await paged.json()) as any;
+    expect(pagedBody.success).toBe(true);
+    expect(pagedBody.data.length).toBe(totalCount - 1);
+
+    // The first item in paged should NOT match the first item in all
+    expect(pagedBody.data[0].id).not.toBe(allBody.data[0].id);
+    expect(pagedBody.data[0].id).toBe(allBody.data[1].id);
+
+    // Suppress unused variable warning
+    void sid; void sid2; void sid3;
+  });
+
+  it("offset beyond total count returns empty list", async () => {
+    await createTestRun("passed");
+
+    const res = await req("GET", "/api/runs?limit=10&offset=9999");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.success).toBe(true);
+    expect(body.data).toEqual([]);
+  });
 });
 
 describe("GET /api/runs/dashboard", () => {

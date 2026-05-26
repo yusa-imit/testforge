@@ -713,7 +713,8 @@ export class DuckDBDatabase {
 
   async getAllTestRuns(
     limit = 50,
-    filters: { scenarioId?: string; status?: string; featureId?: string; serviceId?: string } = {}
+    filters: { scenarioId?: string; status?: string; featureId?: string; serviceId?: string } = {},
+    offset = 0
   ): Promise<(TestRun & { scenarioName: string })[]> {
     const conditions: string[] = [];
     const params: unknown[] = [];
@@ -741,7 +742,8 @@ export class DuckDBDatabase {
       : "";
     const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
     const safeLimit = Number.isFinite(limit) && limit > 0 ? limit : 50;
-    params.push(safeLimit);
+    const safeOffset = Number.isFinite(offset) && offset >= 0 ? offset : 0;
+    params.push(safeLimit, safeOffset);
 
     const rows = await this.db.all(
       `SELECT t.*, s.name as scenario_name
@@ -750,7 +752,7 @@ export class DuckDBDatabase {
        ${featureJoin}
        ${where}
        ORDER BY t.created_at DESC
-       LIMIT ?`,
+       LIMIT ? OFFSET ?`,
       params
     );
     return rows.map((row: any) => ({

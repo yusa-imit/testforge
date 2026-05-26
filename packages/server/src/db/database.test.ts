@@ -1047,6 +1047,67 @@ describe("DuckDBDatabase - Test Runs", () => {
     expect(result).toEqual([]);
   });
 
+  it("getAllTestRuns offset skips the first N results", async () => {
+    const run1: TestRun = {
+      id: uuid(), scenarioId, status: "passed",
+      startedAt: new Date("2024-01-01T10:00:00Z"),
+      environment: { baseUrl: "https://example.com", variables: {} },
+      createdAt: new Date("2024-01-01T10:00:00Z"),
+    };
+    const run2: TestRun = {
+      id: uuid(), scenarioId, status: "passed",
+      startedAt: new Date("2024-01-01T11:00:00Z"),
+      environment: { baseUrl: "https://example.com", variables: {} },
+      createdAt: new Date("2024-01-01T11:00:00Z"),
+    };
+    const run3: TestRun = {
+      id: uuid(), scenarioId, status: "passed",
+      startedAt: new Date("2024-01-01T12:00:00Z"),
+      environment: { baseUrl: "https://example.com", variables: {} },
+      createdAt: new Date("2024-01-01T12:00:00Z"),
+    };
+    await db.createTestRun(run1);
+    await db.createTestRun(run2);
+    await db.createTestRun(run3);
+
+    // Without offset: newest first (run3, run2, run1)
+    const all = await db.getAllTestRuns(10, {}, 0);
+    const allIds = all.map((r) => r.id);
+    expect(allIds).toContain(run3.id);
+
+    // Offset 1: skip newest, next two (run2, run1 order)
+    const paged = await db.getAllTestRuns(2, {}, 1);
+    expect(paged).toHaveLength(2);
+    expect(paged[0].id).toBe(run2.id);
+    expect(paged[1].id).toBe(run1.id);
+  });
+
+  it("getAllTestRuns offset beyond result count returns empty", async () => {
+    const run: TestRun = {
+      id: uuid(), scenarioId, status: "passed",
+      startedAt: new Date(),
+      environment: { baseUrl: "https://example.com", variables: {} },
+      createdAt: new Date(),
+    };
+    await db.createTestRun(run);
+
+    const result = await db.getAllTestRuns(10, {}, 999);
+    expect(result).toEqual([]);
+  });
+
+  it("getAllTestRuns invalid offset falls back to 0", async () => {
+    const run: TestRun = {
+      id: uuid(), scenarioId, status: "passed",
+      startedAt: new Date(),
+      environment: { baseUrl: "https://example.com", variables: {} },
+      createdAt: new Date(),
+    };
+    await db.createTestRun(run);
+
+    const result = await db.getAllTestRuns(10, {}, -5);
+    expect(result.length).toBeGreaterThan(0);
+  });
+
   it("should update test run status and summary", async () => {
     const run: TestRun = {
       id: uuid(),
