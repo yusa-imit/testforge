@@ -14,7 +14,9 @@ const app = new Hono()
     const limit = limitParam ? parseInt(limitParam, 10) : 50;
     const scenarioId = c.req.query("scenarioId") || undefined;
     const status = c.req.query("status") || undefined;
-    const runs = await db.getAllTestRuns(limit, { scenarioId, status });
+    const featureId = c.req.query("featureId") || undefined;
+    const serviceId = c.req.query("serviceId") || undefined;
+    const runs = await db.getAllTestRuns(limit, { scenarioId, status, featureId, serviceId });
     return c.json({ success: true, data: runs });
   })
 

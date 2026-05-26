@@ -713,7 +713,7 @@ export class DuckDBDatabase {
 
   async getAllTestRuns(
     limit = 50,
-    filters: { scenarioId?: string; status?: string } = {}
+    filters: { scenarioId?: string; status?: string; featureId?: string; serviceId?: string } = {}
   ): Promise<(TestRun & { scenarioName: string })[]> {
     const conditions: string[] = [];
     const params: unknown[] = [];
@@ -726,7 +726,19 @@ export class DuckDBDatabase {
       conditions.push("t.status = ?");
       params.push(filters.status);
     }
+    if (filters.featureId) {
+      conditions.push("s.feature_id = ?");
+      params.push(filters.featureId);
+    }
+    if (filters.serviceId) {
+      conditions.push("f.service_id = ?");
+      params.push(filters.serviceId);
+    }
 
+    // Only JOIN features table when serviceId filter is needed
+    const featureJoin = filters.serviceId
+      ? "JOIN features f ON s.feature_id = f.id"
+      : "";
     const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
     const safeLimit = Number.isFinite(limit) && limit > 0 ? limit : 50;
     params.push(safeLimit);
@@ -735,6 +747,7 @@ export class DuckDBDatabase {
       `SELECT t.*, s.name as scenario_name
        FROM test_runs t
        LEFT JOIN scenarios s ON t.scenario_id = s.id
+       ${featureJoin}
        ${where}
        ORDER BY t.created_at DESC
        LIMIT ?`,

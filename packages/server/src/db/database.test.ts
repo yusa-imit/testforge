@@ -999,6 +999,54 @@ describe("DuckDBDatabase - Test Runs", () => {
     expect(all.length).toBe(2);
   });
 
+  it("should filter getAllTestRuns by featureId", async () => {
+    // Create a second feature with its own scenario and run
+    const svc = await db.createService({ name: "Svc2", baseUrl: "https://svc2.com", defaultTimeout: 30000 });
+    const featureA = await db.createFeature({ serviceId: svc.id, name: "Feature A", owners: [] });
+    const featureB = await db.createFeature({ serviceId: svc.id, name: "Feature B", owners: [] });
+
+    const scenarioA = await db.createScenario({ featureId: featureA.id, name: "Scenario A", tags: [], priority: "medium", variables: [], steps: [] });
+    const scenarioB = await db.createScenario({ featureId: featureB.id, name: "Scenario B", tags: [], priority: "medium", variables: [], steps: [] });
+
+    const runA: TestRun = { id: uuid(), scenarioId: scenarioA.id, status: "passed", environment: { baseUrl: "https://svc2.com", variables: {} }, createdAt: new Date() };
+    const runB: TestRun = { id: uuid(), scenarioId: scenarioB.id, status: "failed", environment: { baseUrl: "https://svc2.com", variables: {} }, createdAt: new Date() };
+    await db.createTestRun(runA);
+    await db.createTestRun(runB);
+
+    const filtered = await db.getAllTestRuns(50, { featureId: featureA.id });
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0].id).toBe(runA.id);
+    expect(filtered[0].scenarioId).toBe(scenarioA.id);
+  });
+
+  it("should filter getAllTestRuns by serviceId", async () => {
+    const svc1 = await db.createService({ name: "ServiceX", baseUrl: "https://svcx.com", defaultTimeout: 30000 });
+    const svc2 = await db.createService({ name: "ServiceY", baseUrl: "https://svcy.com", defaultTimeout: 30000 });
+
+    const feat1 = await db.createFeature({ serviceId: svc1.id, name: "Feat1", owners: [] });
+    const feat2 = await db.createFeature({ serviceId: svc2.id, name: "Feat2", owners: [] });
+
+    const s1 = await db.createScenario({ featureId: feat1.id, name: "S1", tags: [], priority: "medium", variables: [], steps: [] });
+    const s2 = await db.createScenario({ featureId: feat2.id, name: "S2", tags: [], priority: "medium", variables: [], steps: [] });
+
+    const run1: TestRun = { id: uuid(), scenarioId: s1.id, status: "passed", environment: { baseUrl: "https://svcx.com", variables: {} }, createdAt: new Date() };
+    const run2: TestRun = { id: uuid(), scenarioId: s2.id, status: "passed", environment: { baseUrl: "https://svcy.com", variables: {} }, createdAt: new Date() };
+    await db.createTestRun(run1);
+    await db.createTestRun(run2);
+
+    const filtered = await db.getAllTestRuns(50, { serviceId: svc1.id });
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0].id).toBe(run1.id);
+  });
+
+  it("should return empty when featureId has no matching runs", async () => {
+    const svc = await db.createService({ name: "SvcEmpty", baseUrl: "https://empty.com", defaultTimeout: 30000 });
+    const feat = await db.createFeature({ serviceId: svc.id, name: "Empty Feature", owners: [] });
+
+    const result = await db.getAllTestRuns(50, { featureId: feat.id });
+    expect(result).toEqual([]);
+  });
+
   it("should update test run status and summary", async () => {
     const run: TestRun = {
       id: uuid(),

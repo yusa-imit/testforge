@@ -163,6 +163,65 @@ describe("GET /api/runs", () => {
     expect(body.success).toBe(true);
     expect(Array.isArray(body.data)).toBe(true);
   });
+
+  it("filters by featureId", async () => {
+    // Create two features in the same service, each with a scenario and a run
+    const svc = await db.createService({ name: "Svc", baseUrl: "https://example.com", defaultTimeout: 30000 });
+    const featA = await db.createFeature({ serviceId: svc.id, name: "Feature A", owners: [] });
+    const featB = await db.createFeature({ serviceId: svc.id, name: "Feature B", owners: [] });
+
+    const scenA = await db.createScenario({ featureId: featA.id, name: "Scenario A", steps: [], variables: [], tags: [], priority: "medium" });
+    const scenB = await db.createScenario({ featureId: featB.id, name: "Scenario B", steps: [], variables: [], tags: [], priority: "medium" });
+
+    const now = new Date();
+    const runAId = "aaaaaaaa-0000-0000-0000-000000000001";
+    const runBId = "bbbbbbbb-0000-0000-0000-000000000002";
+    await db.createTestRun({ id: runAId, scenarioId: scenA.id, status: "passed", environment: { baseUrl: svc.baseUrl, variables: {} }, startedAt: now, createdAt: now });
+    await db.createTestRun({ id: runBId, scenarioId: scenB.id, status: "failed", environment: { baseUrl: svc.baseUrl, variables: {} }, startedAt: now, createdAt: now });
+
+    const res = await req("GET", `/api/runs?featureId=${featA.id}`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.success).toBe(true);
+    expect(body.data).toHaveLength(1);
+    expect(body.data[0].id).toBe(runAId);
+  });
+
+  it("filters by serviceId", async () => {
+    // Create two services with scenarios and runs
+    const svc1 = await db.createService({ name: "Service1", baseUrl: "https://svc1.com", defaultTimeout: 30000 });
+    const svc2 = await db.createService({ name: "Service2", baseUrl: "https://svc2.com", defaultTimeout: 30000 });
+
+    const feat1 = await db.createFeature({ serviceId: svc1.id, name: "F1", owners: [] });
+    const feat2 = await db.createFeature({ serviceId: svc2.id, name: "F2", owners: [] });
+
+    const scen1 = await db.createScenario({ featureId: feat1.id, name: "S1", steps: [], variables: [], tags: [], priority: "medium" });
+    const scen2 = await db.createScenario({ featureId: feat2.id, name: "S2", steps: [], variables: [], tags: [], priority: "medium" });
+
+    const now = new Date();
+    const run1Id = "11111111-0000-0000-0000-000000000001";
+    const run2Id = "22222222-0000-0000-0000-000000000002";
+    await db.createTestRun({ id: run1Id, scenarioId: scen1.id, status: "passed", environment: { baseUrl: svc1.baseUrl, variables: {} }, startedAt: now, createdAt: now });
+    await db.createTestRun({ id: run2Id, scenarioId: scen2.id, status: "passed", environment: { baseUrl: svc2.baseUrl, variables: {} }, startedAt: now, createdAt: now });
+
+    const res = await req("GET", `/api/runs?serviceId=${svc1.id}`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.success).toBe(true);
+    expect(body.data).toHaveLength(1);
+    expect(body.data[0].id).toBe(run1Id);
+  });
+
+  it("returns empty list when featureId has no runs", async () => {
+    const svc = await db.createService({ name: "NoRunsSvc", baseUrl: "https://noruns.com", defaultTimeout: 30000 });
+    const feat = await db.createFeature({ serviceId: svc.id, name: "Empty Feature", owners: [] });
+
+    const res = await req("GET", `/api/runs?featureId=${feat.id}`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.success).toBe(true);
+    expect(body.data).toEqual([]);
+  });
 });
 
 describe("GET /api/runs/dashboard", () => {
