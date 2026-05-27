@@ -32,6 +32,24 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 - Search & Filtering
 - Element Registry
 
+## 최근 완료 (Session 51 - 2026-05-27)
+
+✅ **Last run status in FeatureDetail scenario list** - Tests: 740 pass, 16 skip, 0 fail (+2 route tests)
+
+**Per-scenario last-run status indicator in FeatureDetail**
+- `getScenariosByFeatureWithLastRun()` added to database.ts using DuckDB window function JOIN
+  - `ROW_NUMBER() OVER (PARTITION BY scenario_id ORDER BY created_at DESC)` to get most recent run per scenario in single query
+  - Returns `ScenarioWithLastRun` (Scenario + `lastRunId`, `lastRunStatus`, `lastRunAt`)
+- `GET /api/features/:id/scenarios` now returns enriched type
+- `FeatureDetail.tsx`: `LastRunBadge` component shows ✅/❌/⚠️/🔄/⏹️ + relative timestamp
+- Scenarios with no runs show "미실행" label
+
+**Files changed:**
+- `packages/server/src/db/database.ts` - ScenarioWithLastRun type + getScenariosByFeatureWithLastRun()
+- `packages/server/src/routes/features.ts` - use new method in GET /api/features/:id/scenarios
+- `packages/server/src/routes/features.test.ts` - 2 new tests for lastRunStatus behavior
+- `packages/web/src/pages/FeatureDetail.tsx` - LastRunBadge + date-fns relative time
+
 ## 최근 완료 (Session 50 - 2026-05-27)
 
 ✅ **UX improvements + offset pagination** - Tests: 738 pass, 16 skip, 0 fail (+5 tests)
