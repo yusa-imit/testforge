@@ -32,6 +32,33 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 - Search & Filtering
 - Element Registry
 
+## 최근 완료 (Session 52 - 2026-05-28)
+
+✅ **RunDetail step enrichment + TS fix** - Tests: 741 pass, 16 skip, 0 fail (+1 test)
+
+**1. Fixed TS error in runs.test.ts**
+- `createTestRun()` returns `{ service, feature, scenario, runId }` — not `scenarioId`
+- Test was incorrectly destructuring `{ scenarioId: sid }` → changed to bare `await createTestRun()`
+
+**2. RunDetail.tsx step name enrichment**
+- Step accordion now shows step type icon + description: "🌐 Navigate to /login" instead of "스텝 #0"
+- `STEP_TYPE_ICONS` map added (mirrors ScenarioEditor.tsx)
+- Uses `scenario.steps[step.stepIndex]` (already fetched) to get step definition
+
+**3. RunDetail.tsx step config summary in accordion body**
+- `stepConfigSummary(step)` renders a gray monospace line:
+  - navigate → `URL: /admin`
+  - click/fill/hover → locator displayName or first strategy value
+  - api-request → `GET https://api.example.com/users`
+  - assert → assertion type + expected value
+  - etc.
+
+**4. New test: dashboard recentFailures includes scenarioName**
+
+**Files changed:**
+- `packages/server/src/routes/runs.test.ts` — TS fix + new scenarioName test
+- `packages/web/src/pages/RunDetail.tsx` — step name/type display + config summary
+
 ## 최근 완료 (Session 51 - 2026-05-27)
 
 ✅ **Last run status in FeatureDetail scenario list** - Tests: 740 pass, 16 skip, 0 fail (+2 route tests)
