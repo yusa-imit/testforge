@@ -1,6 +1,8 @@
 import { useState, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { formatDistanceToNow } from "date-fns";
+import { ko } from "date-fns/locale";
 import { getFeature, getScenarios, api, runFeature } from "../lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +12,26 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "../hooks/use-toast";
+
+function LastRunBadge({ status, at }: { status: string | null; at: string | null }) {
+  if (!status) return <span className="text-xs text-muted-foreground">미실행</span>;
+  const map: Record<string, { icon: string; cls: string }> = {
+    passed:    { icon: "✅", cls: "text-green-600" },
+    failed:    { icon: "❌", cls: "text-red-600" },
+    healed:    { icon: "⚠️", cls: "text-yellow-600" },
+    running:   { icon: "🔄", cls: "text-blue-600" },
+    cancelled: { icon: "⏹️", cls: "text-gray-500" },
+    pending:   { icon: "⏳", cls: "text-gray-400" },
+  };
+  const { icon, cls } = map[status] ?? { icon: "⏳", cls: "text-gray-400" };
+  const rel = at ? formatDistanceToNow(new Date(at), { addSuffix: true, locale: ko }) : null;
+  return (
+    <span className={`flex items-center gap-1 text-xs ${cls}`}>
+      {icon}
+      {rel && <span className="text-muted-foreground">{rel}</span>}
+    </span>
+  );
+}
 
 export default function FeatureDetail() {
   const { id } = useParams<{ id: string }>();
@@ -279,7 +301,13 @@ export default function FeatureDetail() {
                       </span>
                     </div>
                   </div>
-                  <span className="text-muted-foreground">→</span>
+                  <div className="flex items-center gap-3">
+                    <LastRunBadge
+                      status={(scenario as any).lastRunStatus ?? null}
+                      at={(scenario as any).lastRunAt ?? null}
+                    />
+                    <span className="text-muted-foreground">→</span>
+                  </div>
                 </Link>
               ))}
             </div>

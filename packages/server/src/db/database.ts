@@ -21,6 +21,12 @@ import type {
 } from "@testforge/core";
 import { DuckDBConnection } from "./connection";
 
+export interface ScenarioWithLastRun extends Scenario {
+  lastRunId: string | null;
+  lastRunStatus: string | null;
+  lastRunAt: Date | null;
+}
+
 /**
  * Database row to entity converters
  */
@@ -71,6 +77,15 @@ class RowConverter {
       version: row.version,
       createdAt: new Date(row.created_at),
       updatedAt: new Date(row.updated_at),
+    };
+  }
+
+  static toScenarioWithLastRun(row: any): ScenarioWithLastRun {
+    return {
+      ...RowConverter.toScenario(row),
+      lastRunId: row.last_run_id ?? null,
+      lastRunStatus: row.last_run_status ?? null,
+      lastRunAt: row.last_run_at ? new Date(row.last_run_at) : null,
     };
   }
 
@@ -380,6 +395,29 @@ export class DuckDBDatabase {
       [featureId]
     );
     return rows.map(RowConverter.toScenario);
+  }
+
+  async getScenariosByFeatureWithLastRun(featureId: string): Promise<ScenarioWithLastRun[]> {
+    const rows = await this.db.all(
+      `SELECT
+         s.id, s.feature_id, s.name, s.description, s.tags, s.priority,
+         s.variables, s.steps, s.version, s.created_at, s.updated_at,
+         lr.last_run_id, lr.last_run_status, lr.last_run_at
+       FROM scenarios s
+       LEFT JOIN (
+         SELECT
+           scenario_id,
+           id        AS last_run_id,
+           status    AS last_run_status,
+           created_at AS last_run_at,
+           ROW_NUMBER() OVER (PARTITION BY scenario_id ORDER BY created_at DESC) AS rn
+         FROM test_runs
+       ) lr ON s.id = lr.scenario_id AND lr.rn = 1
+       WHERE s.feature_id = ?
+       ORDER BY s.created_at DESC`,
+      [featureId]
+    );
+    return rows.map(RowConverter.toScenarioWithLastRun);
   }
 
   async getAllScenarios(): Promise<Scenario[]> {

@@ -155,6 +155,34 @@ describe("GET /api/features/:featureId/scenarios", () => {
     const res = await req("GET", "/api/features/nonexistent/scenarios");
     expect(res.status).toBe(404);
   });
+
+  it("returns null lastRunStatus when scenario has no test runs", async () => {
+    const service = await createService();
+    const feature = await createFeature(service.id);
+    await db.createScenario({ featureId: feature.id, name: "No Runs", steps: [], priority: "medium", tags: [], variables: [] });
+    const res = await req("GET", `/api/features/${feature.id}/scenarios`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.data).toHaveLength(1);
+    expect(body.data[0].lastRunId).toBeNull();
+    expect(body.data[0].lastRunStatus).toBeNull();
+    expect(body.data[0].lastRunAt).toBeNull();
+  });
+
+  it("returns lastRunStatus of the most recent run for each scenario", async () => {
+    const service = await createService();
+    const feature = await createFeature(service.id);
+    const scenario = await db.createScenario({ featureId: feature.id, name: "Multi Run", steps: [], priority: "medium", tags: [], variables: [] });
+    const env = { baseUrl: "http://localhost", variables: {} };
+    await db.createTestRun({ id: crypto.randomUUID(), scenarioId: scenario.id, status: "passed", environment: env, createdAt: new Date(Date.now() - 1000) });
+    const latestRun = await db.createTestRun({ id: crypto.randomUUID(), scenarioId: scenario.id, status: "failed", environment: env, createdAt: new Date() });
+    const res = await req("GET", `/api/features/${feature.id}/scenarios`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.data).toHaveLength(1);
+    expect(body.data[0].lastRunStatus).toBe("failed");
+    expect(body.data[0].lastRunId).toBe(latestRun.id);
+  });
 });
 
 // ──────────────────────────────────────────────────────────────────────────────

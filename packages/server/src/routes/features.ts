@@ -56,7 +56,7 @@ const app = new Hono()
       throw notFound("Feature", featureId);
     }
 
-    const scenarios = await db.getScenariosByFeature(featureId);
+    const scenarios = await db.getScenariosByFeatureWithLastRun(featureId);
     return c.json({ success: true, data: scenarios });
   })
 
