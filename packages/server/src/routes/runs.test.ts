@@ -224,10 +224,10 @@ describe("GET /api/runs", () => {
   });
 
   it("offset paginates results", async () => {
-    const { scenarioId: sid } = await createTestRun("passed");
+    await createTestRun("passed");
     // Create two more runs with the same scenario (createTestRun creates new service/feature/scenario each time)
-    const { scenarioId: sid2 } = await createTestRun("passed");
-    const { scenarioId: sid3 } = await createTestRun("passed");
+    await createTestRun("passed");
+    await createTestRun("passed");
 
     const all = await req("GET", "/api/runs?limit=10");
     const allBody = (await all.json()) as any;
@@ -245,8 +245,6 @@ describe("GET /api/runs", () => {
     expect(pagedBody.data[0].id).not.toBe(allBody.data[0].id);
     expect(pagedBody.data[0].id).toBe(allBody.data[1].id);
 
-    // Suppress unused variable warning
-    void sid; void sid2; void sid3;
   });
 
   it("offset beyond total count returns empty list", async () => {
@@ -331,6 +329,15 @@ describe("GET /api/runs/dashboard", () => {
     const res = await req("GET", "/api/runs/dashboard");
     const body = (await res.json()) as any;
     expect(body.data.recentFailures).toEqual([]);
+  });
+
+  it("recentFailures includes scenarioName", async () => {
+    const { scenario } = await createTestRun("failed");
+
+    const res = await req("GET", "/api/runs/dashboard");
+    const body = (await res.json()) as any;
+    expect(body.data.recentFailures).toHaveLength(1);
+    expect(body.data.recentFailures[0].scenarioName).toBe(scenario.name);
   });
 });
 

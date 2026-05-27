@@ -2,6 +2,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { ko } from "date-fns/locale";
+import type { Step } from "@testforge/core";
 import {
   ArrowLeft,
   RefreshCw,
@@ -24,6 +25,21 @@ import {
 } from "../components/ui/accordion";
 import { Separator } from "../components/ui/separator";
 import { cn } from "../lib/utils";
+
+const STEP_TYPE_ICONS: Record<string, string> = {
+  navigate: "🌐",
+  click: "👆",
+  fill: "✍️",
+  select: "📋",
+  hover: "🖱️",
+  wait: "⏳",
+  assert: "✓",
+  screenshot: "📸",
+  "api-request": "🔗",
+  "api-assert": "✅",
+  component: "🔄",
+  script: "📜",
+};
 
 interface TestRun {
   id: string;
@@ -142,6 +158,40 @@ function formatStrategy(strategy: StrategyObj | null | undefined): string {
   }
 }
 
+function stepConfigSummary(step: Step): string | null {
+  const cfg = step.config as Record<string, unknown>;
+  switch (step.type) {
+    case "navigate":
+      return `URL: ${cfg.url as string}`;
+    case "click":
+    case "fill":
+    case "hover":
+    case "select": {
+      const loc = cfg.locator as { displayName?: string; strategies?: { type: string; value?: string }[] } | undefined;
+      const name = loc?.displayName || loc?.strategies?.[0]?.value || "—";
+      if (step.type === "fill") return `"${name}" ← ${cfg.value as string}`;
+      if (step.type === "select") return `"${name}" = ${cfg.value as string}`;
+      return `"${name}"`;
+    }
+    case "assert":
+      return cfg.expected != null
+        ? `${cfg.type} = "${String(cfg.expected)}"`
+        : String(cfg.type);
+    case "api-request":
+      return `${cfg.method} ${cfg.url as string}`;
+    case "api-assert":
+      return cfg.path ? `${cfg.type} ${cfg.path}` : String(cfg.type);
+    case "wait":
+      return cfg.type === "time" && cfg.timeout ? `${cfg.timeout}ms` : String(cfg.type);
+    case "script":
+      return (cfg.code as string).split("\n")[0].slice(0, 60);
+    case "component":
+      return `컴포넌트 ID: ${(cfg.componentId as string).slice(0, 8)}…`;
+    default:
+      return null;
+  }
+}
+
 export default function RunDetail() {
   const { scenarioId, runId } = useParams<{ scenarioId: string; runId: string }>();
   const navigate = useNavigate();
@@ -193,6 +243,7 @@ export default function RunDetail() {
   const run: TestRun | undefined = runData?.data;
   const steps: StepResult[] = stepsData?.data ?? [];
   const scenario = scenarioData?.data;
+  const scenarioSteps: Step[] = (scenario as { steps?: Step[] } | undefined)?.steps ?? [];
 
   if (!run) {
     return (
@@ -343,14 +394,20 @@ export default function RunDetail() {
             </div>
           ) : (
             <Accordion type="single" collapsible className="w-full">
-              {steps.map((step, index) => (
+              {steps.map((step, index) => {
+                const stepDef = scenarioSteps[step.stepIndex];
+                const typeIcon = stepDef ? (STEP_TYPE_ICONS[stepDef.type] ?? "▶️") : "▶️";
+                const stepLabel = stepDef
+                  ? `${typeIcon} ${stepDef.description || stepDef.type}`
+                  : `스텝 #${step.stepIndex}`;
+                return (
                 <AccordionItem key={step.id} value={step.id}>
                   <AccordionTrigger className="hover:no-underline">
                     <div className="flex items-center space-x-3 flex-1 text-left">
                       <StepStatusIcon status={step.status} />
                       <div className="flex-1">
                         <div className="font-medium">
-                          {index + 1}. 스텝 #{step.stepIndex}
+                          {index + 1}. {stepLabel}
                         </div>
                         {step.status === "healed" && (
                           <Badge
@@ -368,6 +425,12 @@ export default function RunDetail() {
                   </AccordionTrigger>
                   <AccordionContent>
                     <div className="space-y-4 pl-8 pr-4 pt-2">
+                      {/* Step Config Summary */}
+                      {stepDef && stepConfigSummary(stepDef) && (
+                        <div className="text-sm text-gray-600 bg-gray-50 rounded px-3 py-2 font-mono">
+                          {stepConfigSummary(stepDef)}
+                        </div>
+                      )}
                       {/* Healing Info */}
                       {step.status === "healed" && step.healing && (
                         <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
@@ -477,7 +540,7 @@ export default function RunDetail() {
                     </div>
                   </AccordionContent>
                 </AccordionItem>
-              ))}
+              ); })}
             </Accordion>
           )}
         </CardContent>
