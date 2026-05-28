@@ -32,6 +32,31 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 - Search & Filtering
 - Element Registry
 
+## 최근 완료 (Session 53 - 2026-05-28)
+
+✅ **Server-side date range filtering + ScenarioEditor Recent Runs** - Tests: 746 pass, 16 skip, 0 fail (+5 DB tests, +2 route tests)
+
+**1. Server-side date range filtering for GET /api/runs**
+- `getAllTestRuns()` accepts optional `from`/`to` Date params (DB-level WHERE clause)
+- Route parses `?from=` and `?to=` ISO date strings
+- `getRuns()` in api.ts accepts and forwards `from`/`to`
+- `Runs.tsx`: replaced client-side diffDays date filtering with server-side `?from=` param
+
+**2. "Recent Runs" card in ScenarioEditor**
+- New card at bottom shows last 10 runs for the current scenario
+- Status icon, relative time (date-fns/ko), duration, pass/fail/healed summary
+- Direct link to each run's detail page
+- Uses existing `getRuns(10, { scenarioId })` API
+
+**Files changed:**
+- `packages/server/src/db/database.ts` — from/to params in getAllTestRuns
+- `packages/server/src/db/database.test.ts` — 5 new date filter tests
+- `packages/server/src/routes/runs.ts` — from/to query param parsing
+- `packages/server/src/routes/runs.test.ts` — 2 new route tests
+- `packages/web/src/lib/api.ts` — from/to in getRuns filters
+- `packages/web/src/pages/Runs.tsx` — server-side date filter
+- `packages/web/src/pages/ScenarioEditor.tsx` — Recent Runs card
+
 ## 최근 완료 (Session 52 - 2026-05-28)
 
 ✅ **RunDetail step enrichment + TS fix** - Tests: 741 pass, 16 skip, 0 fail (+1 test)
