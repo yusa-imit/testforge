@@ -751,7 +751,7 @@ export class DuckDBDatabase {
 
   async getAllTestRuns(
     limit = 50,
-    filters: { scenarioId?: string; status?: string; featureId?: string; serviceId?: string } = {},
+    filters: { scenarioId?: string; status?: string; featureId?: string; serviceId?: string; from?: Date; to?: Date } = {},
     offset = 0
   ): Promise<(TestRun & { scenarioName: string })[]> {
     const conditions: string[] = [];
@@ -772,6 +772,14 @@ export class DuckDBDatabase {
     if (filters.serviceId) {
       conditions.push("f.service_id = ?");
       params.push(filters.serviceId);
+    }
+    if (filters.from) {
+      conditions.push("t.created_at >= ?");
+      params.push(filters.from);
+    }
+    if (filters.to) {
+      conditions.push("t.created_at <= ?");
+      params.push(filters.to);
     }
 
     // Only JOIN features table when serviceId filter is needed

@@ -18,7 +18,11 @@ const app = new Hono()
     const status = c.req.query("status") || undefined;
     const featureId = c.req.query("featureId") || undefined;
     const serviceId = c.req.query("serviceId") || undefined;
-    const runs = await db.getAllTestRuns(limit, { scenarioId, status, featureId, serviceId }, offset);
+    const fromParam = c.req.query("from");
+    const toParam = c.req.query("to");
+    const from = fromParam ? new Date(fromParam) : undefined;
+    const to = toParam ? new Date(toParam) : undefined;
+    const runs = await db.getAllTestRuns(limit, { scenarioId, status, featureId, serviceId, from, to }, offset);
     return c.json({ success: true, data: runs });
   })
 

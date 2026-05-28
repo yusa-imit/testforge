@@ -256,6 +256,50 @@ describe("GET /api/runs", () => {
     expect(body.success).toBe(true);
     expect(body.data).toEqual([]);
   });
+
+  it("from query param excludes runs before the cutoff date", async () => {
+    const { service, feature, scenario } = await createTestRun("passed");
+
+    // Create an old run directly with a past date
+    const oldRunId = uuid();
+    await db.createTestRun({
+      id: oldRunId,
+      scenarioId: scenario.id,
+      status: "passed",
+      environment: { baseUrl: service.baseUrl, variables: {} },
+      createdAt: new Date("2024-01-01T00:00:00Z"),
+    });
+
+    const from = "2025-01-01T00:00:00Z";
+    const res = await req("GET", `/api/runs?from=${encodeURIComponent(from)}`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.success).toBe(true);
+    const ids = body.data.map((r: any) => r.id);
+    expect(ids).not.toContain(oldRunId);
+  });
+
+  it("to query param excludes runs after the cutoff date", async () => {
+    const { service, feature, scenario } = await createTestRun("passed");
+
+    // Create a future run
+    const futureRunId = uuid();
+    await db.createTestRun({
+      id: futureRunId,
+      scenarioId: scenario.id,
+      status: "passed",
+      environment: { baseUrl: service.baseUrl, variables: {} },
+      createdAt: new Date("2099-01-01T00:00:00Z"),
+    });
+
+    const to = "2030-01-01T00:00:00Z";
+    const res = await req("GET", `/api/runs?to=${encodeURIComponent(to)}`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.success).toBe(true);
+    const ids = body.data.map((r: any) => r.id);
+    expect(ids).not.toContain(futureRunId);
+  });
 });
 
 describe("GET /api/runs/dashboard", () => {

@@ -1108,6 +1108,77 @@ describe("DuckDBDatabase - Test Runs", () => {
     expect(result.length).toBeGreaterThan(0);
   });
 
+  it("getAllTestRuns from filter excludes runs before the cutoff", async () => {
+    const oldRun: TestRun = {
+      id: uuid(), scenarioId, status: "passed",
+      environment: { baseUrl: "https://example.com", variables: {} },
+      createdAt: new Date("2024-01-01T00:00:00Z"),
+    };
+    const newRun: TestRun = {
+      id: uuid(), scenarioId, status: "passed",
+      environment: { baseUrl: "https://example.com", variables: {} },
+      createdAt: new Date("2025-06-01T00:00:00Z"),
+    };
+    await db.createTestRun(oldRun);
+    await db.createTestRun(newRun);
+
+    const from = new Date("2025-01-01T00:00:00Z");
+    const result = await db.getAllTestRuns(50, { from });
+    const ids = result.map((r) => r.id);
+    expect(ids).toContain(newRun.id);
+    expect(ids).not.toContain(oldRun.id);
+  });
+
+  it("getAllTestRuns to filter excludes runs after the cutoff", async () => {
+    const earlyRun: TestRun = {
+      id: uuid(), scenarioId, status: "passed",
+      environment: { baseUrl: "https://example.com", variables: {} },
+      createdAt: new Date("2024-01-01T00:00:00Z"),
+    };
+    const lateRun: TestRun = {
+      id: uuid(), scenarioId, status: "passed",
+      environment: { baseUrl: "https://example.com", variables: {} },
+      createdAt: new Date("2025-06-01T00:00:00Z"),
+    };
+    await db.createTestRun(earlyRun);
+    await db.createTestRun(lateRun);
+
+    const to = new Date("2025-01-01T00:00:00Z");
+    const result = await db.getAllTestRuns(50, { to });
+    const ids = result.map((r) => r.id);
+    expect(ids).toContain(earlyRun.id);
+    expect(ids).not.toContain(lateRun.id);
+  });
+
+  it("getAllTestRuns from+to range returns only runs in window", async () => {
+    const before: TestRun = {
+      id: uuid(), scenarioId, status: "passed",
+      environment: { baseUrl: "https://example.com", variables: {} },
+      createdAt: new Date("2024-01-01T00:00:00Z"),
+    };
+    const inside: TestRun = {
+      id: uuid(), scenarioId, status: "passed",
+      environment: { baseUrl: "https://example.com", variables: {} },
+      createdAt: new Date("2025-03-15T00:00:00Z"),
+    };
+    const after: TestRun = {
+      id: uuid(), scenarioId, status: "passed",
+      environment: { baseUrl: "https://example.com", variables: {} },
+      createdAt: new Date("2025-12-31T00:00:00Z"),
+    };
+    await db.createTestRun(before);
+    await db.createTestRun(inside);
+    await db.createTestRun(after);
+
+    const from = new Date("2025-01-01T00:00:00Z");
+    const to = new Date("2025-06-01T00:00:00Z");
+    const result = await db.getAllTestRuns(50, { from, to });
+    const ids = result.map((r) => r.id);
+    expect(ids).toContain(inside.id);
+    expect(ids).not.toContain(before.id);
+    expect(ids).not.toContain(after.id);
+  });
+
   it("should update test run status and summary", async () => {
     const run: TestRun = {
       id: uuid(),
