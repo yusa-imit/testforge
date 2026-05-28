@@ -32,6 +32,34 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 - Search & Filtering
 - Element Registry
 
+## 최근 완료 (Session 54 - 2026-05-29)
+
+✅ **Dashboard broken links fix + getTestRun enrichment + Runs pagination** - Tests: 748 pass, 16 skip, 0 fail (+2 DB tests)
+
+**1. Bug fix: Dashboard "상세 →" links were broken**
+- Links pointed to `/runs/${run.id}` which has no matching route in App.tsx
+- Fixed to `/scenarios/${run.scenarioId}/runs/${run.id}` (correct route)
+- `RecentFailureRun` interface already had `scenarioId` from the API response
+
+**2. Enriched `getTestRun` with scenarioName**
+- Changed simple `SELECT * FROM test_runs` to LEFT JOIN with scenarios
+- Now returns `TestRun & { scenarioName: string }` (consistent with `getAllTestRuns`)
+- +2 DB tests: scenarioName populated, unknown id returns undefined
+
+**3. Server-side offset pagination in Runs.tsx**
+- `PAGE_SIZE = 50` — fetches 50 per page from server using `offset` param
+- Prev/Next buttons + page number display
+- `getRuns()` in api.ts now forwards `offset` parameter
+- Search mode still fetches 500 client-side (no page controls shown)
+- Filter changes reset page to 0
+
+**Files changed:**
+- `packages/server/src/db/database.ts` — getTestRun enriched with JOIN
+- `packages/server/src/db/database.test.ts` — 2 new tests
+- `packages/web/src/pages/Dashboard.tsx` — fixed broken run links
+- `packages/web/src/pages/Runs.tsx` — pagination UI
+- `packages/web/src/lib/api.ts` — getRuns offset param
+
 ## 최근 완료 (Session 53 - 2026-05-28)
 
 ✅ **Server-side date range filtering + ScenarioEditor Recent Runs** - Tests: 746 pass, 16 skip, 0 fail (+5 DB tests, +2 route tests)
