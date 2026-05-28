@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
+const PAGE_SIZE = 50;
+
 function getFromDate(filter: string): string | undefined {
   const now = new Date();
   switch (filter) {
@@ -20,21 +22,26 @@ export default function Runs() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [page, setPage] = useState(0);
 
   const serverStatus = statusFilter !== "all" ? statusFilter : undefined;
   const serverFrom = dateFilter !== "all" ? getFromDate(dateFilter) : undefined;
 
+  const offset = searchQuery.trim() ? 0 : page * PAGE_SIZE;
+  const limit = searchQuery.trim() ? 500 : PAGE_SIZE;
+
   const { data, isLoading } = useQuery({
-    queryKey: ["runs", 200, serverStatus, serverFrom],
-    queryFn: () => getRuns(200, {
+    queryKey: ["runs", limit, offset, serverStatus, serverFrom],
+    queryFn: () => getRuns(limit, {
       ...(serverStatus ? { status: serverStatus } : {}),
       ...(serverFrom ? { from: serverFrom } : {}),
+      offset,
     }),
   });
 
   const runs = useMemo(() => data?.data ?? [], [data]);
 
-  // Client-side search filter only
+  // Client-side search filter only (when searching, we fetch more and filter locally)
   const filteredRuns = useMemo(() => {
     if (!searchQuery.trim()) return runs;
     return runs.filter((run) =>
@@ -42,6 +49,18 @@ export default function Runs() {
       (run.scenarioName || '').toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [runs, searchQuery]);
+
+  const resetFilters = () => {
+    setStatusFilter("all");
+    setDateFilter("all");
+    setSearchQuery("");
+    setPage(0);
+  };
+
+  const handleFilterChange = (setter: (v: string) => void) => (v: string) => {
+    setter(v);
+    setPage(0);
+  };
 
   if (isLoading) {
     return <div className="text-center py-12">로딩 중...</div>;
@@ -85,7 +104,7 @@ export default function Runs() {
             className="pl-10"
           />
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
+        <Select value={statusFilter} onValueChange={handleFilterChange(setStatusFilter)}>
           <SelectTrigger className="w-[130px]">
             <SelectValue placeholder="상태" />
           </SelectTrigger>
@@ -98,7 +117,7 @@ export default function Runs() {
             <SelectItem value="cancelled">⏹️ 취소</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={dateFilter} onValueChange={setDateFilter}>
+        <Select value={dateFilter} onValueChange={handleFilterChange(setDateFilter)}>
           <SelectTrigger className="w-[130px]">
             <SelectValue placeholder="기간" />
           </SelectTrigger>
@@ -113,17 +132,16 @@ export default function Runs() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => {
-              setStatusFilter("all");
-              setDateFilter("all");
-              setSearchQuery("");
-            }}
+            onClick={resetFilters}
           >
             필터 초기화
           </Button>
         )}
         <span className="text-sm text-gray-500">
-          {filteredRuns.length}/{runs.length}개 결과
+          {searchQuery.trim()
+            ? `${filteredRuns.length}개 결과`
+            : `${page * PAGE_SIZE + 1}–${page * PAGE_SIZE + runs.length}번째`
+          }
         </span>
       </div>
 
@@ -135,14 +153,7 @@ export default function Runs() {
         ) : filteredRuns.length === 0 ? (
           <div className="px-6 py-12 text-center text-gray-500">
             <p>필터 조건에 맞는 실행 이력이 없습니다.</p>
-            <Button
-              variant="link"
-              onClick={() => {
-                setStatusFilter("all");
-                setDateFilter("all");
-                setSearchQuery("");
-              }}
-            >
+            <Button variant="link" onClick={resetFilters}>
               필터 초기화
             </Button>
           </div>
@@ -217,6 +228,31 @@ export default function Runs() {
           </table>
         )}
       </div>
+
+      {/* Pagination controls — hidden when searching (client-side filter) */}
+      {!searchQuery.trim() && (
+        <div className="flex items-center justify-between">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page === 0}
+            onClick={() => setPage((p) => p - 1)}
+          >
+            ← 이전
+          </Button>
+          <span className="text-sm text-gray-500">
+            {page + 1} 페이지
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={runs.length < PAGE_SIZE}
+            onClick={() => setPage((p) => p + 1)}
+          >
+            다음 →
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

@@ -736,9 +736,19 @@ export class DuckDBDatabase {
     return run;
   }
 
-  async getTestRun(id: string): Promise<TestRun | undefined> {
-    const row = await this.db.get("SELECT * FROM test_runs WHERE id = ?", [id]);
-    return row ? RowConverter.toTestRun(row) : undefined;
+  async getTestRun(id: string): Promise<(TestRun & { scenarioName: string }) | undefined> {
+    const row = await this.db.get(
+      `SELECT t.*, s.name as scenario_name
+       FROM test_runs t
+       LEFT JOIN scenarios s ON t.scenario_id = s.id
+       WHERE t.id = ?`,
+      [id]
+    );
+    if (!row) return undefined;
+    return {
+      ...RowConverter.toTestRun(row),
+      scenarioName: (row as any).scenario_name || `시나리오 ${(row as any).scenario_id?.slice(0, 8)}...`,
+    };
   }
 
   async getTestRunsByScenario(scenarioId: string): Promise<TestRun[]> {

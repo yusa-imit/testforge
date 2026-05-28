@@ -840,6 +840,25 @@ describe("DuckDBDatabase - Test Runs", () => {
     expect(retrieved!.summary).toEqual({ totalSteps: 5, passedSteps: 5, failedSteps: 0, skippedSteps: 0, healedSteps: 0 });
   });
 
+  it("getTestRun includes scenarioName from scenarios table", async () => {
+    const run: TestRun = {
+      id: uuid(),
+      scenarioId,
+      status: "passed",
+      environment: { baseUrl: "https://example.com", variables: {} },
+      createdAt: new Date(),
+    };
+    await db.createTestRun(run);
+    const retrieved = await db.getTestRun(run.id);
+    expect(retrieved).toBeDefined();
+    expect((retrieved as any).scenarioName).toBe("Test Scenario");
+  });
+
+  it("getTestRun returns undefined for unknown id", async () => {
+    const retrieved = await db.getTestRun("non-existent-id");
+    expect(retrieved).toBeUndefined();
+  });
+
   it("should get test runs by scenario", async () => {
     const run1: TestRun = {
       id: uuid(),

@@ -75,12 +75,13 @@ export async function getHealingStats() {
   return res.json();
 }
 
-export async function getRuns(limit = 50, filters?: { status?: string; scenarioId?: string; from?: string; to?: string }) {
+export async function getRuns(limit = 50, filters?: { status?: string; scenarioId?: string; from?: string; to?: string; offset?: number }) {
   const query: Record<string, string> = { limit: String(limit) };
   if (filters?.status) query.status = filters.status;
   if (filters?.scenarioId) query.scenarioId = filters.scenarioId;
   if (filters?.from) query.from = filters.from;
   if (filters?.to) query.to = filters.to;
+  if (filters?.offset) query.offset = String(filters.offset);
   const res = await api.api.runs.$get({ query });
   return res.json();
 }

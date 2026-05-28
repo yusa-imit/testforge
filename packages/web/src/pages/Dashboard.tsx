@@ -135,7 +135,7 @@ export default function Dashboard() {
                     })}
                   </span>
                   <Link
-                    to={`/runs/${run.id}`}
+                    to={`/scenarios/${run.scenarioId}/runs/${run.id}`}
                     className="text-sm text-blue-600 hover:text-blue-800"
                   >
                     상세 →
