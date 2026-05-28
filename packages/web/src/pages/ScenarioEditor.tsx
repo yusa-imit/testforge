@@ -2,8 +2,10 @@ import { useState } from "react";
 import * as React from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { formatDistanceToNow } from "date-fns";
+import { ko } from "date-fns/locale";
 import type { Scenario, Step, Variable } from "@testforge/core";
-import { getScenario, updateScenario, runScenario, deleteScenario, duplicateScenario } from "../lib/api";
+import { getScenario, updateScenario, runScenario, deleteScenario, duplicateScenario, getRuns } from "../lib/api";
 import { VariableEditor } from "../components/VariableEditor";
 import { StepEditModal } from "../components/StepEditModal";
 import { Button } from "../components/ui/button";
@@ -27,6 +29,16 @@ const STEP_TYPE_ICONS: Record<string, string> = {
   component: "🔄",
   script: "📜",
 };
+
+function getRunStatusIcon(status: string): string {
+  switch (status) {
+    case "passed": return "✅";
+    case "failed": return "❌";
+    case "running": return "🔄";
+    case "cancelled": return "⏹️";
+    default: return "⏳";
+  }
+}
 
 export default function ScenarioEditor() {
   const { id } = useParams<{ id: string }>();
@@ -52,6 +64,21 @@ export default function ScenarioEditor() {
     queryFn: () => getScenario(id!),
     enabled: !!id,
   });
+
+  // Fetch recent runs for this scenario
+  const { data: runsData } = useQuery({
+    queryKey: ["runs", "scenario", id],
+    queryFn: () => getRuns(10, { scenarioId: id }),
+    enabled: !!id,
+  });
+  const recentRuns = (runsData?.data ?? []) as Array<{
+    id: string;
+    status: string;
+    createdAt: string;
+    startedAt?: string;
+    duration?: number;
+    summary?: { passedSteps: number; failedSteps: number; healedSteps: number };
+  }>;
 
   // Initialize state from fetched data
   React.useEffect(() => {
@@ -440,6 +467,59 @@ export default function ScenarioEditor() {
           </div>
         )}
       </Card>
+
+      {/* Recent Runs */}
+      {recentRuns.length > 0 && (
+        <Card className="p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-medium text-gray-900">최근 실행 이력</h2>
+            <Link to="/runs" className="text-sm text-blue-600 hover:text-blue-800">
+              전체 보기 →
+            </Link>
+          </div>
+          <div className="space-y-1">
+            {recentRuns.map((run) => (
+              <div
+                key={run.id}
+                className="flex items-center justify-between py-2 px-3 rounded hover:bg-gray-50"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-lg">{getRunStatusIcon(run.status)}</span>
+                  <div>
+                    <div className="text-sm text-gray-500">
+                      {formatDistanceToNow(new Date(run.startedAt ?? run.createdAt), {
+                        addSuffix: true,
+                        locale: ko,
+                      })}
+                    </div>
+                    {run.summary && (
+                      <div className="text-xs text-gray-400">
+                        {run.summary.passedSteps}통과 / {run.summary.failedSteps}실패
+                        {run.summary.healedSteps > 0 && ` / ${run.summary.healedSteps}치유`}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  {run.duration != null && (
+                    <span className="text-sm text-gray-400">
+                      {run.duration < 1000
+                        ? `${run.duration}ms`
+                        : `${(run.duration / 1000).toFixed(1)}s`}
+                    </span>
+                  )}
+                  <Link
+                    to={`/scenarios/${id}/runs/${run.id}`}
+                    className="text-sm text-blue-600 hover:text-blue-800"
+                  >
+                    상세 →
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* Step Edit Modal */}
       <StepEditModal

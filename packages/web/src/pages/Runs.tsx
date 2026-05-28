@@ -6,52 +6,42 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
+function getFromDate(filter: string): string | undefined {
+  const now = new Date();
+  switch (filter) {
+    case "1d": return new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+    case "7d": return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    case "30d": return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    default: return undefined;
+  }
+}
+
 export default function Runs() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
 
   const serverStatus = statusFilter !== "all" ? statusFilter : undefined;
+  const serverFrom = dateFilter !== "all" ? getFromDate(dateFilter) : undefined;
 
   const { data, isLoading } = useQuery({
-    queryKey: ["runs", 200, serverStatus],
-    queryFn: () => getRuns(200, serverStatus ? { status: serverStatus } : undefined),
+    queryKey: ["runs", 200, serverStatus, serverFrom],
+    queryFn: () => getRuns(200, {
+      ...(serverStatus ? { status: serverStatus } : {}),
+      ...(serverFrom ? { from: serverFrom } : {}),
+    }),
   });
 
   const runs = useMemo(() => data?.data ?? [], [data]);
 
-  // Client-side filters for date and search (not supported server-side)
+  // Client-side search filter only
   const filteredRuns = useMemo(() => {
-    return runs.filter((run) => {
-      // Date filter
-      let matchesDate = true;
-      if (dateFilter !== "all") {
-        const runDate = new Date(run.createdAt);
-        const now = new Date();
-        const diffMs = now.getTime() - runDate.getTime();
-        const diffDays = diffMs / (1000 * 60 * 60 * 24);
-
-        switch (dateFilter) {
-          case "1d":
-            matchesDate = diffDays <= 1;
-            break;
-          case "7d":
-            matchesDate = diffDays <= 7;
-            break;
-          case "30d":
-            matchesDate = diffDays <= 30;
-            break;
-        }
-      }
-
-      // Search filter (searches both scenario name and ID)
-      const matchesSearch = !searchQuery.trim() ||
-        run.scenarioId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (run.scenarioName || '').toLowerCase().includes(searchQuery.toLowerCase());
-
-      return matchesDate && matchesSearch;
-    });
-  }, [runs, dateFilter, searchQuery]);
+    if (!searchQuery.trim()) return runs;
+    return runs.filter((run) =>
+      run.scenarioId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (run.scenarioName || '').toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [runs, searchQuery]);
 
   if (isLoading) {
     return <div className="text-center py-12">로딩 중...</div>;
