@@ -32,6 +32,25 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 - Search & Filtering
 - Element Registry
 
+## 최근 완료 (Session 55 - 2026-05-29)
+
+✅ **Feature-level stats in ServiceDetail** - Tests: 754 pass, 16 skip, 0 fail (+6 tests)
+
+**Feature stats (scenarioCount + lastRunStatus) in GET /api/services/:id/features**
+- `FeatureWithStats` interface added: extends Feature with `scenarioCount`, `lastRunId`, `lastRunStatus`, `lastRunAt`
+- `RowConverter.toFeatureWithStats()` static converter added
+- `getFeaturesByServiceWithStats()` uses JOIN + ROW_NUMBER window function (same pattern as `getScenariosByFeatureWithLastRun`)
+- Route now uses enriched method; backwards-compatible (adds new fields)
+- ServiceDetail.tsx: shows "X개 시나리오" count + `FeatureLastRunBadge` per feature row
+- +4 DB tests, +2 route tests
+
+**Files changed:**
+- `packages/server/src/db/database.ts` — FeatureWithStats type + converter + new method
+- `packages/server/src/db/database.test.ts` — 4 new tests
+- `packages/server/src/routes/services.ts` — use getFeaturesByServiceWithStats
+- `packages/server/src/routes/services.test.ts` — 2 new tests
+- `packages/web/src/pages/ServiceDetail.tsx` — scenario count + last run badge UI
+
 ## 최근 완료 (Session 54 - 2026-05-29)
 
 ✅ **Dashboard broken links fix + getTestRun enrichment + Runs pagination** - Tests: 748 pass, 16 skip, 0 fail (+2 DB tests)
