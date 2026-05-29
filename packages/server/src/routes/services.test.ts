@@ -63,6 +63,33 @@ describe("GET /api/services", () => {
     expect(body.data).toHaveLength(1);
     expect(body.data[0].name).toBe("My App");
   });
+
+  it("includes featureCount and scenarioCount stats", async () => {
+    const svc = await db.createService(servicePayload);
+    const feature = await db.createFeature({ serviceId: svc.id, name: "F1", owners: [] });
+    await db.createScenario({ featureId: feature.id, name: "S1", tags: [], priority: "medium", variables: [], steps: [] });
+    await db.createScenario({ featureId: feature.id, name: "S2", tags: [], priority: "medium", variables: [], steps: [] });
+
+    const res = await req("GET", "/api/services");
+    const body = (await res.json()) as any;
+    expect(body.data[0].featureCount).toBe(1);
+    expect(body.data[0].scenarioCount).toBe(2);
+    expect(body.data[0].lastRunStatus).toBeNull();
+  });
+
+  it("includes lastRunStatus from most recent run", async () => {
+    const svc = await db.createService(servicePayload);
+    const feature = await db.createFeature({ serviceId: svc.id, name: "F-run", owners: [] });
+    const scenario = await db.createScenario({ featureId: feature.id, name: "S-run", tags: [], priority: "medium", variables: [], steps: [] });
+    const env = { baseUrl: "http://localhost", variables: {} };
+    const { v4: genId } = await import("uuid");
+    await db.createTestRun({ id: genId(), scenarioId: scenario.id, status: "failed", environment: env, createdAt: new Date(Date.now() - 5000) });
+    await db.createTestRun({ id: genId(), scenarioId: scenario.id, status: "passed", environment: env, createdAt: new Date(Date.now() - 1000) });
+
+    const res = await req("GET", "/api/services");
+    const body = (await res.json()) as any;
+    expect(body.data[0].lastRunStatus).toBe("passed");
+  });
 });
 
 describe("POST /api/services", () => {

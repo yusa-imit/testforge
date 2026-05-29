@@ -172,23 +172,49 @@ export default function Services() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredServices.map((service) => (
-            <Link key={service.id} to={`/services/${service.id}`}>
-              <Card className="hover:shadow-lg transition-shadow h-full">
-                <CardHeader>
-                  <CardTitle>{service.name}</CardTitle>
-                  {service.description && (
-                    <CardDescription>{service.description}</CardDescription>
-                  )}
-                </CardHeader>
-                <CardContent>
-                  <p className="text-xs text-muted-foreground">
-                    <code className="bg-muted px-1 py-0.5 rounded">{service.baseUrl}</code>
-                  </p>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
+          {filteredServices.map((service) => {
+            const s = service as typeof service & {
+              featureCount?: number;
+              scenarioCount?: number;
+              lastRunStatus?: string | null;
+            };
+            const statusEmoji =
+              s.lastRunStatus === "passed" ? "✅"
+              : s.lastRunStatus === "failed" ? "❌"
+              : s.lastRunStatus === "healed" ? "⚠️"
+              : s.lastRunStatus === "running" ? "🔄"
+              : null;
+            return (
+              <Link key={service.id} to={`/services/${service.id}`}>
+                <Card className="hover:shadow-lg transition-shadow h-full">
+                  <CardHeader>
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <CardTitle>{service.name}</CardTitle>
+                        {service.description && (
+                          <CardDescription>{service.description}</CardDescription>
+                        )}
+                      </div>
+                      {statusEmoji && (
+                        <span className="text-lg mt-0.5" title={`최근 실행: ${s.lastRunStatus}`}>
+                          {statusEmoji}
+                        </span>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <p className="text-xs text-muted-foreground">
+                      <code className="bg-muted px-1 py-0.5 rounded">{service.baseUrl}</code>
+                    </p>
+                    <div className="flex gap-4 text-xs text-muted-foreground">
+                      <span>{s.featureCount ?? 0}개 기능</span>
+                      <span>{s.scenarioCount ?? 0}개 시나리오</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>

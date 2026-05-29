@@ -2174,3 +2174,62 @@ describe("getFeaturesByServiceWithStats", () => {
     expect(svc2Features[0].scenarioCount).toBe(0);
   });
 });
+
+describe("getAllServicesWithStats", () => {
+  it("returns featureCount = 0 and scenarioCount = 0 for empty service", async () => {
+    await db.createService({ name: "SSW-A", baseUrl: "http://ssw-a", defaultTimeout: 5000 });
+    const services = await db.getAllServicesWithStats();
+    const svc = services.find((s) => s.name === "SSW-A");
+    expect(svc).toBeDefined();
+    expect(svc!.featureCount).toBe(0);
+    expect(svc!.scenarioCount).toBe(0);
+    expect(svc!.lastRunStatus).toBeNull();
+    expect(svc!.lastRunId).toBeNull();
+  });
+
+  it("returns correct featureCount and scenarioCount", async () => {
+    const service = await db.createService({ name: "SSW-B", baseUrl: "http://ssw-b", defaultTimeout: 5000 });
+    const f1 = await db.createFeature({ serviceId: service.id, name: "SSW-F1", owners: [] });
+    const f2 = await db.createFeature({ serviceId: service.id, name: "SSW-F2", owners: [] });
+    await db.createScenario({ featureId: f1.id, name: "SSW-S1", tags: [], priority: "medium", variables: [], steps: [] });
+    await db.createScenario({ featureId: f1.id, name: "SSW-S2", tags: [], priority: "medium", variables: [], steps: [] });
+    await db.createScenario({ featureId: f2.id, name: "SSW-S3", tags: [], priority: "medium", variables: [], steps: [] });
+
+    const services = await db.getAllServicesWithStats();
+    const svc = services.find((s) => s.id === service.id);
+    expect(svc!.featureCount).toBe(2);
+    expect(svc!.scenarioCount).toBe(3);
+  });
+
+  it("returns lastRunStatus from most recent run across all scenarios", async () => {
+    const service = await db.createService({ name: "SSW-C", baseUrl: "http://ssw-c", defaultTimeout: 5000 });
+    const feature = await db.createFeature({ serviceId: service.id, name: "SSW-FC", owners: [] });
+    const scenario = await db.createScenario({ featureId: feature.id, name: "SSW-SC", tags: [], priority: "medium", variables: [], steps: [] });
+
+    const env = { baseUrl: "http://localhost", variables: {} };
+    await db.createTestRun({ id: uuid(), scenarioId: scenario.id, status: "failed", environment: env, createdAt: new Date(Date.now() - 10000) });
+    await db.createTestRun({ id: uuid(), scenarioId: scenario.id, status: "passed", environment: env, createdAt: new Date(Date.now() - 1000) });
+
+    const services = await db.getAllServicesWithStats();
+    const svc = services.find((s) => s.id === service.id);
+    expect(svc!.lastRunStatus).toBe("passed");
+    expect(svc!.lastRunId).toBeDefined();
+    expect(svc!.lastRunAt).toBeInstanceOf(Date);
+  });
+
+  it("isolates stats between services", async () => {
+    const svc1 = await db.createService({ name: "SSW-D1", baseUrl: "http://ssw-d1", defaultTimeout: 5000 });
+    const svc2 = await db.createService({ name: "SSW-D2", baseUrl: "http://ssw-d2", defaultTimeout: 5000 });
+    const f1 = await db.createFeature({ serviceId: svc1.id, name: "SSW-FD1", owners: [] });
+    await db.createScenario({ featureId: f1.id, name: "SSW-SD1", tags: [], priority: "medium", variables: [], steps: [] });
+
+    const services = await db.getAllServicesWithStats();
+    const s1 = services.find((s) => s.id === svc1.id);
+    const s2 = services.find((s) => s.id === svc2.id);
+
+    expect(s1!.featureCount).toBe(1);
+    expect(s1!.scenarioCount).toBe(1);
+    expect(s2!.featureCount).toBe(0);
+    expect(s2!.scenarioCount).toBe(0);
+  });
+});

@@ -27,6 +27,14 @@ export interface ScenarioWithLastRun extends Scenario {
   lastRunAt: Date | null;
 }
 
+export interface ServiceWithStats extends Service {
+  featureCount: number;
+  scenarioCount: number;
+  lastRunId: string | null;
+  lastRunStatus: string | null;
+  lastRunAt: Date | null;
+}
+
 export interface FeatureWithStats extends Feature {
   scenarioCount: number;
   lastRunId: string | null;
@@ -50,6 +58,17 @@ class RowConverter {
       defaultTimeout: row.default_timeout,
       createdAt: new Date(row.created_at),
       updatedAt: new Date(row.updated_at),
+    };
+  }
+
+  static toServiceWithStats(row: any): ServiceWithStats {
+    return {
+      ...RowConverter.toService(row),
+      featureCount: Number(row.feature_count ?? 0),
+      scenarioCount: Number(row.scenario_count ?? 0),
+      lastRunId: row.last_run_id ?? null,
+      lastRunStatus: row.last_run_status ?? null,
+      lastRunAt: row.last_run_at ? new Date(row.last_run_at) : null,
     };
   }
 
@@ -223,6 +242,41 @@ export class DuckDBDatabase {
   async getAllServices(): Promise<Service[]> {
     const rows = await this.db.all("SELECT * FROM services ORDER BY created_at DESC");
     return rows.map(RowConverter.toService);
+  }
+
+  async getAllServicesWithStats(): Promise<ServiceWithStats[]> {
+    const rows = await this.db.all(
+      `SELECT
+         sv.id, sv.name, sv.description, sv.base_url, sv.default_timeout, sv.created_at, sv.updated_at,
+         COALESCE(fc.feature_count, 0) AS feature_count,
+         COALESCE(sc.scenario_count, 0) AS scenario_count,
+         lr.last_run_id, lr.last_run_status, lr.last_run_at
+       FROM services sv
+       LEFT JOIN (
+         SELECT service_id, COUNT(*) AS feature_count
+         FROM features
+         GROUP BY service_id
+       ) fc ON sv.id = fc.service_id
+       LEFT JOIN (
+         SELECT f.service_id, COUNT(*) AS scenario_count
+         FROM scenarios s
+         JOIN features f ON s.feature_id = f.id
+         GROUP BY f.service_id
+       ) sc ON sv.id = sc.service_id
+       LEFT JOIN (
+         SELECT
+           f.service_id,
+           t.id         AS last_run_id,
+           t.status     AS last_run_status,
+           t.created_at AS last_run_at,
+           ROW_NUMBER() OVER (PARTITION BY f.service_id ORDER BY t.created_at DESC) AS rn
+         FROM test_runs t
+         JOIN scenarios s ON t.scenario_id = s.id
+         JOIN features f ON s.feature_id = f.id
+       ) lr ON sv.id = lr.service_id AND lr.rn = 1
+       ORDER BY sv.created_at DESC`
+    );
+    return rows.map(RowConverter.toServiceWithStats);
   }
 
   async updateService(id: string, data: Partial<CreateService>): Promise<Service | undefined> {

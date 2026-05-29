@@ -6,10 +6,10 @@ import { notFound } from "../utils/errors";
 import { executeScenarioRun } from "../execution/runHelper";
 
 const app = new Hono()
-  // GET /api/services - 서비스 목록
+  // GET /api/services - 서비스 목록 (with stats)
   .get("/", async (c) => {
     const db = await getDB();
-    const services = await db.getAllServices();
+    const services = await db.getAllServicesWithStats();
     return c.json({ success: true, data: services });
   })
 
