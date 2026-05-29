@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { formatDistanceToNow } from "date-fns";
+import { ko } from "date-fns/locale";
 import { getService, getFeatures, api, runService } from "../lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +10,26 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "../hooks/use-toast";
+
+function FeatureLastRunBadge({ status, at }: { status: string | null; at: string | null }) {
+  if (!status) return <span className="text-xs text-muted-foreground">미실행</span>;
+  const map: Record<string, { icon: string; cls: string }> = {
+    passed:    { icon: "✅", cls: "text-green-600" },
+    failed:    { icon: "❌", cls: "text-red-600" },
+    healed:    { icon: "⚠️", cls: "text-yellow-600" },
+    running:   { icon: "🔄", cls: "text-blue-600" },
+    cancelled: { icon: "⏹️", cls: "text-gray-500" },
+    pending:   { icon: "⏳", cls: "text-gray-400" },
+  };
+  const { icon, cls } = map[status] ?? { icon: "⏳", cls: "text-gray-400" };
+  const rel = at ? formatDistanceToNow(new Date(at), { addSuffix: true, locale: ko }) : null;
+  return (
+    <span className={`flex items-center gap-1 text-xs ${cls}`}>
+      {icon}
+      {rel && <span className="text-muted-foreground">{rel}</span>}
+    </span>
+  );
+}
 
 export default function ServiceDetail() {
   const { id } = useParams<{ id: string }>();
@@ -177,13 +199,24 @@ export default function ServiceDetail() {
                 >
                   <div>
                     <h3 className="font-medium">{feature.name}</h3>
-                    {feature.description && (
-                      <p className="text-sm text-muted-foreground">
-                        {feature.description}
-                      </p>
-                    )}
+                    <div className="mt-1 flex items-center gap-2">
+                      {feature.description && (
+                        <p className="text-sm text-muted-foreground">
+                          {feature.description}
+                        </p>
+                      )}
+                      <span className="text-xs text-muted-foreground">
+                        {(feature as any).scenarioCount ?? 0}개 시나리오
+                      </span>
+                    </div>
                   </div>
-                  <span className="text-muted-foreground">→</span>
+                  <div className="flex items-center gap-3">
+                    <FeatureLastRunBadge
+                      status={(feature as any).lastRunStatus ?? null}
+                      at={(feature as any).lastRunAt ?? null}
+                    />
+                    <span className="text-muted-foreground">→</span>
+                  </div>
                 </Link>
               ))}
             </div>

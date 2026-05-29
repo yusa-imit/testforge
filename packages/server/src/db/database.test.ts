@@ -2122,3 +2122,55 @@ describe("DuckDBDatabase - Import Methods", () => {
     expect(features[0].id).toBe(featureId);
   });
 });
+
+describe("getFeaturesByServiceWithStats", () => {
+  it("returns scenarioCount = 0 for feature with no scenarios", async () => {
+    const service = await db.createService({ name: "SVC", baseUrl: "http://s", defaultTimeout: 5000 });
+    await db.createFeature({ serviceId: service.id, name: "F1", owners: [] });
+
+    const features = await db.getFeaturesByServiceWithStats(service.id);
+    expect(features).toHaveLength(1);
+    expect(features[0].scenarioCount).toBe(0);
+    expect(features[0].lastRunStatus).toBeNull();
+    expect(features[0].lastRunId).toBeNull();
+  });
+
+  it("returns correct scenarioCount when scenarios exist", async () => {
+    const service = await db.createService({ name: "SVC2", baseUrl: "http://s2", defaultTimeout: 5000 });
+    const feature = await db.createFeature({ serviceId: service.id, name: "F2", owners: [] });
+    await db.createScenario({ featureId: feature.id, name: "S1", tags: [], priority: "medium", variables: [], steps: [] });
+    await db.createScenario({ featureId: feature.id, name: "S2", tags: [], priority: "medium", variables: [], steps: [] });
+
+    const features = await db.getFeaturesByServiceWithStats(service.id);
+    expect(features[0].scenarioCount).toBe(2);
+  });
+
+  it("returns lastRunStatus from most recent run across feature scenarios", async () => {
+    const service = await db.createService({ name: "SVC3", baseUrl: "http://s3", defaultTimeout: 5000 });
+    const feature = await db.createFeature({ serviceId: service.id, name: "F3", owners: [] });
+    const scenario = await db.createScenario({ featureId: feature.id, name: "S3", tags: [], priority: "medium", variables: [], steps: [] });
+
+    const env = { baseUrl: "http://localhost", variables: {} };
+    await db.createTestRun({ id: uuid(), scenarioId: scenario.id, status: "failed", environment: env, createdAt: new Date(Date.now() - 10000) });
+    await db.createTestRun({ id: uuid(), scenarioId: scenario.id, status: "passed", environment: env, createdAt: new Date(Date.now() - 1000) });
+
+    const features = await db.getFeaturesByServiceWithStats(service.id);
+    expect(features[0].lastRunStatus).toBe("passed");
+  });
+
+  it("isolates stats between services", async () => {
+    const svc1 = await db.createService({ name: "SVC4a", baseUrl: "http://s4a", defaultTimeout: 5000 });
+    const svc2 = await db.createService({ name: "SVC4b", baseUrl: "http://s4b", defaultTimeout: 5000 });
+    const f1 = await db.createFeature({ serviceId: svc1.id, name: "F-A", owners: [] });
+    await db.createFeature({ serviceId: svc2.id, name: "F-B", owners: [] });
+    await db.createScenario({ featureId: f1.id, name: "S4", tags: [], priority: "medium", variables: [], steps: [] });
+
+    const svc1Features = await db.getFeaturesByServiceWithStats(svc1.id);
+    const svc2Features = await db.getFeaturesByServiceWithStats(svc2.id);
+
+    expect(svc1Features).toHaveLength(1);
+    expect(svc1Features[0].scenarioCount).toBe(1);
+    expect(svc2Features).toHaveLength(1);
+    expect(svc2Features[0].scenarioCount).toBe(0);
+  });
+});

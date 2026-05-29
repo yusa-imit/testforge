@@ -71,7 +71,7 @@ const app = new Hono()
       throw notFound("Service", serviceId);
     }
 
-    const features = await db.getFeaturesByService(serviceId);
+    const features = await db.getFeaturesByServiceWithStats(serviceId);
     return c.json({ success: true, data: features });
   })
 

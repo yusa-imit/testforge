@@ -27,6 +27,13 @@ export interface ScenarioWithLastRun extends Scenario {
   lastRunAt: Date | null;
 }
 
+export interface FeatureWithStats extends Feature {
+  scenarioCount: number;
+  lastRunId: string | null;
+  lastRunStatus: string | null;
+  lastRunAt: Date | null;
+}
+
 /**
  * Database row to entity converters
  */
@@ -83,6 +90,16 @@ class RowConverter {
   static toScenarioWithLastRun(row: any): ScenarioWithLastRun {
     return {
       ...RowConverter.toScenario(row),
+      lastRunId: row.last_run_id ?? null,
+      lastRunStatus: row.last_run_status ?? null,
+      lastRunAt: row.last_run_at ? new Date(row.last_run_at) : null,
+    };
+  }
+
+  static toFeatureWithStats(row: any): FeatureWithStats {
+    return {
+      ...RowConverter.toFeature(row),
+      scenarioCount: Number(row.scenario_count ?? 0),
       lastRunId: row.last_run_id ?? null,
       lastRunStatus: row.last_run_status ?? null,
       lastRunAt: row.last_run_at ? new Date(row.last_run_at) : null,
@@ -297,6 +314,35 @@ export class DuckDBDatabase {
       [serviceId]
     );
     return rows.map(RowConverter.toFeature);
+  }
+
+  async getFeaturesByServiceWithStats(serviceId: string): Promise<FeatureWithStats[]> {
+    const rows = await this.db.all(
+      `SELECT
+         f.id, f.service_id, f.name, f.description, f.owners, f.created_at, f.updated_at,
+         COALESCE(sc.scenario_count, 0) AS scenario_count,
+         lr.last_run_id, lr.last_run_status, lr.last_run_at
+       FROM features f
+       LEFT JOIN (
+         SELECT feature_id, COUNT(*) AS scenario_count
+         FROM scenarios
+         GROUP BY feature_id
+       ) sc ON f.id = sc.feature_id
+       LEFT JOIN (
+         SELECT
+           s.feature_id,
+           t.id         AS last_run_id,
+           t.status     AS last_run_status,
+           t.created_at AS last_run_at,
+           ROW_NUMBER() OVER (PARTITION BY s.feature_id ORDER BY t.created_at DESC) AS rn
+         FROM test_runs t
+         JOIN scenarios s ON t.scenario_id = s.id
+       ) lr ON f.id = lr.feature_id AND lr.rn = 1
+       WHERE f.service_id = ?
+       ORDER BY f.created_at DESC`,
+      [serviceId]
+    );
+    return rows.map(RowConverter.toFeatureWithStats);
   }
 
   async updateFeature(id: string, data: Partial<CreateFeature>): Promise<Feature | undefined> {
