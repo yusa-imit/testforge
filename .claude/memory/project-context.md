@@ -32,6 +32,25 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 - Search & Filtering
 - Element Registry
 
+## 최근 완료 (Session 56 - 2026-05-30)
+
+✅ **Service-level stats in GET /api/services** - Tests: 760 pass, 16 skip, 0 fail (+6 tests)
+
+**Service stats (featureCount + scenarioCount + lastRunStatus) in GET /api/services**
+- `ServiceWithStats` interface added: extends Service with `featureCount`, `scenarioCount`, `lastRunId`, `lastRunStatus`, `lastRunAt`
+- `RowConverter.toServiceWithStats()` static converter added
+- `getAllServicesWithStats()` uses 3-way LEFT JOIN (feature count, scenarios count via feature JOIN, last run via ROW_NUMBER window function across all service scenarios)
+- Route now uses enriched method; backwards-compatible (adds new fields)
+- Services.tsx: shows "X개 기능 / Y개 시나리오" + last run status emoji (✅/❌/⚠️/🔄) per service card
+- +4 DB tests, +3 route tests
+
+**Files changed:**
+- `packages/server/src/db/database.ts` — ServiceWithStats type + converter + new method
+- `packages/server/src/db/database.test.ts` — 4 new tests
+- `packages/server/src/routes/services.ts` — use getAllServicesWithStats
+- `packages/server/src/routes/services.test.ts` — 3 new tests
+- `packages/web/src/pages/Services.tsx` — feature/scenario count + last run status emoji per card
+
 ## 최근 완료 (Session 55 - 2026-05-29)
 
 ✅ **Feature-level stats in ServiceDetail** - Tests: 754 pass, 16 skip, 0 fail (+6 tests)
