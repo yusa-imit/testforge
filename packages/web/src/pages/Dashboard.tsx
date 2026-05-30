@@ -11,6 +11,25 @@ interface RecentFailureRun {
   createdAt: string;
 }
 
+type ServiceWithStats = {
+  id: string;
+  name: string;
+  description?: string;
+  baseUrl: string;
+  featureCount?: number;
+  scenarioCount?: number;
+  lastRunStatus?: string | null;
+  lastRunAt?: string | null;
+};
+
+const RUN_STATUS_ICON: Record<string, string> = {
+  passed:    "✅",
+  failed:    "❌",
+  healed:    "⚠️",
+  running:   "🔄",
+  cancelled: "⏹️",
+};
+
 export default function Dashboard() {
   const { data: servicesData } = useQuery({
     queryKey: ["services"],
@@ -149,8 +168,11 @@ export default function Dashboard() {
 
       {/* Services List */}
       <div className="bg-white rounded-lg shadow">
-        <div className="px-6 py-4 border-b border-gray-200">
+        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
           <h3 className="text-lg font-medium text-gray-900">서비스 목록</h3>
+          <Link to="/services" className="text-sm text-blue-600 hover:text-blue-800">
+            전체 보기 →
+          </Link>
         </div>
         {services.length === 0 ? (
           <div className="px-6 py-12 text-center text-gray-500">
@@ -164,22 +186,45 @@ export default function Dashboard() {
           </div>
         ) : (
           <ul className="divide-y divide-gray-200">
-            {services.map((service) => (
-              <li key={service.id}>
-                <Link
-                  to={`/services/${service.id}`}
-                  className="px-6 py-4 flex items-center justify-between hover:bg-gray-50"
-                >
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-900">
-                      {service.name}
-                    </h4>
-                    <p className="text-sm text-gray-500">{service.baseUrl}</p>
-                  </div>
-                  <span className="text-gray-400">→</span>
-                </Link>
-              </li>
-            ))}
+            {(services as ServiceWithStats[]).map((service) => {
+              const statusIcon = service.lastRunStatus ? RUN_STATUS_ICON[service.lastRunStatus] : null;
+              const lastRunRel = service.lastRunAt
+                ? formatDistanceToNow(new Date(service.lastRunAt), { addSuffix: true, locale: ko })
+                : null;
+              return (
+                <li key={service.id}>
+                  <Link
+                    to={`/services/${service.id}`}
+                    className="px-6 py-4 flex items-center justify-between hover:bg-gray-50 group"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-medium text-gray-900 truncate">
+                          {service.name}
+                        </h4>
+                        {statusIcon && (
+                          <span
+                            className="text-sm flex-shrink-0"
+                            title={`최근 실행: ${service.lastRunStatus}${lastRunRel ? ` (${lastRunRel})` : ""}`}
+                          >
+                            {statusIcon}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 mt-0.5">
+                        <p className="text-xs text-gray-400 font-mono truncate">{service.baseUrl}</p>
+                        {(service.featureCount != null || service.scenarioCount != null) && (
+                          <span className="text-xs text-gray-400 flex-shrink-0">
+                            {service.featureCount ?? 0}개 기능 · {service.scenarioCount ?? 0}개 시나리오
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <span className="text-gray-400 group-hover:text-gray-600 ml-4">→</span>
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>

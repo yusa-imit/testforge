@@ -168,6 +168,54 @@ describe("POST /api/scenarios/:id/duplicate", () => {
     const res = await req("POST", "/api/scenarios/nonexistent-id/duplicate");
     expect(res.status).toBe(404);
   });
+
+  it("preserves steps from the original scenario", async () => {
+    const service = await createService();
+    const feature = await createFeature(service.id);
+    const step = {
+      id: uuid(),
+      type: "navigate",
+      description: "Go to home",
+      config: { url: "https://example.com" },
+      disabled: false,
+    };
+    const scenario = await db.createScenario({
+      featureId: feature.id,
+      name: "With Steps",
+      steps: [step],
+      priority: "high",
+      tags: [],
+      variables: [],
+    });
+
+    const res = await req("POST", `/api/scenarios/${scenario.id}/duplicate`);
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as any;
+    expect(body.data.steps).toHaveLength(1);
+    expect(body.data.steps[0].type).toBe("navigate");
+    expect(body.data.steps[0].config.url).toBe("https://example.com");
+  });
+
+  it("preserves tags, priority, and variables from the original", async () => {
+    const service = await createService();
+    const feature = await createFeature(service.id);
+    const scenario = await db.createScenario({
+      featureId: feature.id,
+      name: "Tagged",
+      steps: [],
+      priority: "high",
+      tags: ["smoke", "regression"],
+      variables: [{ name: "url", type: "string", defaultValue: "http://localhost" }],
+    });
+
+    const res = await req("POST", `/api/scenarios/${scenario.id}/duplicate`);
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as any;
+    expect(body.data.priority).toBe("high");
+    expect(body.data.tags).toEqual(expect.arrayContaining(["smoke", "regression"]));
+    expect(body.data.variables).toHaveLength(1);
+    expect(body.data.variables[0].name).toBe("url");
+  });
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
