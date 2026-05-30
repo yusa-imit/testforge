@@ -2233,3 +2233,54 @@ describe("getAllServicesWithStats", () => {
     expect(s2!.scenarioCount).toBe(0);
   });
 });
+
+describe("getScenariosByFeatureWithLastRun tag/priority filters", () => {
+  it("returns all scenarios when no filters provided", async () => {
+    const svc = await db.createService({ name: "FLT-SVC", baseUrl: "http://flt", defaultTimeout: 5000 });
+    const feat = await db.createFeature({ serviceId: svc.id, name: "FLT-F1", owners: [] });
+    await db.createScenario({ featureId: feat.id, name: "Alpha", tags: ["smoke"], priority: "high", variables: [], steps: [] });
+    await db.createScenario({ featureId: feat.id, name: "Beta", tags: ["regression"], priority: "medium", variables: [], steps: [] });
+    const results = await db.getScenariosByFeatureWithLastRun(feat.id);
+    expect(results).toHaveLength(2);
+  });
+
+  it("filters by tag using list_contains", async () => {
+    const svc = await db.createService({ name: "FLT-SVC2", baseUrl: "http://flt2", defaultTimeout: 5000 });
+    const feat = await db.createFeature({ serviceId: svc.id, name: "FLT-F2", owners: [] });
+    await db.createScenario({ featureId: feat.id, name: "Smoke+Reg", tags: ["smoke", "regression"], priority: "high", variables: [], steps: [] });
+    await db.createScenario({ featureId: feat.id, name: "Reg Only", tags: ["regression"], priority: "medium", variables: [], steps: [] });
+    await db.createScenario({ featureId: feat.id, name: "No Tag", tags: [], priority: "low", variables: [], steps: [] });
+    const results = await db.getScenariosByFeatureWithLastRun(feat.id, { tag: "smoke" });
+    expect(results).toHaveLength(1);
+    expect(results[0].name).toBe("Smoke+Reg");
+  });
+
+  it("filters by priority", async () => {
+    const svc = await db.createService({ name: "FLT-SVC3", baseUrl: "http://flt3", defaultTimeout: 5000 });
+    const feat = await db.createFeature({ serviceId: svc.id, name: "FLT-F3", owners: [] });
+    await db.createScenario({ featureId: feat.id, name: "HP", tags: [], priority: "high", variables: [], steps: [] });
+    await db.createScenario({ featureId: feat.id, name: "MP", tags: [], priority: "medium", variables: [], steps: [] });
+    const results = await db.getScenariosByFeatureWithLastRun(feat.id, { priority: "high" });
+    expect(results).toHaveLength(1);
+    expect(results[0].name).toBe("HP");
+  });
+
+  it("applies tag and priority filters together", async () => {
+    const svc = await db.createService({ name: "FLT-SVC4", baseUrl: "http://flt4", defaultTimeout: 5000 });
+    const feat = await db.createFeature({ serviceId: svc.id, name: "FLT-F4", owners: [] });
+    await db.createScenario({ featureId: feat.id, name: "Match", tags: ["smoke"], priority: "high", variables: [], steps: [] });
+    await db.createScenario({ featureId: feat.id, name: "Wrong Priority", tags: ["smoke"], priority: "low", variables: [], steps: [] });
+    await db.createScenario({ featureId: feat.id, name: "Wrong Tag", tags: ["regression"], priority: "high", variables: [], steps: [] });
+    const results = await db.getScenariosByFeatureWithLastRun(feat.id, { tag: "smoke", priority: "high" });
+    expect(results).toHaveLength(1);
+    expect(results[0].name).toBe("Match");
+  });
+
+  it("returns empty when no scenario matches tag filter", async () => {
+    const svc = await db.createService({ name: "FLT-SVC5", baseUrl: "http://flt5", defaultTimeout: 5000 });
+    const feat = await db.createFeature({ serviceId: svc.id, name: "FLT-F5", owners: [] });
+    await db.createScenario({ featureId: feat.id, name: "Exists", tags: ["regression"], priority: "medium", variables: [], steps: [] });
+    const results = await db.getScenariosByFeatureWithLastRun(feat.id, { tag: "nonexistent" });
+    expect(results).toHaveLength(0);
+  });
+});

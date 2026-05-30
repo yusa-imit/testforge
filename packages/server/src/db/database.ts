@@ -497,7 +497,22 @@ export class DuckDBDatabase {
     return rows.map(RowConverter.toScenario);
   }
 
-  async getScenariosByFeatureWithLastRun(featureId: string): Promise<ScenarioWithLastRun[]> {
+  async getScenariosByFeatureWithLastRun(
+    featureId: string,
+    filters?: { tag?: string; priority?: string }
+  ): Promise<ScenarioWithLastRun[]> {
+    const conditions: string[] = ["s.feature_id = ?"];
+    const params: any[] = [featureId];
+
+    if (filters?.tag) {
+      conditions.push("list_contains(s.tags, ?)");
+      params.push(filters.tag);
+    }
+    if (filters?.priority) {
+      conditions.push("s.priority = ?");
+      params.push(filters.priority);
+    }
+
     const rows = await this.db.all(
       `SELECT
          s.id, s.feature_id, s.name, s.description, s.tags, s.priority,
@@ -513,9 +528,9 @@ export class DuckDBDatabase {
            ROW_NUMBER() OVER (PARTITION BY scenario_id ORDER BY created_at DESC) AS rn
          FROM test_runs
        ) lr ON s.id = lr.scenario_id AND lr.rn = 1
-       WHERE s.feature_id = ?
+       WHERE ${conditions.join(" AND ")}
        ORDER BY s.created_at DESC`,
-      [featureId]
+      params
     );
     return rows.map(RowConverter.toScenarioWithLastRun);
   }

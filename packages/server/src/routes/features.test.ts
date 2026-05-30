@@ -183,6 +183,55 @@ describe("GET /api/features/:featureId/scenarios", () => {
     expect(body.data[0].lastRunStatus).toBe("failed");
     expect(body.data[0].lastRunId).toBe(latestRun.id);
   });
+
+  it("filters scenarios by tag", async () => {
+    const service = await createService();
+    const feature = await createFeature(service.id);
+    await db.createScenario({ featureId: feature.id, name: "Smoke Test", steps: [], priority: "medium", tags: ["smoke", "regression"], variables: [] });
+    await db.createScenario({ featureId: feature.id, name: "Regression Only", steps: [], priority: "medium", tags: ["regression"], variables: [] });
+    await db.createScenario({ featureId: feature.id, name: "No Tags", steps: [], priority: "medium", tags: [], variables: [] });
+    const res = await req("GET", `/api/features/${feature.id}/scenarios?tag=smoke`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.data).toHaveLength(1);
+    expect(body.data[0].name).toBe("Smoke Test");
+  });
+
+  it("filters scenarios by priority", async () => {
+    const service = await createService();
+    const feature = await createFeature(service.id);
+    await db.createScenario({ featureId: feature.id, name: "High Prio", steps: [], priority: "high", tags: [], variables: [] });
+    await db.createScenario({ featureId: feature.id, name: "Medium Prio", steps: [], priority: "medium", tags: [], variables: [] });
+    await db.createScenario({ featureId: feature.id, name: "Low Prio", steps: [], priority: "low", tags: [], variables: [] });
+    const res = await req("GET", `/api/features/${feature.id}/scenarios?priority=high`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.data).toHaveLength(1);
+    expect(body.data[0].name).toBe("High Prio");
+  });
+
+  it("filters scenarios by tag and priority together", async () => {
+    const service = await createService();
+    const feature = await createFeature(service.id);
+    await db.createScenario({ featureId: feature.id, name: "High Smoke", steps: [], priority: "high", tags: ["smoke"], variables: [] });
+    await db.createScenario({ featureId: feature.id, name: "High No Smoke", steps: [], priority: "high", tags: ["regression"], variables: [] });
+    await db.createScenario({ featureId: feature.id, name: "Low Smoke", steps: [], priority: "low", tags: ["smoke"], variables: [] });
+    const res = await req("GET", `/api/features/${feature.id}/scenarios?tag=smoke&priority=high`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.data).toHaveLength(1);
+    expect(body.data[0].name).toBe("High Smoke");
+  });
+
+  it("returns empty list when no scenarios match the tag filter", async () => {
+    const service = await createService();
+    const feature = await createFeature(service.id);
+    await db.createScenario({ featureId: feature.id, name: "No Tags", steps: [], priority: "medium", tags: [], variables: [] });
+    const res = await req("GET", `/api/features/${feature.id}/scenarios?tag=nonexistent`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.data).toHaveLength(0);
+  });
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
