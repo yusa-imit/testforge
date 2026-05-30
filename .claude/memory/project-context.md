@@ -32,6 +32,22 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 - Search & Filtering
 - Element Registry
 
+## 최근 완료 (Session 57 - 2026-05-30)
+
+✅ **Dashboard service stats + duplicate scenario tests** - Tests: 762 pass, 16 skip, 0 fail (+2 tests)
+
+**Dashboard.tsx**: service list now shows featureCount, scenarioCount, lastRunStatus emoji per service card using data already returned by GET /api/services. Also added "전체 보기 →" link and hover group styling.
+
+**scenarios.test.ts**: two new duplicate tests:
+- "preserves steps from the original scenario" — verifies step type and config are copied
+- "preserves tags, priority, and variables from the original" — verifies all metadata fields
+
+**Files changed:**
+- `packages/web/src/pages/Dashboard.tsx` — service list with stats
+- `packages/server/src/routes/scenarios.test.ts` — 2 new duplicate coverage tests
+
+---
+
 ## 최근 완료 (Session 56 - 2026-05-30)
 
 ✅ **Service-level stats in GET /api/services** - Tests: 760 pass, 16 skip, 0 fail (+6 tests)
