@@ -32,6 +32,25 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 - Search & Filtering
 - Element Registry
 
+## 최근 완료 (Session 58 - 2026-05-31)
+
+✅ **Server-side tag/priority filtering for scenario list** - Tests: 771 pass, 16 skip, 0 fail (+9 tests)
+
+**GET /api/features/:featureId/scenarios?tag=smoke&priority=high** - new query params
+- `getScenariosByFeatureWithLastRun(featureId, filters?)` extended with optional `{ tag?, priority? }` filters
+- Uses DuckDB's `list_contains(s.tags, ?)` for array tag matching
+- Priority filtered via `s.priority = ?`
+- Route parses `?tag=` and `?priority=` and forwards to DB layer
+- +5 DB tests, +4 route tests
+
+**Files changed:**
+- `packages/server/src/db/database.ts` — filters param in getScenariosByFeatureWithLastRun
+- `packages/server/src/db/database.test.ts` — 5 new tag/priority filter DB tests
+- `packages/server/src/routes/features.ts` — parse tag/priority query params
+- `packages/server/src/routes/features.test.ts` — 4 new route filter tests
+
+---
+
 ## 최근 완료 (Session 57 - 2026-05-30)
 
 ✅ **Dashboard service stats + duplicate scenario tests** - Tests: 762 pass, 16 skip, 0 fail (+2 tests)
