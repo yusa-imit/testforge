@@ -174,10 +174,11 @@ describe("POST /api/scenarios/:id/duplicate", () => {
     const feature = await createFeature(service.id);
     const step = {
       id: uuid(),
-      type: "navigate",
+      type: "navigate" as const,
       description: "Go to home",
       config: { url: "https://example.com" },
       disabled: false,
+      continueOnError: false,
     };
     const scenario = await db.createScenario({
       featureId: feature.id,

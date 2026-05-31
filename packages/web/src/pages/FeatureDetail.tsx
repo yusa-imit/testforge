@@ -41,6 +41,7 @@ export default function FeatureDetail() {
   const [scenarioName, setScenarioName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
+  const [tagFilter, setTagFilter] = useState<string>("all");
 
   const { data: featureData, isLoading: featureLoading } = useQuery({
     queryKey: ["feature", id],
@@ -100,7 +101,14 @@ export default function FeatureDetail() {
     [scenariosData]
   );
 
-  // Filter scenarios based on search query and priority
+  // Collect unique tags across all scenarios for the tag filter dropdown
+  const availableTags = useMemo(() => {
+    const tagSet = new Set<string>();
+    scenarios.forEach((s) => s.tags?.forEach((t: string) => tagSet.add(t)));
+    return Array.from(tagSet).sort();
+  }, [scenarios]);
+
+  // Filter scenarios based on search query, priority, and tag
   const filteredScenarios = useMemo(() => {
     return scenarios.filter((scenario) => {
       const matchesSearch = !searchQuery.trim() ||
@@ -110,9 +118,11 @@ export default function FeatureDetail() {
 
       const matchesPriority = priorityFilter === "all" || scenario.priority === priorityFilter;
 
-      return matchesSearch && matchesPriority;
+      const matchesTag = tagFilter === "all" || scenario.tags?.includes(tagFilter);
+
+      return matchesSearch && matchesPriority && matchesTag;
     });
-  }, [scenarios, searchQuery, priorityFilter]);
+  }, [scenarios, searchQuery, priorityFilter, tagFilter]);
 
   if (featureLoading || scenariosLoading) {
     return <div className="text-center py-12">로딩 중...</div>;
@@ -196,13 +206,27 @@ export default function FeatureDetail() {
               <SelectItem value="low">Low</SelectItem>
             </SelectContent>
           </Select>
-          {(searchQuery || priorityFilter !== "all") && (
+          {availableTags.length > 0 && (
+            <Select value={tagFilter} onValueChange={setTagFilter}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="태그" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">모든 태그</SelectItem>
+                {availableTags.map((tag) => (
+                  <SelectItem key={tag} value={tag}>{tag}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          {(searchQuery || priorityFilter !== "all" || tagFilter !== "all") && (
             <Button
               variant="ghost"
               size="sm"
               onClick={() => {
                 setSearchQuery("");
                 setPriorityFilter("all");
+                setTagFilter("all");
               }}
             >
               필터 초기화
@@ -270,6 +294,7 @@ export default function FeatureDetail() {
               onClick={() => {
                 setSearchQuery("");
                 setPriorityFilter("all");
+                setTagFilter("all");
               }}
             >
               필터 초기화
@@ -286,7 +311,7 @@ export default function FeatureDetail() {
                 >
                   <div>
                     <h3 className="font-medium">{scenario.name}</h3>
-                    <div className="mt-1 flex items-center gap-2">
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
                       <Badge
                         variant={
                           scenario.priority === "critical" ? "destructive" :
@@ -299,6 +324,19 @@ export default function FeatureDetail() {
                       <span className="text-xs text-muted-foreground">
                         {scenario.steps.length} 스텝
                       </span>
+                      {scenario.tags?.map((tag: string) => (
+                        <Badge
+                          key={tag}
+                          variant="outline"
+                          className="text-xs cursor-pointer hover:bg-muted"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setTagFilter(tag);
+                          }}
+                        >
+                          {tag}
+                        </Badge>
+                      ))}
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
