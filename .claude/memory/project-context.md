@@ -32,6 +32,24 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 - Search & Filtering
 - Element Registry
 
+## 최근 완료 (Session 60 - 2026-06-01)
+
+✅ **Scenario pass rate badge in FeatureDetail** - Tests: 774 pass, 16 skip, 0 fail (+3 DB tests)
+
+**ScenarioWithLastRun extended with totalRuns + passCount stats:**
+- `ScenarioWithLastRun` interface now has `totalRuns: number` and `passCount: number`
+- `getScenariosByFeatureWithLastRun` SQL: second LEFT JOIN aggregates `COUNT(*) FILTER (WHERE status IN ('passed', 'healed'))` and `COUNT(*)` per scenario
+- `toScenarioWithLastRun` converter extracts both new fields
+- `PassRateBadge` component in FeatureDetail shows "X/Y" with green(≥90%)/yellow(≥70%)/red(<70%) color coding
+- Hidden when `totalRuns === 0` (no runs yet)
+
+**Files changed:**
+- `packages/server/src/db/database.ts` — interface + converter + SQL query
+- `packages/server/src/db/database.test.ts` — 3 new pass rate tests
+- `packages/web/src/pages/FeatureDetail.tsx` — PassRateBadge component + display
+
+---
+
 ## 최근 완료 (Session 59 - 2026-05-31)
 
 ✅ **Tag filter dropdown + tag badges in FeatureDetail scenario list** - Tests: 771 pass, 16 skip, 0 fail
