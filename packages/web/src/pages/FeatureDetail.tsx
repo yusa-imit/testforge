@@ -13,6 +13,23 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "../hooks/use-toast";
 
+function PassRateBadge({ totalRuns, passCount }: { totalRuns: number; passCount: number }) {
+  if (totalRuns === 0) return null;
+  const rate = passCount / totalRuns;
+  const cls =
+    rate >= 0.9 ? "text-green-600 bg-green-50 border-green-200" :
+    rate >= 0.7 ? "text-yellow-600 bg-yellow-50 border-yellow-200" :
+    "text-red-600 bg-red-50 border-red-200";
+  return (
+    <span
+      className={`text-xs font-mono px-1.5 py-0.5 rounded border ${cls}`}
+      title={`성공률 ${(rate * 100).toFixed(0)}% (${passCount}/${totalRuns})`}
+    >
+      {passCount}/{totalRuns}
+    </span>
+  );
+}
+
 function LastRunBadge({ status, at }: { status: string | null; at: string | null }) {
   if (!status) return <span className="text-xs text-muted-foreground">미실행</span>;
   const map: Record<string, { icon: string; cls: string }> = {
@@ -340,6 +357,10 @@ export default function FeatureDetail() {
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
+                    <PassRateBadge
+                      totalRuns={(scenario as any).totalRuns ?? 0}
+                      passCount={(scenario as any).passCount ?? 0}
+                    />
                     <LastRunBadge
                       status={(scenario as any).lastRunStatus ?? null}
                       at={(scenario as any).lastRunAt ?? null}

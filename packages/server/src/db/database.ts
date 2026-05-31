@@ -25,6 +25,8 @@ export interface ScenarioWithLastRun extends Scenario {
   lastRunId: string | null;
   lastRunStatus: string | null;
   lastRunAt: Date | null;
+  totalRuns: number;
+  passCount: number;
 }
 
 export interface ServiceWithStats extends Service {
@@ -112,6 +114,8 @@ class RowConverter {
       lastRunId: row.last_run_id ?? null,
       lastRunStatus: row.last_run_status ?? null,
       lastRunAt: row.last_run_at ? new Date(row.last_run_at) : null,
+      totalRuns: Number(row.total_runs ?? 0),
+      passCount: Number(row.pass_count ?? 0),
     };
   }
 
@@ -517,7 +521,9 @@ export class DuckDBDatabase {
       `SELECT
          s.id, s.feature_id, s.name, s.description, s.tags, s.priority,
          s.variables, s.steps, s.version, s.created_at, s.updated_at,
-         lr.last_run_id, lr.last_run_status, lr.last_run_at
+         lr.last_run_id, lr.last_run_status, lr.last_run_at,
+         COALESCE(rc.total_runs, 0) AS total_runs,
+         COALESCE(rc.pass_count, 0) AS pass_count
        FROM scenarios s
        LEFT JOIN (
          SELECT
@@ -528,6 +534,14 @@ export class DuckDBDatabase {
            ROW_NUMBER() OVER (PARTITION BY scenario_id ORDER BY created_at DESC) AS rn
          FROM test_runs
        ) lr ON s.id = lr.scenario_id AND lr.rn = 1
+       LEFT JOIN (
+         SELECT
+           scenario_id,
+           COUNT(*) AS total_runs,
+           COUNT(*) FILTER (WHERE status IN ('passed', 'healed')) AS pass_count
+         FROM test_runs
+         GROUP BY scenario_id
+       ) rc ON s.id = rc.scenario_id
        WHERE ${conditions.join(" AND ")}
        ORDER BY s.created_at DESC`,
       params

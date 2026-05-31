@@ -2284,3 +2284,49 @@ describe("getScenariosByFeatureWithLastRun tag/priority filters", () => {
     expect(results).toHaveLength(0);
   });
 });
+
+describe("getScenariosByFeatureWithLastRun - pass rate stats", () => {
+  const env = { baseUrl: "http://test", variables: {} };
+
+  it("returns totalRuns=0 and passCount=0 for scenario with no runs", async () => {
+    const svc = await db.createService({ name: "PR-SVC1", baseUrl: "http://pr1", defaultTimeout: 5000 });
+    const feat = await db.createFeature({ serviceId: svc.id, name: "PR-F1", owners: [] });
+    await db.createScenario({ featureId: feat.id, name: "NoRuns", tags: [], priority: "medium", variables: [], steps: [] });
+    const results = await db.getScenariosByFeatureWithLastRun(feat.id);
+    expect(results).toHaveLength(1);
+    expect(results[0].totalRuns).toBe(0);
+    expect(results[0].passCount).toBe(0);
+  });
+
+  it("counts total runs and passed+healed runs correctly", async () => {
+    const svc = await db.createService({ name: "PR-SVC2", baseUrl: "http://pr2", defaultTimeout: 5000 });
+    const feat = await db.createFeature({ serviceId: svc.id, name: "PR-F2", owners: [] });
+    const scenario = await db.createScenario({ featureId: feat.id, name: "WithRuns", tags: [], priority: "high", variables: [], steps: [] });
+    // 3 passed, 1 failed = 4 total, 3 pass
+    for (const status of ["passed", "passed", "passed", "failed"] as const) {
+      await db.createTestRun({ id: uuid(), scenarioId: scenario.id, status, environment: env, createdAt: new Date() });
+    }
+    const results = await db.getScenariosByFeatureWithLastRun(feat.id);
+    expect(results).toHaveLength(1);
+    expect(results[0].totalRuns).toBe(4);
+    expect(results[0].passCount).toBe(3);
+  });
+
+  it("isolates pass rate stats per scenario", async () => {
+    const svc = await db.createService({ name: "PR-SVC3", baseUrl: "http://pr3", defaultTimeout: 5000 });
+    const feat = await db.createFeature({ serviceId: svc.id, name: "PR-F3", owners: [] });
+    const s1 = await db.createScenario({ featureId: feat.id, name: "S1", tags: [], priority: "low", variables: [], steps: [] });
+    const s2 = await db.createScenario({ featureId: feat.id, name: "S2", tags: [], priority: "low", variables: [], steps: [] });
+    for (const status of ["passed", "failed"] as const) {
+      await db.createTestRun({ id: uuid(), scenarioId: s1.id, status, environment: env, createdAt: new Date() });
+    }
+    await db.createTestRun({ id: uuid(), scenarioId: s2.id, status: "passed", environment: env, createdAt: new Date() });
+    const results = await db.getScenariosByFeatureWithLastRun(feat.id);
+    const r1 = results.find((r) => r.id === s1.id)!;
+    const r2 = results.find((r) => r.id === s2.id)!;
+    expect(r1.totalRuns).toBe(2);
+    expect(r1.passCount).toBe(1);
+    expect(r2.totalRuns).toBe(1);
+    expect(r2.passCount).toBe(1);
+  });
+});
