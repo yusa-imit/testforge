@@ -32,6 +32,23 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 - Search & Filtering
 - Element Registry
 
+## 최근 완료 (Session 59 - 2026-05-31)
+
+✅ **Tag filter dropdown + tag badges in FeatureDetail scenario list** - Tests: 771 pass, 16 skip, 0 fail
+
+**UI enhancement for FeatureDetail scenario list:**
+- `tagFilter` state with dynamic `availableTags` useMemo (unique tags from loaded scenarios, sorted)
+- Tag filter Select dropdown appears alongside priority filter when tags exist
+- Tag badges on each scenario row are clickable → sets tagFilter to that tag
+- Reset button covers all three filters (search, priority, tag)
+- Pre-existing TS fix in scenarios.test.ts: `as const` + `continueOnError` on step fixture
+
+**Files changed:**
+- `packages/web/src/pages/FeatureDetail.tsx` — tag filter dropdown + clickable tag badges
+- `packages/server/src/routes/scenarios.test.ts` — TS fix for step fixture
+
+---
+
 ## 최근 완료 (Session 58 - 2026-05-31)
 
 ✅ **Server-side tag/priority filtering for scenario list** - Tests: 771 pass, 16 skip, 0 fail (+9 tests)
