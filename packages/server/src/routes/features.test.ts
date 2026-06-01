@@ -232,6 +232,34 @@ describe("GET /api/features/:featureId/scenarios", () => {
     const body = (await res.json()) as any;
     expect(body.data).toHaveLength(0);
   });
+
+  it("returns totalRuns=0 and passCount=0 for scenario with no runs", async () => {
+    const service = await createService();
+    const feature = await createFeature(service.id);
+    await db.createScenario({ featureId: feature.id, name: "No Runs", steps: [], priority: "medium", tags: [], variables: [] });
+    const res = await req("GET", `/api/features/${feature.id}/scenarios`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.data).toHaveLength(1);
+    expect(body.data[0].totalRuns).toBe(0);
+    expect(body.data[0].passCount).toBe(0);
+  });
+
+  it("returns correct totalRuns and passCount across multiple runs", async () => {
+    const service = await createService();
+    const feature = await createFeature(service.id);
+    const scenario = await db.createScenario({ featureId: feature.id, name: "Multi Run", steps: [], priority: "medium", tags: [], variables: [] });
+    const env = { baseUrl: "http://localhost", variables: {} };
+    await db.createTestRun({ id: crypto.randomUUID(), scenarioId: scenario.id, status: "passed", environment: env, createdAt: new Date(Date.now() - 3000) });
+    await db.createTestRun({ id: crypto.randomUUID(), scenarioId: scenario.id, status: "healed", environment: env, createdAt: new Date(Date.now() - 2000) });
+    await db.createTestRun({ id: crypto.randomUUID(), scenarioId: scenario.id, status: "failed", environment: env, createdAt: new Date(Date.now() - 1000) });
+    const res = await req("GET", `/api/features/${feature.id}/scenarios`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.data).toHaveLength(1);
+    expect(body.data[0].totalRuns).toBe(3);
+    expect(body.data[0].passCount).toBe(2); // passed + healed count as pass
+  });
 });
 
 // ──────────────────────────────────────────────────────────────────────────────

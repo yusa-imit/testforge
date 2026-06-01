@@ -1,9 +1,10 @@
 import { useState, useMemo } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { ko } from "date-fns/locale";
-import { getFeature, getScenarios, api, runFeature } from "../lib/api";
+import { MoreHorizontal, Play, Copy, Trash2 } from "lucide-react";
+import { getFeature, getScenarios, api, runFeature, runScenario, deleteScenario, duplicateScenario } from "../lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -11,6 +12,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useToast } from "../hooks/use-toast";
 
 function PassRateBadge({ totalRuns, passCount }: { totalRuns: number; passCount: number }) {
@@ -52,6 +60,7 @@ function LastRunBadge({ status, at }: { status: string | null; at: string | null
 
 export default function FeatureDetail() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [isCreating, setIsCreating] = useState(false);
@@ -59,6 +68,7 @@ export default function FeatureDetail() {
   const [searchQuery, setSearchQuery] = useState("");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
   const [tagFilter, setTagFilter] = useState<string>("all");
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const { data: featureData, isLoading: featureLoading } = useQuery({
     queryKey: ["feature", id],
@@ -110,6 +120,45 @@ export default function FeatureDetail() {
       queryClient.invalidateQueries({ queryKey: ["scenarios", id] });
       setIsCreating(false);
       setScenarioName("");
+    },
+  });
+
+  const runScenarioMutation = useMutation({
+    mutationFn: (scenarioId: string) => runScenario(scenarioId),
+    onSuccess: (result, scenarioId) => {
+      const runId = (result as any)?.data?.runId;
+      if (runId) {
+        navigate(`/scenarios/${scenarioId}/runs/${runId}`);
+      } else {
+        toast({ title: "실행 시작", description: "시나리오 실행이 시작되었습니다." });
+      }
+    },
+    onError: (error: Error) => {
+      toast({ title: "실행 실패", description: error.message || "시나리오 실행 중 오류가 발생했습니다.", variant: "destructive" });
+    },
+  });
+
+  const duplicateScenarioMutation = useMutation({
+    mutationFn: (scenarioId: string) => duplicateScenario(scenarioId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["scenarios", id] });
+      toast({ title: "복제 완료", description: "시나리오가 복제되었습니다." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "복제 실패", description: error.message || "시나리오 복제 중 오류가 발생했습니다.", variant: "destructive" });
+    },
+  });
+
+  const deleteScenarioMutation = useMutation({
+    mutationFn: (scenarioId: string) => deleteScenario(scenarioId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["scenarios", id] });
+      setConfirmDeleteId(null);
+      toast({ title: "삭제 완료", description: "시나리오가 삭제되었습니다." });
+    },
+    onError: (error: Error) => {
+      setConfirmDeleteId(null);
+      toast({ title: "삭제 실패", description: error.message || "시나리오 삭제 중 오류가 발생했습니다.", variant: "destructive" });
     },
   });
 
@@ -294,6 +343,28 @@ export default function FeatureDetail() {
         </DialogContent>
       </Dialog>
 
+      {/* Confirm Delete Dialog */}
+      <Dialog open={!!confirmDeleteId} onOpenChange={(open) => !open && setConfirmDeleteId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>시나리오 삭제</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            이 시나리오를 삭제하면 모든 실행 기록도 함께 삭제됩니다. 계속하시겠습니까?
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmDeleteId(null)}>취소</Button>
+            <Button
+              variant="destructive"
+              disabled={deleteScenarioMutation.isPending}
+              onClick={() => confirmDeleteId && deleteScenarioMutation.mutate(confirmDeleteId)}
+            >
+              {deleteScenarioMutation.isPending ? "삭제 중..." : "삭제"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Scenarios List */}
       <Card>
         {scenarios.length === 0 ? (
@@ -321,12 +392,14 @@ export default function FeatureDetail() {
           <CardContent className="p-0">
             <div className="divide-y">
               {filteredScenarios.map((scenario) => (
-                <Link
+                <div
                   key={scenario.id}
-                  to={`/scenarios/${scenario.id}`}
-                  className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
+                  className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors group"
                 >
-                  <div>
+                  <Link
+                    to={`/scenarios/${scenario.id}`}
+                    className="flex-1 min-w-0"
+                  >
                     <h3 className="font-medium">{scenario.name}</h3>
                     <div className="mt-1 flex flex-wrap items-center gap-2">
                       <Badge
@@ -355,8 +428,8 @@ export default function FeatureDetail() {
                         </Badge>
                       ))}
                     </div>
-                  </div>
-                  <div className="flex items-center gap-3">
+                  </Link>
+                  <div className="flex items-center gap-3 ml-3 flex-shrink-0">
                     <PassRateBadge
                       totalRuns={(scenario as any).totalRuns ?? 0}
                       passCount={(scenario as any).passCount ?? 0}
@@ -365,9 +438,44 @@ export default function FeatureDetail() {
                       status={(scenario as any).lastRunStatus ?? null}
                       at={(scenario as any).lastRunAt ?? null}
                     />
-                    <span className="text-muted-foreground">→</span>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => e.preventDefault()}
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => runScenarioMutation.mutate(scenario.id)}
+                          disabled={runScenarioMutation.isPending}
+                        >
+                          <Play className="h-4 w-4 mr-2" />
+                          실행
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => duplicateScenarioMutation.mutate(scenario.id)}
+                          disabled={duplicateScenarioMutation.isPending}
+                        >
+                          <Copy className="h-4 w-4 mr-2" />
+                          복제
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => setConfirmDeleteId(scenario.id)}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          삭제
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
-                </Link>
+                </div>
               ))}
             </div>
           </CardContent>
