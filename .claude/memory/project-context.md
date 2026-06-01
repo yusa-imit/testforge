@@ -32,6 +32,27 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 - Search & Filtering
 - Element Registry
 
+## 최근 완료 (Session 61 - 2026-06-01)
+
+✅ **Per-scenario quick actions in FeatureDetail + pass rate route tests** - Tests: 776 pass, 16 skip, 0 fail (+2 route tests)
+
+**Per-scenario dropdown (Run/Duplicate/Delete) in FeatureDetail scenario list:**
+- Scenario rows now use div+Link combo so the ⋮ action button doesn't trigger navigation
+- Hover reveals a `MoreHorizontal` dropdown menu with Play/Copy/Trash2 actions
+- Run: calls `runScenario(id)` → navigates to `/scenarios/:id/runs/:runId` on success
+- Duplicate: calls `duplicateScenario(id)` → invalidates scenarios query + toast
+- Delete: sets `confirmDeleteId` state → shows confirmation Dialog → calls `deleteScenario(id)`
+- All mutations use toast for success/error feedback
+
+**Route tests for pass rate:**
+- `features.test.ts`: +2 tests — `totalRuns=0/passCount=0` for no-run scenario, and `passed+healed=passCount` across 3 runs
+
+**Files changed:**
+- `packages/web/src/pages/FeatureDetail.tsx` — per-scenario actions dropdown + confirm delete dialog
+- `packages/server/src/routes/features.test.ts` — 2 new pass rate route tests
+
+---
+
 ## 최근 완료 (Session 60 - 2026-06-01)
 
 ✅ **Scenario pass rate badge in FeatureDetail** - Tests: 774 pass, 16 skip, 0 fail (+3 DB tests)
