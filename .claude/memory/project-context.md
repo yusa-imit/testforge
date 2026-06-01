@@ -32,6 +32,31 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 - Search & Filtering
 - Element Registry
 
+## 최근 완료 (Session 62 - 2026-06-02)
+
+✅ **Scenario run statistics API + stats card in ScenarioEditor** - Tests: 785 pass, 16 skip, 0 fail (+9 tests)
+
+**GET /api/scenarios/:id/stats** — new endpoint returning:
+- `totalRuns`, `passedRuns`, `failedRuns`, `healedRuns`, `cancelledRuns`
+- `passRate` (0-1, includes healed), `avgDuration`/`minDuration`/`maxDuration`
+- `trend` array: daily `{ date, passed, failed, healed }` for last N days (default 7, max 90)
+- Route: `?days=N` query param
+
+**ScenarioEditor.tsx stats card** (shown when totalRuns > 0):
+- 4-stat grid: total runs, pass rate (color-coded ≥90%/≥70%/<70%), failures, avg duration
+- Mini bar chart of daily trend with color coded bars
+
+**DB method**: `getScenarioStats(scenarioId, days=7)` — single agg query + trend query
+**Files changed**:
+- `packages/server/src/db/database.ts` — getScenarioStats method
+- `packages/server/src/db/database.test.ts` — 5 new tests
+- `packages/server/src/routes/scenarios.ts` — GET /:id/stats route
+- `packages/server/src/routes/scenarios.test.ts` — 4 new route tests
+- `packages/web/src/lib/api.ts` — getScenarioStats function
+- `packages/web/src/pages/ScenarioEditor.tsx` — stats card UI
+
+---
+
 ## 최근 완료 (Session 61 - 2026-06-01)
 
 ✅ **Per-scenario quick actions in FeatureDetail + pass rate route tests** - Tests: 776 pass, 16 skip, 0 fail (+2 route tests)
