@@ -2330,3 +2330,77 @@ describe("getScenariosByFeatureWithLastRun - pass rate stats", () => {
     expect(r2.passCount).toBe(1);
   });
 });
+
+// ============================================
+// getScenarioStats
+// ============================================
+
+describe("getScenarioStats", () => {
+  const env = { baseUrl: "http://test", variables: {} };
+
+  async function seedScenario(name = "Stat Scenario") {
+    const svc = await db.createService({ name: `ST-${name}`, baseUrl: "http://st", defaultTimeout: 5000 });
+    const feat = await db.createFeature({ serviceId: svc.id, name: `ST-F-${name}`, owners: [] });
+    return db.createScenario({ featureId: feat.id, name, tags: [], priority: "medium", variables: [], steps: [] });
+  }
+
+  it("returns zero stats for scenario with no runs", async () => {
+    const scenario = await seedScenario("NoRuns");
+    const stats = await db.getScenarioStats(scenario.id);
+    expect(stats.totalRuns).toBe(0);
+    expect(stats.passedRuns).toBe(0);
+    expect(stats.failedRuns).toBe(0);
+    expect(stats.healedRuns).toBe(0);
+    expect(stats.passRate).toBe(0);
+    expect(stats.avgDuration).toBeNull();
+    expect(stats.trend).toEqual([]);
+  });
+
+  it("counts runs by status correctly", async () => {
+    const scenario = await seedScenario("StatusCount");
+    const statuses = ["passed", "passed", "failed", "healed"];
+    for (const status of statuses) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await db.createTestRun({ id: uuid(), scenarioId: scenario.id, status: status as any, environment: env, createdAt: new Date() });
+    }
+    const stats = await db.getScenarioStats(scenario.id);
+    expect(stats.totalRuns).toBe(4);
+    expect(stats.passedRuns).toBe(2);
+    expect(stats.failedRuns).toBe(1);
+    expect(stats.healedRuns).toBe(1);
+    expect(stats.cancelledRuns).toBe(0);
+  });
+
+  it("computes pass rate including healed runs", async () => {
+    const scenario = await seedScenario("PassRate");
+    const statuses = ["passed", "healed", "failed", "failed"];
+    for (const status of statuses) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await db.createTestRun({ id: uuid(), scenarioId: scenario.id, status: status as any, environment: env, createdAt: new Date() });
+    }
+    const stats = await db.getScenarioStats(scenario.id);
+    expect(stats.passRate).toBeCloseTo(0.5);
+  });
+
+  it("computes avg/min/max duration from completed runs", async () => {
+    const scenario = await seedScenario("Duration");
+    await db.createTestRun({ id: uuid(), scenarioId: scenario.id, status: "passed", environment: env, createdAt: new Date(), duration: 1000 });
+    await db.createTestRun({ id: uuid(), scenarioId: scenario.id, status: "failed", environment: env, createdAt: new Date(), duration: 3000 });
+    const stats = await db.getScenarioStats(scenario.id);
+    expect(stats.avgDuration).toBe(2000);
+    expect(stats.minDuration).toBe(1000);
+    expect(stats.maxDuration).toBe(3000);
+  });
+
+  it("trend includes runs within the requested day window", async () => {
+    const scenario = await seedScenario("Trend");
+    const now = new Date();
+    const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    await db.createTestRun({ id: uuid(), scenarioId: scenario.id, status: "passed", environment: env, createdAt: yesterday });
+    await db.createTestRun({ id: uuid(), scenarioId: scenario.id, status: "failed", environment: env, createdAt: now });
+    const stats = await db.getScenarioStats(scenario.id, 7);
+    expect(stats.trend.length).toBeGreaterThan(0);
+    const total = stats.trend.reduce((s, d) => s + d.passed + d.failed + d.healed, 0);
+    expect(total).toBe(2);
+  });
+});

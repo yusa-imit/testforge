@@ -233,7 +233,26 @@ export async function addRegistryUsage(id: string, data: {
 export async function findRegistryByName(displayName: string, serviceId?: string) {
   const queryParams = new URLSearchParams();
   if (serviceId) queryParams.append("serviceId", serviceId);
-  
+
   const res = await axiosClient.get(`/registry/by-name/${encodeURIComponent(displayName)}?${queryParams.toString()}`);
+  return res.data;
+}
+
+export async function getScenarioStats(id: string, days = 7) {
+  const res = await axiosClient.get<{
+    success: boolean;
+    data: {
+      totalRuns: number;
+      passedRuns: number;
+      failedRuns: number;
+      healedRuns: number;
+      cancelledRuns: number;
+      passRate: number;
+      avgDuration: number | null;
+      minDuration: number | null;
+      maxDuration: number | null;
+      trend: { date: string; passed: number; failed: number; healed: number }[];
+    };
+  }>(`/scenarios/${id}/stats?days=${days}`);
   return res.data;
 }

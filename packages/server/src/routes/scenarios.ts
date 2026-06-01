@@ -59,6 +59,22 @@ const app = new Hono()
     return c.json({ success: true, data: duplicated }, 201);
   })
 
+  // GET /api/scenarios/:id/stats - 시나리오 실행 통계
+  .get("/:id/stats", async (c) => {
+    const db = await getDB();
+    const id = c.req.param("id");
+    const scenario = await db.getScenario(id);
+
+    if (!scenario) {
+      throw notFound("Scenario", id);
+    }
+
+    const daysParam = c.req.query("days");
+    const days = daysParam ? Math.max(1, Math.min(90, parseInt(daysParam, 10) || 7)) : 7;
+    const stats = await db.getScenarioStats(id, days);
+    return c.json({ success: true, data: stats });
+  })
+
   // POST /api/scenarios/:id/run - 시나리오 실행
   .post("/:id/run", async (c) => {
     const db = await getDB();

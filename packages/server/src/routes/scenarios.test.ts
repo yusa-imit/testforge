@@ -422,6 +422,65 @@ describe("Scenario tags and priority", () => {
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
+// GET /api/scenarios/:id/stats
+// ──────────────────────────────────────────────────────────────────────────────
+
+describe("GET /api/scenarios/:id/stats", () => {
+  it("returns 404 for unknown scenario", async () => {
+    const res = await req("GET", "/api/scenarios/nonexistent-id/stats");
+    expect(res.status).toBe(404);
+    const body = (await res.json()) as any;
+    expect(body.error.code).toBe("NOT_FOUND");
+  });
+
+  it("returns zero stats for scenario with no runs", async () => {
+    const service = await createService();
+    const feature = await createFeature(service.id);
+    const scenario = await createScenario(feature.id, "Zero Stats");
+
+    const res = await req("GET", `/api/scenarios/${scenario.id}/stats`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.success).toBe(true);
+    expect(body.data.totalRuns).toBe(0);
+    expect(body.data.passRate).toBe(0);
+    expect(body.data.avgDuration).toBeNull();
+    expect(body.data.trend).toEqual([]);
+  });
+
+  it("returns correct aggregate stats after runs", async () => {
+    const service = await createService();
+    const feature = await createFeature(service.id);
+    const scenario = await createScenario(feature.id, "Stats Scenario");
+    const env = { baseUrl: "http://test", variables: {} };
+    const v4 = (await import("uuid")).v4;
+    for (const status of ["passed", "passed", "failed"] as const) {
+      await db.createTestRun({ id: v4(), scenarioId: scenario.id, status, environment: env, createdAt: new Date() });
+    }
+
+    const res = await req("GET", `/api/scenarios/${scenario.id}/stats`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.data.totalRuns).toBe(3);
+    expect(body.data.passedRuns).toBe(2);
+    expect(body.data.failedRuns).toBe(1);
+    expect(body.data.passRate).toBeCloseTo(2 / 3);
+  });
+
+  it("respects ?days= query param (7 default)", async () => {
+    const service = await createService();
+    const feature = await createFeature(service.id);
+    const scenario = await createScenario(feature.id, "Days Param");
+
+    const res = await req("GET", `/api/scenarios/${scenario.id}/stats?days=30`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.success).toBe(true);
+    expect(Array.isArray(body.data.trend)).toBe(true);
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
 // POST /api/scenarios/:id/run
 // ──────────────────────────────────────────────────────────────────────────────
 

@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { ko } from "date-fns/locale";
 import type { Scenario, Step, Variable } from "@testforge/core";
-import { getScenario, updateScenario, runScenario, deleteScenario, duplicateScenario, getRuns } from "../lib/api";
+import { getScenario, updateScenario, runScenario, deleteScenario, duplicateScenario, getRuns, getScenarioStats } from "../lib/api";
 import { VariableEditor } from "../components/VariableEditor";
 import { StepEditModal } from "../components/StepEditModal";
 import { Button } from "../components/ui/button";
@@ -79,6 +79,14 @@ export default function ScenarioEditor() {
     duration?: number;
     summary?: { passedSteps: number; failedSteps: number; healedSteps: number };
   }>;
+
+  // Fetch scenario stats
+  const { data: statsData } = useQuery({
+    queryKey: ["scenario-stats", id],
+    queryFn: () => getScenarioStats(id!),
+    enabled: !!id,
+  });
+  const stats = statsData?.data;
 
   // Initialize state from fetched data
   React.useEffect(() => {
@@ -467,6 +475,77 @@ export default function ScenarioEditor() {
           </div>
         )}
       </Card>
+
+      {/* Scenario Stats */}
+      {stats && stats.totalRuns > 0 && (
+        <Card className="p-6">
+          <h2 className="text-lg font-medium text-gray-900 mb-4">실행 통계 (최근 7일)</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-gray-900">{stats.totalRuns}</div>
+              <div className="text-xs text-gray-500">전체 실행</div>
+            </div>
+            <div className="text-center">
+              <div
+                className={`text-2xl font-bold ${
+                  stats.passRate >= 0.9
+                    ? "text-green-600"
+                    : stats.passRate >= 0.7
+                    ? "text-yellow-600"
+                    : "text-red-600"
+                }`}
+              >
+                {(stats.passRate * 100).toFixed(0)}%
+              </div>
+              <div className="text-xs text-gray-500">성공률</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-red-500">{stats.failedRuns}</div>
+              <div className="text-xs text-gray-500">실패</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-gray-700">
+                {stats.avgDuration != null
+                  ? stats.avgDuration < 1000
+                    ? `${stats.avgDuration}ms`
+                    : `${(stats.avgDuration / 1000).toFixed(1)}s`
+                  : "—"}
+              </div>
+              <div className="text-xs text-gray-500">평균 소요시간</div>
+            </div>
+          </div>
+          {/* Trend bar chart (simplified) */}
+          {stats.trend.length > 0 && (
+            <div>
+              <div className="text-xs text-gray-500 mb-2">일별 실행 현황</div>
+              <div className="flex items-end gap-1 h-12">
+                {stats.trend.map((day) => {
+                  const total = day.passed + day.failed + day.healed;
+                  const passRate = total > 0 ? (day.passed + day.healed) / total : 0;
+                  return (
+                    <div
+                      key={day.date}
+                      className="flex-1 flex flex-col items-center gap-0.5"
+                      title={`${day.date}: ${day.passed}통과 ${day.failed}실패 ${day.healed}치유`}
+                    >
+                      <div
+                        className={`w-full rounded-sm ${
+                          passRate >= 0.9
+                            ? "bg-green-400"
+                            : passRate > 0
+                            ? "bg-yellow-400"
+                            : "bg-red-400"
+                        }`}
+                        style={{ height: `${Math.max(4, (total / Math.max(...stats.trend.map((d) => d.passed + d.failed + d.healed), 1)) * 40)}px` }}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </Card>
+      )}
 
       {/* Recent Runs */}
       {recentRuns.length > 0 && (
