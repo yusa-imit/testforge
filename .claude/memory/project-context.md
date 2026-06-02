@@ -32,6 +32,33 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 - Search & Filtering
 - Element Registry
 
+## 최근 완료 (Session 64 - 2026-06-03)
+
+✅ **Service-level aggregate run stats API + stats card in ServiceDetail** - Tests: 803 pass, 16 skip, 0 fail (+9 tests)
+
+**GET /api/services/:id/stats** — new endpoint returning:
+- `totalRuns`, `passedRuns`, `failedRuns`, `healedRuns`, `cancelledRuns`
+- `passRate` (0-1, includes healed), `avgDuration`
+- `featureCount`, `scenarioCount` (distinct across all runs)
+- `trend` array: daily `{ date, passed, failed, healed }` for last N days (default 7, max 90)
+- Route: `?days=N` query param
+
+**ServiceDetail.tsx stats card** (shown when totalRuns > 0):
+- 4-stat grid: total runs, pass rate (color-coded ≥90%/≥70%/<70%), failures, avg duration
+- Mini bar chart of daily trend with color coded bars
+- Displayed between the Service Info card and the Features section
+
+**DB method**: `getServiceStats(serviceId, days=7)` — 3-way JOIN across test_runs/scenarios/features
+**Files changed**:
+- `packages/server/src/db/database.ts` — getServiceStats method
+- `packages/server/src/db/database.test.ts` — 5 new tests
+- `packages/server/src/routes/services.ts` — GET /:id/stats route
+- `packages/server/src/routes/services.test.ts` — 4 new route tests
+- `packages/web/src/lib/api.ts` — getServiceStats function
+- `packages/web/src/pages/ServiceDetail.tsx` — stats card UI
+
+---
+
 ## 최근 완료 (Session 63 - 2026-06-02)
 
 ✅ **Feature-level aggregate run stats API + stats card in FeatureDetail** - Tests: 794 pass, 16 skip, 0 fail (+9 tests)
