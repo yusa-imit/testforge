@@ -256,3 +256,21 @@ export async function getScenarioStats(id: string, days = 7) {
   }>(`/scenarios/${id}/stats?days=${days}`);
   return res.data;
 }
+
+export async function getFeatureStats(id: string, days = 7) {
+  const res = await axiosClient.get<{
+    success: boolean;
+    data: {
+      totalRuns: number;
+      passedRuns: number;
+      failedRuns: number;
+      healedRuns: number;
+      cancelledRuns: number;
+      passRate: number;
+      avgDuration: number | null;
+      scenarioCount: number;
+      trend: { date: string; passed: number; failed: number; healed: number }[];
+    };
+  }>(`/features/${id}/stats?days=${days}`);
+  return res.data;
+}

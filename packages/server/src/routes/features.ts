@@ -46,6 +46,22 @@ const app = new Hono()
     return c.json({ success: true });
   })
 
+  // GET /api/features/:id/stats - 기능 실행 통계
+  .get("/:id/stats", async (c) => {
+    const db = await getDB();
+    const id = c.req.param("id");
+    const feature = await db.getFeature(id);
+
+    if (!feature) {
+      throw notFound("Feature", id);
+    }
+
+    const daysParam = c.req.query("days");
+    const days = daysParam ? Math.max(1, Math.min(90, parseInt(daysParam, 10) || 7)) : 7;
+    const stats = await db.getFeatureStats(id, days);
+    return c.json({ success: true, data: stats });
+  })
+
   // GET /api/features/:featureId/scenarios - 기능의 시나리오 목록
   .get("/:featureId/scenarios", async (c) => {
     const db = await getDB();

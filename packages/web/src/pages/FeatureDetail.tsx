@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { ko } from "date-fns/locale";
 import { MoreHorizontal, Play, Copy, Trash2 } from "lucide-react";
-import { getFeature, getScenarios, api, runFeature, runScenario, deleteScenario, duplicateScenario } from "../lib/api";
+import { getFeature, getScenarios, api, runFeature, runScenario, deleteScenario, duplicateScenario, getFeatureStats } from "../lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -79,6 +79,12 @@ export default function FeatureDetail() {
   const { data: scenariosData, isLoading: scenariosLoading } = useQuery({
     queryKey: ["scenarios", id],
     queryFn: () => getScenarios(id!),
+    enabled: !!id,
+  });
+
+  const { data: featureStatsData } = useQuery({
+    queryKey: ["feature-stats", id],
+    queryFn: () => getFeatureStats(id!),
     enabled: !!id,
   });
 
@@ -220,6 +226,67 @@ export default function FeatureDetail() {
           )}
         </CardHeader>
       </Card>
+
+      {/* Feature Run Stats */}
+      {featureStatsData?.data && featureStatsData.data.totalRuns > 0 && (() => {
+        const stats = featureStatsData.data;
+        const passRateCls = stats.passRate >= 0.9 ? "text-green-600" : stats.passRate >= 0.7 ? "text-yellow-600" : "text-red-600";
+        const maxTrendTotal = Math.max(...stats.trend.map((d) => d.passed + d.failed + d.healed), 1);
+        return (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">기능 실행 통계</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-4 gap-4 mb-4">
+                <div className="text-center">
+                  <div className="text-2xl font-bold">{stats.totalRuns}</div>
+                  <div className="text-xs text-gray-500">전체 실행</div>
+                </div>
+                <div className="text-center">
+                  <div className={`text-2xl font-bold ${passRateCls}`}>
+                    {(stats.passRate * 100).toFixed(0)}%
+                  </div>
+                  <div className="text-xs text-gray-500">성공률</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-red-500">{stats.failedRuns}</div>
+                  <div className="text-xs text-gray-500">실패</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-muted-foreground">
+                    {stats.avgDuration != null ? `${(stats.avgDuration / 1000).toFixed(1)}s` : "—"}
+                  </div>
+                  <div className="text-xs text-gray-500">평균 소요</div>
+                </div>
+              </div>
+              {stats.trend.length > 0 && (
+                <div>
+                  <div className="text-xs text-gray-500 mb-2">일별 실행 현황 (최근 7일)</div>
+                  <div className="flex items-end gap-1 h-12">
+                    {stats.trend.map((day) => {
+                      const total = day.passed + day.failed + day.healed;
+                      const dayPassRate = total > 0 ? (day.passed + day.healed) / total : 0;
+                      return (
+                        <div
+                          key={day.date}
+                          className="flex-1 flex flex-col items-center gap-0.5"
+                          title={`${day.date}: ${day.passed}통과 ${day.failed}실패 ${day.healed}치유`}
+                        >
+                          <div
+                            className={`w-full rounded-sm ${dayPassRate >= 0.9 ? "bg-green-400" : dayPassRate > 0 ? "bg-yellow-400" : "bg-red-400"}`}
+                            style={{ height: `${Math.max(4, (total / maxTrendTotal) * 40)}px` }}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* Scenarios Section */}
       <div className="flex justify-between items-center">

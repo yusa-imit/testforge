@@ -2404,3 +2404,77 @@ describe("getScenarioStats", () => {
     expect(total).toBe(2);
   });
 });
+
+// ============================================
+// getFeatureStats
+// ============================================
+
+describe("getFeatureStats", () => {
+  const env = { baseUrl: "http://test", variables: {} };
+
+  async function seedFeature(name = "Feat Stats") {
+    const svc = await db.createService({ name: `FS-${name}`, baseUrl: "http://fs", defaultTimeout: 5000 });
+    return db.createFeature({ serviceId: svc.id, name, owners: [] });
+  }
+
+  it("returns zero stats for feature with no runs", async () => {
+    const feat = await seedFeature("NoRuns");
+    const stats = await db.getFeatureStats(feat.id);
+    expect(stats.totalRuns).toBe(0);
+    expect(stats.passedRuns).toBe(0);
+    expect(stats.failedRuns).toBe(0);
+    expect(stats.passRate).toBe(0);
+    expect(stats.avgDuration).toBeNull();
+    expect(stats.trend).toEqual([]);
+  });
+
+  it("aggregates runs across all scenarios in the feature", async () => {
+    const feat = await seedFeature("MultiScenario");
+    const s1 = await db.createScenario({ featureId: feat.id, name: "S1", tags: [], priority: "medium", variables: [], steps: [] });
+    const s2 = await db.createScenario({ featureId: feat.id, name: "S2", tags: [], priority: "low", variables: [], steps: [] });
+    for (const status of ["passed", "passed"] as const) {
+      await db.createTestRun({ id: uuid(), scenarioId: s1.id, status, environment: env, createdAt: new Date() });
+    }
+    await db.createTestRun({ id: uuid(), scenarioId: s2.id, status: "failed", environment: env, createdAt: new Date() });
+    const stats = await db.getFeatureStats(feat.id);
+    expect(stats.totalRuns).toBe(3);
+    expect(stats.passedRuns).toBe(2);
+    expect(stats.failedRuns).toBe(1);
+  });
+
+  it("computes pass rate including healed runs", async () => {
+    const feat = await seedFeature("PassRateFeature");
+    const s = await db.createScenario({ featureId: feat.id, name: "S", tags: [], priority: "high", variables: [], steps: [] });
+    for (const status of ["passed", "healed", "failed", "failed"] as const) {
+      await db.createTestRun({ id: uuid(), scenarioId: s.id, status, environment: env, createdAt: new Date() });
+    }
+    const stats = await db.getFeatureStats(feat.id);
+    expect(stats.passRate).toBeCloseTo(0.5);
+  });
+
+  it("does not include runs from other features", async () => {
+    const feat1 = await seedFeature("IsolationF1");
+    const feat2 = await seedFeature("IsolationF2");
+    const s1 = await db.createScenario({ featureId: feat1.id, name: "S1", tags: [], priority: "low", variables: [], steps: [] });
+    const s2 = await db.createScenario({ featureId: feat2.id, name: "S2", tags: [], priority: "low", variables: [], steps: [] });
+    await db.createTestRun({ id: uuid(), scenarioId: s1.id, status: "passed", environment: env, createdAt: new Date() });
+    await db.createTestRun({ id: uuid(), scenarioId: s2.id, status: "failed", environment: env, createdAt: new Date() });
+    const stats = await db.getFeatureStats(feat1.id);
+    expect(stats.totalRuns).toBe(1);
+    expect(stats.passedRuns).toBe(1);
+    expect(stats.failedRuns).toBe(0);
+  });
+
+  it("trend includes runs within the requested day window", async () => {
+    const feat = await seedFeature("TrendFeature");
+    const s = await db.createScenario({ featureId: feat.id, name: "ST", tags: [], priority: "medium", variables: [], steps: [] });
+    const now = new Date();
+    const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    await db.createTestRun({ id: uuid(), scenarioId: s.id, status: "passed", environment: env, createdAt: yesterday });
+    await db.createTestRun({ id: uuid(), scenarioId: s.id, status: "failed", environment: env, createdAt: now });
+    const stats = await db.getFeatureStats(feat.id, 7);
+    expect(stats.trend.length).toBeGreaterThan(0);
+    const total = stats.trend.reduce((sum, d) => sum + d.passed + d.failed + d.healed, 0);
+    expect(total).toBe(2);
+  });
+});
