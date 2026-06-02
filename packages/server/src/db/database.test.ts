@@ -2478,3 +2478,82 @@ describe("getFeatureStats", () => {
     expect(total).toBe(2);
   });
 });
+
+// ============================================
+// getServiceStats
+// ============================================
+
+describe("getServiceStats", () => {
+  const env = { baseUrl: "http://test", variables: {} };
+
+  async function seedService(name = "Svc Stats") {
+    return db.createService({ name: `SS-${name}`, baseUrl: "http://ss", defaultTimeout: 5000 });
+  }
+
+  it("returns zero stats for service with no runs", async () => {
+    const svc = await seedService("NoRuns");
+    const stats = await db.getServiceStats(svc.id);
+    expect(stats.totalRuns).toBe(0);
+    expect(stats.passedRuns).toBe(0);
+    expect(stats.failedRuns).toBe(0);
+    expect(stats.passRate).toBe(0);
+    expect(stats.avgDuration).toBeNull();
+    expect(stats.trend).toEqual([]);
+  });
+
+  it("aggregates runs across all features and scenarios in the service", async () => {
+    const svc = await seedService("MultiFeature");
+    const f1 = await db.createFeature({ serviceId: svc.id, name: "F1", owners: [] });
+    const f2 = await db.createFeature({ serviceId: svc.id, name: "F2", owners: [] });
+    const s1 = await db.createScenario({ featureId: f1.id, name: "S1", tags: [], priority: "medium", variables: [], steps: [] });
+    const s2 = await db.createScenario({ featureId: f2.id, name: "S2", tags: [], priority: "low", variables: [], steps: [] });
+    for (const status of ["passed", "passed"] as const) {
+      await db.createTestRun({ id: uuid(), scenarioId: s1.id, status, environment: env, createdAt: new Date() });
+    }
+    await db.createTestRun({ id: uuid(), scenarioId: s2.id, status: "failed", environment: env, createdAt: new Date() });
+    const stats = await db.getServiceStats(svc.id);
+    expect(stats.totalRuns).toBe(3);
+    expect(stats.passedRuns).toBe(2);
+    expect(stats.failedRuns).toBe(1);
+  });
+
+  it("computes pass rate including healed runs", async () => {
+    const svc = await seedService("PassRate");
+    const f = await db.createFeature({ serviceId: svc.id, name: "F", owners: [] });
+    const s = await db.createScenario({ featureId: f.id, name: "S", tags: [], priority: "high", variables: [], steps: [] });
+    for (const status of ["passed", "healed", "failed", "failed"] as const) {
+      await db.createTestRun({ id: uuid(), scenarioId: s.id, status, environment: env, createdAt: new Date() });
+    }
+    const stats = await db.getServiceStats(svc.id);
+    expect(stats.passRate).toBeCloseTo(0.5);
+  });
+
+  it("does not include runs from other services", async () => {
+    const svc1 = await seedService("Isolation1");
+    const svc2 = await seedService("Isolation2");
+    const f1 = await db.createFeature({ serviceId: svc1.id, name: "F1", owners: [] });
+    const f2 = await db.createFeature({ serviceId: svc2.id, name: "F2", owners: [] });
+    const s1 = await db.createScenario({ featureId: f1.id, name: "S1", tags: [], priority: "low", variables: [], steps: [] });
+    const s2 = await db.createScenario({ featureId: f2.id, name: "S2", tags: [], priority: "low", variables: [], steps: [] });
+    await db.createTestRun({ id: uuid(), scenarioId: s1.id, status: "passed", environment: env, createdAt: new Date() });
+    await db.createTestRun({ id: uuid(), scenarioId: s2.id, status: "failed", environment: env, createdAt: new Date() });
+    const stats = await db.getServiceStats(svc1.id);
+    expect(stats.totalRuns).toBe(1);
+    expect(stats.passedRuns).toBe(1);
+    expect(stats.failedRuns).toBe(0);
+  });
+
+  it("trend includes runs within the requested day window", async () => {
+    const svc = await seedService("Trend");
+    const f = await db.createFeature({ serviceId: svc.id, name: "TF", owners: [] });
+    const s = await db.createScenario({ featureId: f.id, name: "TS", tags: [], priority: "medium", variables: [], steps: [] });
+    const now = new Date();
+    const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    await db.createTestRun({ id: uuid(), scenarioId: s.id, status: "passed", environment: env, createdAt: yesterday });
+    await db.createTestRun({ id: uuid(), scenarioId: s.id, status: "failed", environment: env, createdAt: now });
+    const stats = await db.getServiceStats(svc.id, 7);
+    expect(stats.trend.length).toBeGreaterThan(0);
+    const total = stats.trend.reduce((sum, d) => sum + d.passed + d.failed + d.healed, 0);
+    expect(total).toBe(2);
+  });
+});

@@ -1011,6 +1011,72 @@ export class DuckDBDatabase {
     return { totalRuns, passedRuns, failedRuns, healedRuns, cancelledRuns, passRate, avgDuration, scenarioCount, trend };
   }
 
+  async getServiceStats(serviceId: string, days = 7): Promise<{
+    totalRuns: number;
+    passedRuns: number;
+    failedRuns: number;
+    healedRuns: number;
+    cancelledRuns: number;
+    passRate: number;
+    avgDuration: number | null;
+    featureCount: number;
+    scenarioCount: number;
+    trend: { date: string; passed: number; failed: number; healed: number }[];
+  }> {
+    const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+    const aggRow = await this.db.get(
+      `SELECT
+         COUNT(*) AS total,
+         COUNT(*) FILTER (WHERE t.status = 'passed') AS passed,
+         COUNT(*) FILTER (WHERE t.status = 'failed') AS failed,
+         COUNT(*) FILTER (WHERE t.status = 'healed') AS healed,
+         COUNT(*) FILTER (WHERE t.status = 'cancelled') AS cancelled,
+         AVG(t.duration) FILTER (WHERE t.duration IS NOT NULL AND t.status IN ('passed','failed','healed')) AS avg_dur,
+         COUNT(DISTINCT f.id) AS feature_count,
+         COUNT(DISTINCT s.id) AS scenario_count
+       FROM test_runs t
+       JOIN scenarios s ON t.scenario_id = s.id
+       JOIN features f ON s.feature_id = f.id
+       WHERE f.service_id = ?`,
+      [serviceId]
+    ) as any;
+
+    const totalRuns = Number(aggRow?.total ?? 0);
+    const passedRuns = Number(aggRow?.passed ?? 0);
+    const failedRuns = Number(aggRow?.failed ?? 0);
+    const healedRuns = Number(aggRow?.healed ?? 0);
+    const cancelledRuns = Number(aggRow?.cancelled ?? 0);
+    const passRate = totalRuns > 0 ? (passedRuns + healedRuns) / totalRuns : 0;
+    const avgDuration = aggRow?.avg_dur != null ? Math.round(Number(aggRow.avg_dur)) : null;
+    const featureCount = Number(aggRow?.feature_count ?? 0);
+    const scenarioCount = Number(aggRow?.scenario_count ?? 0);
+
+    const trendRows = await this.db.all(
+      `SELECT
+         strftime(t.created_at::TIMESTAMP, '%Y-%m-%d') AS day,
+         COUNT(*) FILTER (WHERE t.status = 'passed') AS passed,
+         COUNT(*) FILTER (WHERE t.status = 'failed') AS failed,
+         COUNT(*) FILTER (WHERE t.status = 'healed') AS healed
+       FROM test_runs t
+       JOIN scenarios s ON t.scenario_id = s.id
+       JOIN features f ON s.feature_id = f.id
+       WHERE f.service_id = ? AND t.created_at >= ?
+       GROUP BY day
+       ORDER BY day ASC`,
+      [serviceId, cutoff]
+    ) as any[];
+
+    const trend = trendRows.map((r) => ({
+      date: String(r.day),
+      passed: Number(r.passed ?? 0),
+      failed: Number(r.failed ?? 0),
+      healed: Number(r.healed ?? 0),
+    }));
+
+    return { totalRuns, passedRuns, failedRuns, healedRuns, cancelledRuns, passRate, avgDuration, featureCount, scenarioCount, trend };
+  }
+
   async getAllTestRuns(
     limit = 50,
     filters: { scenarioId?: string; status?: string; featureId?: string; serviceId?: string; from?: Date; to?: Date } = {},

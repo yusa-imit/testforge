@@ -274,3 +274,22 @@ export async function getFeatureStats(id: string, days = 7) {
   }>(`/features/${id}/stats?days=${days}`);
   return res.data;
 }
+
+export async function getServiceStats(id: string, days = 7) {
+  const res = await axiosClient.get<{
+    success: boolean;
+    data: {
+      totalRuns: number;
+      passedRuns: number;
+      failedRuns: number;
+      healedRuns: number;
+      cancelledRuns: number;
+      passRate: number;
+      avgDuration: number | null;
+      featureCount: number;
+      scenarioCount: number;
+      trend: { date: string; passed: number; failed: number; healed: number }[];
+    };
+  }>(`/services/${id}/stats?days=${days}`);
+  return res.data;
+}

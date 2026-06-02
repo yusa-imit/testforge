@@ -308,3 +308,53 @@ describe("POST /api/services/:id/run", () => {
     expect(body.data.message).toContain("2 feature(s)");
   });
 });
+
+// ──────────────────────────────────────────────────────────────────────────────
+// GET /api/services/:id/stats
+// ──────────────────────────────────────────────────────────────────────────────
+
+describe("GET /api/services/:id/stats", () => {
+  const env = { baseUrl: "http://test", variables: {} };
+
+  it("returns 404 for unknown service", async () => {
+    const res = await req("GET", "/api/services/no-such-id/stats");
+    expect(res.status).toBe(404);
+  });
+
+  it("returns zero stats for service with no runs", async () => {
+    const service = await db.createService(servicePayload);
+    const res = await req("GET", `/api/services/${service.id}/stats`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.success).toBe(true);
+    expect(body.data.totalRuns).toBe(0);
+    expect(body.data.passRate).toBe(0);
+    expect(body.data.trend).toEqual([]);
+  });
+
+  it("aggregates runs across features and scenarios", async () => {
+    const service = await db.createService(servicePayload);
+    const feat = await db.createFeature({ serviceId: service.id, name: "F1", owners: [] });
+    const s = await db.createScenario({ featureId: feat.id, name: "S1", tags: [], priority: "medium" as const, variables: [], steps: [] });
+    await db.createTestRun({ id: crypto.randomUUID(), scenarioId: s.id, status: "passed", environment: env, createdAt: new Date() });
+    await db.createTestRun({ id: crypto.randomUUID(), scenarioId: s.id, status: "failed", environment: env, createdAt: new Date() });
+    const res = await req("GET", `/api/services/${service.id}/stats`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.data.totalRuns).toBe(2);
+    expect(body.data.passedRuns).toBe(1);
+    expect(body.data.failedRuns).toBe(1);
+    expect(body.data.passRate).toBeCloseTo(0.5);
+  });
+
+  it("respects ?days query param", async () => {
+    const service = await db.createService(servicePayload);
+    const feat = await db.createFeature({ serviceId: service.id, name: "F2", owners: [] });
+    const s = await db.createScenario({ featureId: feat.id, name: "S2", tags: [], priority: "low" as const, variables: [], steps: [] });
+    await db.createTestRun({ id: crypto.randomUUID(), scenarioId: s.id, status: "passed", environment: env, createdAt: new Date() });
+    const res = await req("GET", `/api/services/${service.id}/stats?days=30`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.data.totalRuns).toBe(1);
+  });
+});

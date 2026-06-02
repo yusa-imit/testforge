@@ -3,7 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { ko } from "date-fns/locale";
-import { getService, getFeatures, api, runService } from "../lib/api";
+import { getService, getFeatures, api, runService, getServiceStats } from "../lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -47,6 +47,12 @@ export default function ServiceDetail() {
   const { data: featuresData, isLoading: featuresLoading } = useQuery({
     queryKey: ["features", id],
     queryFn: () => getFeatures(id!),
+    enabled: !!id,
+  });
+
+  const { data: serviceStatsData } = useQuery({
+    queryKey: ["serviceStats", id],
+    queryFn: () => getServiceStats(id!),
     enabled: !!id,
   });
 
@@ -120,6 +126,67 @@ export default function ServiceDetail() {
           </p>
         </CardContent>
       </Card>
+
+      {/* Service Run Stats */}
+      {serviceStatsData?.data && serviceStatsData.data.totalRuns > 0 && (() => {
+        const stats = serviceStatsData.data;
+        const passRateCls = stats.passRate >= 0.9 ? "text-green-600" : stats.passRate >= 0.7 ? "text-yellow-600" : "text-red-600";
+        const maxTrendTotal = Math.max(...stats.trend.map((d) => d.passed + d.failed + d.healed), 1);
+        return (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">서비스 실행 통계</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-4 gap-4 mb-4">
+                <div className="text-center">
+                  <div className="text-2xl font-bold">{stats.totalRuns}</div>
+                  <div className="text-xs text-gray-500">전체 실행</div>
+                </div>
+                <div className="text-center">
+                  <div className={`text-2xl font-bold ${passRateCls}`}>
+                    {(stats.passRate * 100).toFixed(0)}%
+                  </div>
+                  <div className="text-xs text-gray-500">성공률</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-red-500">{stats.failedRuns}</div>
+                  <div className="text-xs text-gray-500">실패</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-muted-foreground">
+                    {stats.avgDuration != null ? `${(stats.avgDuration / 1000).toFixed(1)}s` : "—"}
+                  </div>
+                  <div className="text-xs text-gray-500">평균 소요</div>
+                </div>
+              </div>
+              {stats.trend.length > 0 && (
+                <div>
+                  <div className="text-xs text-gray-500 mb-2">일별 실행 현황 (최근 7일)</div>
+                  <div className="flex items-end gap-1 h-12">
+                    {stats.trend.map((day) => {
+                      const total = day.passed + day.failed + day.healed;
+                      const dayPassRate = total > 0 ? (day.passed + day.healed) / total : 0;
+                      return (
+                        <div
+                          key={day.date}
+                          className="flex-1 rounded-sm"
+                          style={{
+                            height: `${Math.round((total / maxTrendTotal) * 100)}%`,
+                            minHeight: total > 0 ? "4px" : undefined,
+                            backgroundColor: dayPassRate >= 0.9 ? "#22c55e" : dayPassRate >= 0.7 ? "#eab308" : "#ef4444",
+                          }}
+                          title={`${day.date}: ${day.passed}p ${day.failed}f ${day.healed}h`}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* Features Section */}
       <div className="flex justify-between items-center">
