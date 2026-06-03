@@ -31,6 +31,32 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 - Screenshot Capture
 - Search & Filtering
 - Element Registry
+- **Global Search** (header search bar across all entities)
+
+## 최근 완료 (Session 66 - 2026-06-04)
+
+✅ **Global search — header search bar with service/feature/scenario results** - Tests: 820 pass, 16 skip, 0 fail (+9 tests)
+
+**GET /api/search?q=...&limit=N** — new endpoint:
+- `searchEntities(q, limit)` DB method: 3 ILIKE queries (services, features+service, scenarios+feature+service)
+- Returns grouped results with full breadcrumb context (serviceId/serviceName/featureId/featureName)
+- Case-insensitive search (DuckDB ILIKE)
+
+**GlobalSearch.tsx component** integrated into Layout header:
+- Debounced input (300ms) with TanStack Query cache (10s stale)
+- Dropdown shows type icon (🔧/📦/🧪) + name + breadcrumb path
+- Keyboard navigation: ↑↓ to move, Enter to select, Escape to close
+- Clear button, click-outside closes dropdown
+- Navigates to `/services/:id`, `/features/:id`, or `/scenarios/:id`
+
+**Files changed**:
+- `packages/server/src/db/database.ts` — searchEntities method
+- `packages/server/src/routes/search.ts` — new route (GET /)
+- `packages/server/src/routes/search.test.ts` — 9 tests
+- `packages/server/src/index.ts` — route registration
+- `packages/web/src/lib/api.ts` — search() function + SearchResultItem interface
+- `packages/web/src/components/GlobalSearch.tsx` — new component
+- `packages/web/src/components/Layout.tsx` — GlobalSearch integrated in header
 
 ## 최근 완료 (Session 65 - 2026-06-03)
 
