@@ -29,7 +29,13 @@ const app = new Hono()
   // GET /api/runs/dashboard - 대시보드 데이터
   .get("/dashboard", async (c) => {
     const db = await getDB();
-    const runs = await db.getDashboardRuns(24);
+    const daysParam = c.req.query("days");
+    const days = daysParam ? Math.max(1, Math.min(90, parseInt(daysParam, 10) || 7)) : 7;
+
+    const [runs, globalStats] = await Promise.all([
+      db.getDashboardRuns(24),
+      db.getDashboardStats(days),
+    ]);
 
     const total = runs.length;
     const passed = runs.filter((r) => r.status === "passed").length;
@@ -47,6 +53,7 @@ const app = new Hono()
       data: {
         stats: { total, passed, failed, healed },
         recentFailures,
+        globalStats,
       },
     });
   })

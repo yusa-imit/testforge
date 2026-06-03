@@ -383,6 +383,36 @@ describe("GET /api/runs/dashboard", () => {
     expect(body.data.recentFailures).toHaveLength(1);
     expect(body.data.recentFailures[0].scenarioName).toBe(scenario.name);
   });
+
+  it("includes globalStats with totalRuns and trend", async () => {
+    await createTestRun("passed");
+    await createTestRun("failed");
+
+    const res = await req("GET", "/api/runs/dashboard");
+    const body = (await res.json()) as any;
+    expect(body.data.globalStats).toBeDefined();
+    expect(body.data.globalStats.totalRuns).toBe(2);
+    expect(body.data.globalStats.passedRuns).toBe(1);
+    expect(body.data.globalStats.failedRuns).toBe(1);
+    expect(Array.isArray(body.data.globalStats.trend)).toBe(true);
+  });
+
+  it("globalStats passRate is (passed+healed)/total", async () => {
+    await createTestRun("passed");
+    await createTestRun("healed");
+    await createTestRun("failed");
+
+    const res = await req("GET", "/api/runs/dashboard");
+    const body = (await res.json()) as any;
+    expect(body.data.globalStats.passRate).toBeCloseTo(2 / 3, 5);
+  });
+
+  it("globalStats respects ?days param for trend", async () => {
+    const res = await req("GET", "/api/runs/dashboard?days=14");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.data.globalStats).toBeDefined();
+  });
 });
 
 describe("GET /api/runs/:id", () => {

@@ -22,6 +22,24 @@ type ServiceWithStats = {
   lastRunAt?: string | null;
 };
 
+interface TrendDay {
+  date: string;
+  passed: number;
+  failed: number;
+  healed: number;
+}
+
+interface GlobalStats {
+  totalRuns: number;
+  passedRuns: number;
+  failedRuns: number;
+  healedRuns: number;
+  cancelledRuns: number;
+  passRate: number;
+  avgDuration: number | null;
+  trend: TrendDay[];
+}
+
 const RUN_STATUS_ICON: Record<string, string> = {
   passed:    "✅",
   failed:    "❌",
@@ -49,12 +67,29 @@ export default function Dashboard() {
 
   const services = servicesData?.data ?? [];
   const healStats = healingStats?.data;
-  const stats = dashboardData?.data?.stats ?? { total: 0, passed: 0, failed: 0, healed: 0 };
-  const recentFailures = dashboardData?.data?.recentFailures ?? [];
+  const stats = (dashboardData?.data as any)?.stats ?? { total: 0, passed: 0, failed: 0, healed: 0 };
+  const recentFailures = (dashboardData?.data as any)?.recentFailures ?? [];
+  const globalStats = (dashboardData?.data as any)?.globalStats as GlobalStats | undefined;
 
   const successRate = stats.total > 0
     ? ((stats.passed / stats.total) * 100).toFixed(1)
     : "0.0";
+
+  const globalPassRate = globalStats && globalStats.totalRuns > 0
+    ? (globalStats.passRate * 100).toFixed(1)
+    : null;
+
+  const globalPassRateCls = globalStats
+    ? globalStats.passRate >= 0.9
+      ? "text-green-600"
+      : globalStats.passRate >= 0.7
+      ? "text-yellow-600"
+      : "text-red-600"
+    : "text-gray-900";
+
+  const maxTrendTotal = globalStats?.trend?.length
+    ? Math.max(...globalStats.trend.map((d) => d.passed + d.failed + d.healed), 1)
+    : 1;
 
   return (
     <div className="space-y-8">
@@ -101,6 +136,65 @@ export default function Dashboard() {
           </span>
         </div>
       </div>
+
+      {/* Global Run Stats + 7-day trend */}
+      {globalStats && globalStats.totalRuns > 0 && (
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-sm font-medium text-gray-500 mb-4">전체 실행 현황</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-gray-900">{globalStats.totalRuns}</div>
+              <div className="text-xs text-gray-500">누적 실행</div>
+            </div>
+            <div className="text-center">
+              <div className={`text-2xl font-bold ${globalPassRateCls}`}>
+                {globalPassRate}%
+              </div>
+              <div className="text-xs text-gray-500">전체 성공률</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-red-500">{globalStats.failedRuns}</div>
+              <div className="text-xs text-gray-500">누적 실패</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-muted-foreground text-gray-400">
+                {globalStats.avgDuration != null
+                  ? `${(globalStats.avgDuration / 1000).toFixed(1)}s`
+                  : "—"}
+              </div>
+              <div className="text-xs text-gray-500">평균 소요</div>
+            </div>
+          </div>
+          {globalStats.trend.length > 0 && (
+            <div>
+              <div className="text-xs text-gray-400 mb-2">일별 실행 현황 (최근 7일)</div>
+              <div className="flex items-end gap-1 h-12">
+                {globalStats.trend.map((day) => {
+                  const total = day.passed + day.failed + day.healed;
+                  const dayPassRate = total > 0 ? (day.passed + day.healed) / total : 0;
+                  return (
+                    <div
+                      key={day.date}
+                      className="flex-1 rounded-sm"
+                      style={{
+                        height: `${Math.round((total / maxTrendTotal) * 100)}%`,
+                        minHeight: total > 0 ? "4px" : undefined,
+                        backgroundColor:
+                          dayPassRate >= 0.9
+                            ? "#22c55e"
+                            : dayPassRate >= 0.7
+                            ? "#eab308"
+                            : "#ef4444",
+                      }}
+                      title={`${day.date}: ${day.passed}p ${day.failed}f ${day.healed}h`}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Self-Healing Status - PRD 6.2.1 */}
       <div className="bg-white rounded-lg shadow p-6">

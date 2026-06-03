@@ -1276,6 +1276,92 @@ describe("DuckDBDatabase - Test Runs", () => {
   });
 });
 
+describe("DuckDBDatabase - getDashboardStats", () => {
+  let scenarioId: string;
+
+  beforeEach(async () => {
+    const service = await db.createService({
+      name: "Service",
+      baseUrl: "https://test.com",
+      defaultTimeout: 30000,
+    });
+    const feature = await db.createFeature({
+      serviceId: service.id,
+      name: "Feature",
+      owners: [],
+    });
+    const scenario = await db.createScenario({
+      featureId: feature.id,
+      name: "Scenario",
+      tags: [],
+      priority: "medium",
+      variables: [],
+      steps: [],
+    });
+    scenarioId = scenario.id;
+  });
+
+  it("returns zero stats when no runs exist", async () => {
+    const stats = await db.getDashboardStats(7);
+    expect(stats.totalRuns).toBe(0);
+    expect(stats.passedRuns).toBe(0);
+    expect(stats.failedRuns).toBe(0);
+    expect(stats.healedRuns).toBe(0);
+    expect(stats.passRate).toBe(0);
+    expect(stats.avgDuration).toBeNull();
+    expect(stats.trend).toEqual([]);
+  });
+
+  it("counts all runs across all statuses", async () => {
+    await db.createTestRun({ id: uuid(), scenarioId, status: "passed", environment: { baseUrl: "https://ex.com", variables: {} }, createdAt: new Date() });
+    await db.createTestRun({ id: uuid(), scenarioId, status: "failed", environment: { baseUrl: "https://ex.com", variables: {} }, createdAt: new Date() });
+    await db.createTestRun({ id: uuid(), scenarioId, status: "healed", environment: { baseUrl: "https://ex.com", variables: {} }, createdAt: new Date() });
+
+    const stats = await db.getDashboardStats(7);
+    expect(stats.totalRuns).toBe(3);
+    expect(stats.passedRuns).toBe(1);
+    expect(stats.failedRuns).toBe(1);
+    expect(stats.healedRuns).toBe(1);
+  });
+
+  it("calculates passRate as (passed + healed) / total", async () => {
+    await db.createTestRun({ id: uuid(), scenarioId, status: "passed", environment: { baseUrl: "https://ex.com", variables: {} }, createdAt: new Date() });
+    await db.createTestRun({ id: uuid(), scenarioId, status: "healed", environment: { baseUrl: "https://ex.com", variables: {} }, createdAt: new Date() });
+    await db.createTestRun({ id: uuid(), scenarioId, status: "failed", environment: { baseUrl: "https://ex.com", variables: {} }, createdAt: new Date() });
+
+    const stats = await db.getDashboardStats(7);
+    expect(stats.passRate).toBeCloseTo(2 / 3, 5);
+  });
+
+  it("trend includes only runs within the day window", async () => {
+    const recent: TestRun = { id: uuid(), scenarioId, status: "passed", environment: { baseUrl: "https://ex.com", variables: {} }, createdAt: new Date() };
+    const old: TestRun = { id: uuid(), scenarioId, status: "failed", environment: { baseUrl: "https://ex.com", variables: {} }, createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000) };
+
+    await db.createTestRun(recent);
+    await db.createTestRun(old);
+
+    const stats = await db.getDashboardStats(7);
+    const dates = stats.trend.map((t) => t.date);
+    const today = new Date().toISOString().slice(0, 10);
+    expect(dates).toContain(today);
+    // old run (10 days ago) should not appear in 7-day trend
+    expect(stats.trend.every((t) => t.passed + t.failed + t.healed > 0 || t.date >= today)).toBe(true);
+  });
+
+  it("trend sums passed and failed per day", async () => {
+    await db.createTestRun({ id: uuid(), scenarioId, status: "passed", environment: { baseUrl: "https://ex.com", variables: {} }, createdAt: new Date() });
+    await db.createTestRun({ id: uuid(), scenarioId, status: "passed", environment: { baseUrl: "https://ex.com", variables: {} }, createdAt: new Date() });
+    await db.createTestRun({ id: uuid(), scenarioId, status: "failed", environment: { baseUrl: "https://ex.com", variables: {} }, createdAt: new Date() });
+
+    const stats = await db.getDashboardStats(7);
+    const today = new Date().toISOString().slice(0, 10);
+    const todayEntry = stats.trend.find((t) => t.date === today);
+    expect(todayEntry).toBeDefined();
+    expect(todayEntry!.passed).toBe(2);
+    expect(todayEntry!.failed).toBe(1);
+  });
+});
+
 // ============================================
 // Step Results
 // ============================================

@@ -1151,6 +1151,60 @@ export class DuckDBDatabase {
     }));
   }
 
+  async getDashboardStats(days = 7): Promise<{
+    totalRuns: number;
+    passedRuns: number;
+    failedRuns: number;
+    healedRuns: number;
+    cancelledRuns: number;
+    passRate: number;
+    avgDuration: number | null;
+    trend: { date: string; passed: number; failed: number; healed: number }[];
+  }> {
+    const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+    const aggRow = await this.db.get(
+      `SELECT
+         COUNT(*) AS total,
+         COUNT(*) FILTER (WHERE status = 'passed') AS passed,
+         COUNT(*) FILTER (WHERE status = 'failed') AS failed,
+         COUNT(*) FILTER (WHERE status = 'healed') AS healed,
+         COUNT(*) FILTER (WHERE status = 'cancelled') AS cancelled,
+         AVG(duration) FILTER (WHERE duration IS NOT NULL AND status IN ('passed','failed','healed')) AS avg_dur
+       FROM test_runs`
+    ) as any;
+
+    const totalRuns = Number(aggRow?.total ?? 0);
+    const passedRuns = Number(aggRow?.passed ?? 0);
+    const failedRuns = Number(aggRow?.failed ?? 0);
+    const healedRuns = Number(aggRow?.healed ?? 0);
+    const cancelledRuns = Number(aggRow?.cancelled ?? 0);
+    const passRate = totalRuns > 0 ? (passedRuns + healedRuns) / totalRuns : 0;
+    const avgDuration = aggRow?.avg_dur != null ? Math.round(Number(aggRow.avg_dur)) : null;
+
+    const trendRows = await this.db.all(
+      `SELECT
+         strftime(created_at::TIMESTAMP, '%Y-%m-%d') AS day,
+         COUNT(*) FILTER (WHERE status = 'passed') AS passed,
+         COUNT(*) FILTER (WHERE status = 'failed') AS failed,
+         COUNT(*) FILTER (WHERE status = 'healed') AS healed
+       FROM test_runs
+       WHERE created_at >= ?
+       GROUP BY day
+       ORDER BY day ASC`,
+      [cutoff]
+    ) as any[];
+
+    const trend = trendRows.map((r) => ({
+      date: String(r.day),
+      passed: Number(r.passed ?? 0),
+      failed: Number(r.failed ?? 0),
+      healed: Number(r.healed ?? 0),
+    }));
+
+    return { totalRuns, passedRuns, failedRuns, healedRuns, cancelledRuns, passRate, avgDuration, trend };
+  }
+
   async updateTestRun(id: string, data: Partial<TestRun>): Promise<TestRun | undefined> {
     const existing = await this.getTestRun(id);
     if (!existing) return undefined;
