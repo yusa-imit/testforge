@@ -1577,6 +1577,57 @@ export class DuckDBDatabase {
     }
   }
 
+  async searchEntities(
+    q: string,
+    limit = 20
+  ): Promise<
+    {
+      type: "service" | "feature" | "scenario";
+      id: string;
+      name: string;
+      description?: string;
+      serviceId?: string;
+      serviceName?: string;
+      featureId?: string;
+      featureName?: string;
+    }[]
+  > {
+    if (!q.trim()) return [];
+    const pattern = `%${q}%`;
+    const perType = Math.max(1, Math.ceil(limit / 3));
+
+    const serviceRows = await this.db.all(
+      `SELECT id, name, description, NULL as service_id, NULL as service_name, NULL as feature_id, NULL as feature_name, 'service' as type
+       FROM services WHERE name ILIKE ? OR description ILIKE ? ORDER BY name LIMIT ?`,
+      [pattern, pattern, perType]
+    );
+
+    const featureRows = await this.db.all(
+      `SELECT f.id, f.name, f.description, s.id as service_id, s.name as service_name, NULL as feature_id, NULL as feature_name, 'feature' as type
+       FROM features f JOIN services s ON f.service_id = s.id
+       WHERE f.name ILIKE ? OR f.description ILIKE ? ORDER BY f.name LIMIT ?`,
+      [pattern, pattern, perType]
+    );
+
+    const scenarioRows = await this.db.all(
+      `SELECT sc.id, sc.name, sc.description, s.id as service_id, s.name as service_name, f.id as feature_id, f.name as feature_name, 'scenario' as type
+       FROM scenarios sc JOIN features f ON sc.feature_id = f.id JOIN services s ON f.service_id = s.id
+       WHERE sc.name ILIKE ? OR sc.description ILIKE ? ORDER BY sc.name LIMIT ?`,
+      [pattern, pattern, perType]
+    );
+
+    return [...serviceRows, ...featureRows, ...scenarioRows].map((row) => ({
+      type: row.type as "service" | "feature" | "scenario",
+      id: row.id,
+      name: row.name,
+      description: row.description || undefined,
+      serviceId: row.service_id || undefined,
+      serviceName: row.service_name || undefined,
+      featureId: row.feature_id || undefined,
+      featureName: row.feature_name || undefined,
+    }));
+  }
+
   async findRegistryByName(
     displayName: string,
     serviceId?: string

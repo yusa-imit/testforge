@@ -1,5 +1,6 @@
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { Toaster } from "./ui/toaster";
+import GlobalSearch from "./GlobalSearch";
 
 const navigation = [
   { name: "대시보드", href: "/" },
@@ -20,11 +21,12 @@ export default function Layout() {
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <Link to="/" className="flex items-center space-x-2">
+            <div className="flex items-center gap-6">
+              <Link to="/" className="flex items-center space-x-2 shrink-0">
                 <span className="text-2xl">🧪</span>
                 <span className="text-xl font-bold text-gray-900">TestForge</span>
               </Link>
+              <GlobalSearch />
             </div>
             <nav className="flex space-x-6">
               {navigation.map((item) => {

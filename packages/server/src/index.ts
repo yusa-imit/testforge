@@ -16,6 +16,7 @@ import screenshots from "./routes/screenshots";
 import registry from "./routes/registry";
 import metrics from "./routes/metrics";
 import backup from "./routes/backup";
+import search from "./routes/search";
 
 const app = new Hono()
   .use("*", honoLogger())
@@ -33,7 +34,8 @@ const app = new Hono()
   .route("/api/screenshots", screenshots)
   .route("/api/registry", registry)
   .route("/api/metrics", metrics)
-  .route("/api/backup", backup);
+  .route("/api/backup", backup)
+  .route("/api/search", search);
 
 export type AppType = typeof app;
 export default app;

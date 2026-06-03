@@ -293,3 +293,23 @@ export async function getServiceStats(id: string, days = 7) {
   }>(`/services/${id}/stats?days=${days}`);
   return res.data;
 }
+
+
+export interface SearchResultItem {
+  type: "service" | "feature" | "scenario";
+  id: string;
+  name: string;
+  description?: string;
+  serviceId?: string;
+  serviceName?: string;
+  featureId?: string;
+  featureName?: string;
+}
+
+export async function search(q: string, limit = 20): Promise<SearchResultItem[]> {
+  if (!q.trim()) return [];
+  const res = await axiosClient.get<{ data: SearchResultItem[] }>(
+    `/search?q=${encodeURIComponent(q)}&limit=${limit}`
+  );
+  return res.data.data;
+}
