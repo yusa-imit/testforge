@@ -32,6 +32,29 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 - Search & Filtering
 - Element Registry
 
+## 최근 완료 (Session 65 - 2026-06-03)
+
+✅ **Global run stats + 7-day trend chart on Dashboard** - Tests: 811 pass, 16 skip, 0 fail (+8 tests)
+
+**getDashboardStats(days=7)** — new DB method returning all-time aggregate + daily trend:
+- `totalRuns`, `passedRuns`, `failedRuns`, `healedRuns`, `cancelledRuns`, `passRate`, `avgDuration`
+- `trend` array: daily `{ date, passed, failed, healed }` for last N days (default 7, max 90)
+- Route: `GET /api/runs/dashboard?days=N` now returns `globalStats` alongside the 24h stats
+
+**Dashboard.tsx "전체 실행 현황" card** (shown when totalRuns > 0):
+- 4-stat grid: cumulative total, overall pass rate (color-coded), failures, avg duration
+- Mini bar chart of daily trend with color-coded bars (same pattern as Service/Feature/Scenario stats)
+- Displayed between the 24h stats card and the Self-Healing status card
+
+**Files changed**:
+- `packages/server/src/db/database.ts` — getDashboardStats method
+- `packages/server/src/db/database.test.ts` — 5 new tests
+- `packages/server/src/routes/runs.ts` — globalStats in dashboard response + ?days param
+- `packages/server/src/routes/runs.test.ts` — 4 new route tests
+- `packages/web/src/pages/Dashboard.tsx` — global stats card with trend chart
+
+---
+
 ## 최근 완료 (Session 64 - 2026-06-03)
 
 ✅ **Service-level aggregate run stats API + stats card in ServiceDetail** - Tests: 803 pass, 16 skip, 0 fail (+9 tests)
