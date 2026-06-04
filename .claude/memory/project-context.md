@@ -32,6 +32,31 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 - Search & Filtering
 - Element Registry
 - **Global Search** (header search bar across all entities)
+- **CSV Export** (test runs export with filter support)
+
+## 최근 완료 (Session 67 - 2026-06-04)
+
+✅ **CSV export for test runs — GET /api/runs/export** - Tests: 826 pass, 16 skip, 0 fail (+6 tests)
+
+**GET /api/runs/export** — new endpoint (placed before `/:id` to avoid route conflict):
+- Accepts same filters as list: `status`, `scenarioId`, `featureId`, `serviceId`, `from`, `to`
+- Fetches up to 10,000 matching runs (no pagination for export)
+- Returns `text/csv; charset=utf-8` with `Content-Disposition: attachment; filename="testforge-runs-YYYY-MM-DD.csv"`
+- CSV columns: `id`, `scenarioName`, `status`, `startedAt`, `finishedAt`, `duration_ms`, `totalSteps`, `passedSteps`, `failedSteps`, `healedSteps`, `skippedSteps`, `createdAt`
+- Proper CSV escaping (double-quotes values with commas/quotes/newlines)
+
+**Runs.tsx "CSV 내보내기" button:**
+- Appears in the filter bar (right-aligned with `ml-auto`)
+- Builds export URL with current `status` + `from` filters applied
+- Triggers browser download via programmatic `<a>` click (no page navigation)
+- Uses `Download` icon from lucide-react
+
+**Files changed:**
+- `packages/server/src/routes/runs.ts` — `/export` route added before `/:id`
+- `packages/server/src/routes/runs.test.ts` — 6 new export tests
+- `packages/web/src/pages/Runs.tsx` — `handleExportCSV` + export button
+
+---
 
 ## 최근 완료 (Session 66 - 2026-06-04)
 
