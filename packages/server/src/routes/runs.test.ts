@@ -415,6 +415,68 @@ describe("GET /api/runs/dashboard", () => {
   });
 });
 
+describe("GET /api/runs/export", () => {
+  it("returns text/csv content-type", async () => {
+    const res = await req("GET", "/api/runs/export");
+    expect(res.status).toBe(200);
+    const contentType = res.headers.get("content-type") ?? "";
+    expect(contentType).toContain("text/csv");
+  });
+
+  it("returns CSV header row even when no runs exist", async () => {
+    const res = await req("GET", "/api/runs/export");
+    const text = await res.text();
+    const lines = text.trim().split("\n");
+    expect(lines.length).toBe(1);
+    expect(lines[0]).toContain("id");
+    expect(lines[0]).toContain("scenarioName");
+    expect(lines[0]).toContain("status");
+    expect(lines[0]).toContain("duration_ms");
+  });
+
+  it("includes one data row per run", async () => {
+    await createTestRun("passed");
+    await createTestRun("failed");
+    const res = await req("GET", "/api/runs/export");
+    const text = await res.text();
+    const lines = text.trim().split("\n");
+    expect(lines.length).toBe(3); // header + 2 rows
+  });
+
+  it("filters by status", async () => {
+    await createTestRun("passed");
+    await createTestRun("failed");
+    const res = await req("GET", "/api/runs/export?status=failed");
+    const text = await res.text();
+    const lines = text.trim().split("\n");
+    expect(lines.length).toBe(2); // header + 1 row
+    expect(lines[1]).toContain("failed");
+  });
+
+  it("sets Content-Disposition attachment header", async () => {
+    const res = await req("GET", "/api/runs/export");
+    const disposition = res.headers.get("content-disposition") ?? "";
+    expect(disposition).toContain("attachment");
+    expect(disposition).toContain("testforge-runs-");
+    expect(disposition).toContain(".csv");
+  });
+
+  it("escapes commas in scenario names", async () => {
+    const service = await db.createService({ name: "S", baseUrl: "https://x.com", defaultTimeout: 30000 });
+    const feature = await db.createFeature({ serviceId: service.id, name: "F", owners: [] });
+    await db.createScenario({ featureId: feature.id, name: "Scenario, with, commas", steps: [], variables: [], tags: [], priority: "medium" });
+    const scenario = (await db.getScenariosByFeature(feature.id))[0];
+    const { v4: uuid } = await import("uuid");
+    const runId = uuid();
+    const now = new Date();
+    await db.createTestRun({ id: runId, scenarioId: scenario.id, status: "passed", environment: { baseUrl: "https://x.com", variables: {} }, startedAt: now, createdAt: now });
+
+    const res = await req("GET", "/api/runs/export");
+    const text = await res.text();
+    expect(text).toContain('"Scenario, with, commas"');
+  });
+});
+
 describe("GET /api/runs/:id", () => {
   it("returns a run by ID", async () => {
     const { runId } = await createTestRun("passed");

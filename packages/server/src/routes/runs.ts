@@ -58,6 +58,65 @@ const app = new Hono()
     });
   })
 
+  // GET /api/runs/export - CSV 다운로드 (all filters supported)
+  .get("/export", async (c) => {
+    const db = await getDB();
+    const scenarioId = c.req.query("scenarioId") || undefined;
+    const status = c.req.query("status") || undefined;
+    const featureId = c.req.query("featureId") || undefined;
+    const serviceId = c.req.query("serviceId") || undefined;
+    const fromParam = c.req.query("from");
+    const toParam = c.req.query("to");
+    const from = fromParam ? new Date(fromParam) : undefined;
+    const to = toParam ? new Date(toParam) : undefined;
+
+    const runs = await db.getAllTestRuns(10000, { scenarioId, status, featureId, serviceId, from, to }, 0);
+
+    const escapeCSV = (val: unknown): string => {
+      if (val === null || val === undefined) return "";
+      const str = String(val);
+      if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    const header = [
+      "id", "scenarioName", "status",
+      "startedAt", "finishedAt", "duration_ms",
+      "totalSteps", "passedSteps", "failedSteps", "healedSteps", "skippedSteps",
+      "createdAt",
+    ];
+    const rows = runs.map((run) =>
+      [
+        run.id,
+        (run as any).scenarioName ?? "",
+        run.status,
+        run.startedAt?.toISOString() ?? "",
+        run.finishedAt?.toISOString() ?? "",
+        run.duration ?? "",
+        run.summary?.totalSteps ?? "",
+        run.summary?.passedSteps ?? "",
+        run.summary?.failedSteps ?? "",
+        run.summary?.healedSteps ?? "",
+        run.summary?.skippedSteps ?? "",
+        run.createdAt.toISOString(),
+      ]
+        .map(escapeCSV)
+        .join(",")
+    );
+
+    const csv = [header.join(","), ...rows].join("\n");
+    const filename = `testforge-runs-${new Date().toISOString().slice(0, 10)}.csv`;
+
+    return new Response(csv, {
+      headers: {
+        "Content-Type": "text/csv; charset=utf-8",
+        "Content-Disposition": `attachment; filename="${filename}"`,
+      },
+    });
+  })
+
   // GET /api/runs/:id - 실행 상세
   .get("/:id", async (c) => {
     const db = await getDB();

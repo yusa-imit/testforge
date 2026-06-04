@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
+import { Download } from "lucide-react";
 import { getRuns } from "../lib/api";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -55,6 +56,20 @@ export default function Runs() {
     setDateFilter("all");
     setSearchQuery("");
     setPage(0);
+  };
+
+  const handleExportCSV = () => {
+    const params = new URLSearchParams();
+    if (serverStatus) params.set("status", serverStatus);
+    if (serverFrom) params.set("from", serverFrom);
+    const qs = params.toString();
+    const url = `/api/runs/export${qs ? `?${qs}` : ""}`;
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   const handleFilterChange = (setter: (v: string) => void) => (v: string) => {
@@ -137,6 +152,16 @@ export default function Runs() {
             필터 초기화
           </Button>
         )}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleExportCSV}
+          className="ml-auto"
+          title="현재 필터 조건으로 CSV 내보내기"
+        >
+          <Download className="h-4 w-4 mr-1" />
+          CSV 내보내기
+        </Button>
         <span className="text-sm text-gray-500">
           {searchQuery.trim()
             ? `${filteredRuns.length}개 결과`
