@@ -33,6 +33,27 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 - Element Registry
 - **Global Search** (header search bar across all entities)
 - **CSV Export** (test runs export with filter support)
+- **Variable Override on Run** (POST /api/scenarios/:id/run accepts { variables })
+
+## 최근 완료 (Session 68 - 2026-06-05)
+
+✅ **Variable override for scenario runs** - Tests: 829 pass, 16 skip, 0 fail (+3 tests)
+
+**POST /api/scenarios/:id/run** now accepts optional JSON body `{ variables?: Record<string, unknown> }`:
+- `runHelper.ts`: `executeScenarioRun()` accepts `variables?` param, forwarded to `executor.execute()`
+- `scenarios.ts`: `zValidator` with `runScenarioSchema` (optional body), extracts `body?.variables`
+- `api.ts`: `runScenario(id, variables?)` — optional variables arg passed as JSON body
+- `ScenarioEditor.tsx`: when scenario has variables, clicking "실행" opens a "Run with variables" dialog
+  - pre-fills with scenario default values
+  - user can override per-run values before executing
+  - Dialog uses existing shadcn/ui `Dialog` + `Input` components
+
+**Files changed:**
+- `packages/server/src/execution/runHelper.ts` — variables param
+- `packages/server/src/routes/scenarios.ts` — runScenarioSchema + body parsing
+- `packages/server/src/routes/scenarios.test.ts` — 3 new tests
+- `packages/web/src/lib/api.ts` — runScenario variables param
+- `packages/web/src/pages/ScenarioEditor.tsx` — run-with-variables dialog
 
 ## 최근 완료 (Session 67 - 2026-06-04)
 
