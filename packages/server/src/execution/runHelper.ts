@@ -12,7 +12,8 @@ import { logger } from "../utils/logger";
 export async function executeScenarioRun(
   scenario: Scenario,
   service: Service,
-  db: DuckDBDatabase
+  db: DuckDBDatabase,
+  variables?: Record<string, any>
 ): Promise<string> {
   const executor = new TestExecutor();
   const executionManager = ExecutionManager.getInstance();
@@ -33,6 +34,7 @@ export async function executeScenarioRun(
     try {
       const result = await executor.execute(scenario, service, {
         headless: true,
+        variables,
         componentLoader: async (componentId: string) => {
           return db.getComponent(componentId);
         },

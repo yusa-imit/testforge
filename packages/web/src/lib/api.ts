@@ -121,8 +121,11 @@ export async function deleteScenario(id: string) {
   return res.json();
 }
 
-export async function runScenario(id: string) {
-  const res = await api.api.scenarios[":id"].run.$post({ param: { id } });
+export async function runScenario(id: string, variables?: Record<string, unknown>) {
+  const res = await api.api.scenarios[":id"].run.$post({
+    param: { id },
+    json: variables ? { variables } : {},
+  });
   return res.json();
 }
 

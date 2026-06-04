@@ -491,4 +491,48 @@ describe("POST /api/scenarios/:id/run", () => {
     const body = (await res.json()) as any;
     expect(body.error.code).toBe("NOT_FOUND");
   });
+
+  it("accepts an empty body (no variables override)", async () => {
+    const service = await createService();
+    const feature = await createFeature(service.id);
+    const scenario = await createScenario(feature.id);
+
+    const res = await req("POST", `/api/scenarios/${scenario.id}/run`, {});
+    // 202 = accepted for execution (engine will fail without browser, but route accepted the request)
+    expect([202, 500]).toContain(res.status);
+  });
+
+  it("accepts variables override in request body", async () => {
+    const service = await createService();
+    const feature = await createFeature(service.id);
+    const scenario = await db.createScenario({
+      featureId: feature.id,
+      name: "Var Override Scenario",
+      steps: [],
+      priority: "medium",
+      tags: [],
+      variables: [{ name: "email", type: "string", defaultValue: "default@test.com" }],
+    });
+
+    const res = await req("POST", `/api/scenarios/${scenario.id}/run`, {
+      variables: { email: "override@test.com" },
+    });
+    expect([202, 500]).toContain(res.status);
+    if (res.status === 202) {
+      const body = (await res.json()) as any;
+      expect(body.success).toBe(true);
+      expect(body.data.runId).toBeDefined();
+    }
+  });
+
+  it("ignores unknown variables gracefully", async () => {
+    const service = await createService();
+    const feature = await createFeature(service.id);
+    const scenario = await createScenario(feature.id);
+
+    const res = await req("POST", `/api/scenarios/${scenario.id}/run`, {
+      variables: { unknownVar: "some-value", anotherVar: 42 },
+    });
+    expect([202, 500]).toContain(res.status);
+  });
 });

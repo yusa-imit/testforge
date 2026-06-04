@@ -1,9 +1,14 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
+import { z } from "zod";
 import { createScenarioSchema } from "@testforge/core";
 import { getDB } from "../db";
 import { notFound } from "../utils/errors";
 import { executeScenarioRun } from "../execution/runHelper";
+
+const runScenarioSchema = z.object({
+  variables: z.record(z.unknown()).optional(),
+});
 
 const app = new Hono()
   // GET /api/scenarios/:id - 시나리오 상세
@@ -75,10 +80,11 @@ const app = new Hono()
     return c.json({ success: true, data: stats });
   })
 
-  // POST /api/scenarios/:id/run - 시나리오 실행
-  .post("/:id/run", async (c) => {
+  // POST /api/scenarios/:id/run - 시나리오 실행 (body: { variables? })
+  .post("/:id/run", zValidator("json", runScenarioSchema.optional()), async (c) => {
     const db = await getDB();
     const id = c.req.param("id");
+    const body = c.req.valid("json");
     const scenario = await db.getScenario(id);
 
     if (!scenario) {
@@ -96,7 +102,8 @@ const app = new Hono()
       throw notFound("Service", feature.serviceId);
     }
 
-    const runId = await executeScenarioRun(scenario, service, db);
+    const overrideVars = body?.variables as Record<string, any> | undefined;
+    const runId = await executeScenarioRun(scenario, service, db, overrideVars);
 
     return c.json(
       {

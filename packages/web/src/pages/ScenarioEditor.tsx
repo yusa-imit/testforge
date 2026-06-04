@@ -11,7 +11,16 @@ import { StepEditModal } from "../components/StepEditModal";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { Card } from "../components/ui/card";
+import { Input } from "../components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../components/ui/dialog";
 import { ChevronLeft, Play, Save, Trash2, Edit, GripVertical, Copy } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
 
@@ -57,6 +66,10 @@ export default function ScenarioEditor() {
   const [stepModalOpen, setStepModalOpen] = useState(false);
   const [editingStep, setEditingStep] = useState<Step | null>(null);
   const [editingStepIndex, setEditingStepIndex] = useState<number | null>(null);
+
+  // Run-with-variables dialog
+  const [runVarsDialogOpen, setRunVarsDialogOpen] = useState(false);
+  const [runVarOverrides, setRunVarOverrides] = useState<Record<string, string>>({});
 
   // Fetch scenario
   const { data, isLoading } = useQuery({
@@ -118,9 +131,9 @@ export default function ScenarioEditor() {
     },
   });
 
-  // Run mutation
+  // Run mutation (accepts optional variable overrides)
   const runMutation = useMutation({
-    mutationFn: () => runScenario(id!),
+    mutationFn: (vars?: Record<string, unknown>) => runScenario(id!, vars),
     onSuccess: (result) => {
       toast({
         title: "실행 시작",
@@ -189,17 +202,29 @@ export default function ScenarioEditor() {
   };
 
   const handleRun = () => {
-    // Save first, then run
+    if (variables.length > 0) {
+      // Pre-fill overrides with current default values
+      const defaults: Record<string, string> = {};
+      for (const v of variables) {
+        defaults[v.name] = v.defaultValue != null ? String(v.defaultValue) : "";
+      }
+      setRunVarOverrides(defaults);
+      setRunVarsDialogOpen(true);
+    } else {
+      doRun();
+    }
+  };
+
+  const doRun = (varOverrides?: Record<string, string>) => {
     saveMutation.mutate(
-      {
-        priority,
-        tags,
-        variables,
-        steps,
-      },
+      { priority, tags, variables, steps },
       {
         onSuccess: () => {
-          runMutation.mutate();
+          const overrides =
+            varOverrides && Object.keys(varOverrides).length > 0
+              ? (varOverrides as Record<string, unknown>)
+              : undefined;
+          runMutation.mutate(overrides);
         },
       }
     );
@@ -607,6 +632,52 @@ export default function ScenarioEditor() {
         step={editingStep}
         onSave={handleSaveStep}
       />
+
+      {/* Run with Variables Dialog */}
+      <Dialog open={runVarsDialogOpen} onOpenChange={setRunVarsDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>변수 설정 후 실행</DialogTitle>
+            <DialogDescription>
+              실행 전에 변수 값을 확인하거나 변경하세요. 빈 값은 기본값을 사용합니다.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            {variables.map((v) => (
+              <div key={v.name} className="space-y-1">
+                <label className="text-sm font-medium text-gray-700">
+                  {v.name}
+                  {v.description && (
+                    <span className="ml-2 text-xs text-gray-400">{v.description}</span>
+                  )}
+                </label>
+                <Input
+                  value={runVarOverrides[v.name] ?? ""}
+                  onChange={(e) =>
+                    setRunVarOverrides((prev) => ({ ...prev, [v.name]: e.target.value }))
+                  }
+                  placeholder={v.defaultValue != null ? String(v.defaultValue) : "값 없음"}
+                />
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRunVarsDialogOpen(false)}>
+              취소
+            </Button>
+            <Button
+              onClick={() => {
+                setRunVarsDialogOpen(false);
+                doRun(runVarOverrides);
+              }}
+              disabled={runMutation.isPending || saveMutation.isPending}
+            >
+              <Play className="h-4 w-4 mr-2" />
+              실행
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
