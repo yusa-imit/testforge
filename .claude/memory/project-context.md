@@ -34,6 +34,31 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 - **Global Search** (header search bar across all entities)
 - **CSV Export** (test runs export with filter support)
 - **Variable Override on Run** (POST /api/scenarios/:id/run accepts { variables })
+- **Step Performance Analytics** (GET /api/scenarios/:id/step-stats — per-step avg/min/max duration + failure rate)
+
+## 최근 완료 (Session 69 - 2026-06-05)
+
+✅ **Scenario step performance analytics** — Tests: 834 pass, 16 skip, 0 fail (+5 tests)
+
+**GET /api/scenarios/:id/step-stats** — new endpoint returning per-step aggregate stats:
+- `stepIndex`, `count`, `passCount`, `failCount`, `avgDuration`, `minDuration`, `maxDuration`, `failureRate`
+- Joins `step_results` with `test_runs` to filter by `scenario_id`
+- Groups by `step_index`, returns results ordered ASC
+- DB method: `getScenarioStepStats(scenarioId, limit=50)` in `database.ts`
+- 5 new route tests in `scenarios.test.ts`
+
+**ScenarioEditor.tsx "스텝 성능 분석" card** (shown when stepStats.length > 0):
+- Table: step icon + description, run count, avg/min/max duration (formatted ms/s), failure rate %
+- Color-coded failure rate: ≥50% red, >0% yellow, 0% green
+- Fetched via new `getScenarioStepStats(id)` in `api.ts` (`ScenarioStepStat` interface)
+- Displayed before the step edit modal, after "최근 실행 이력" card
+
+**Files changed:**
+- `packages/server/src/db/database.ts` — `getScenarioStepStats` method
+- `packages/server/src/routes/scenarios.ts` — `GET /:id/step-stats` route
+- `packages/server/src/routes/scenarios.test.ts` — 5 new tests
+- `packages/web/src/lib/api.ts` — `ScenarioStepStat` interface + `getScenarioStepStats()`
+- `packages/web/src/pages/ScenarioEditor.tsx` — step stats card UI
 
 ## 최근 완료 (Session 68 - 2026-06-05)
 
