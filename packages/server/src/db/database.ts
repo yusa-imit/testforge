@@ -1654,4 +1654,48 @@ export class DuckDBDatabase {
       return null;
     }
   }
+
+  async getScenarioStepStats(scenarioId: string, limit = 50): Promise<{
+    stepIndex: number;
+    count: number;
+    passCount: number;
+    failCount: number;
+    avgDuration: number | null;
+    minDuration: number | null;
+    maxDuration: number | null;
+    failureRate: number;
+  }[]> {
+    const rows = await this.db.all(
+      `SELECT
+         sr.step_index,
+         COUNT(*) AS total,
+         COUNT(*) FILTER (WHERE sr.status IN ('passed', 'healed')) AS pass_count,
+         COUNT(*) FILTER (WHERE sr.status = 'failed') AS fail_count,
+         AVG(sr.duration) FILTER (WHERE sr.duration IS NOT NULL AND sr.status IN ('passed', 'healed')) AS avg_dur,
+         MIN(sr.duration) FILTER (WHERE sr.duration IS NOT NULL AND sr.status IN ('passed', 'healed')) AS min_dur,
+         MAX(sr.duration) FILTER (WHERE sr.duration IS NOT NULL AND sr.status IN ('passed', 'healed')) AS max_dur
+       FROM step_results sr
+       JOIN test_runs t ON sr.run_id = t.id
+       WHERE t.scenario_id = ?
+       GROUP BY sr.step_index
+       ORDER BY sr.step_index ASC
+       LIMIT ?`,
+      [scenarioId, limit]
+    ) as any[];
+
+    return rows.map((r) => {
+      const total = Number(r.total ?? 0);
+      const failCount = Number(r.fail_count ?? 0);
+      return {
+        stepIndex: Number(r.step_index),
+        count: total,
+        passCount: Number(r.pass_count ?? 0),
+        failCount,
+        avgDuration: r.avg_dur != null ? Math.round(Number(r.avg_dur)) : null,
+        minDuration: r.min_dur != null ? Math.round(Number(r.min_dur)) : null,
+        maxDuration: r.max_dur != null ? Math.round(Number(r.max_dur)) : null,
+        failureRate: total > 0 ? failCount / total : 0,
+      };
+    });
+  }
 }

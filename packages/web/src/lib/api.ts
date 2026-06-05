@@ -298,6 +298,22 @@ export async function getServiceStats(id: string, days = 7) {
 }
 
 
+export interface ScenarioStepStat {
+  stepIndex: number;
+  count: number;
+  passCount: number;
+  failCount: number;
+  avgDuration: number | null;
+  minDuration: number | null;
+  maxDuration: number | null;
+  failureRate: number;
+}
+
+export async function getScenarioStepStats(id: string): Promise<ScenarioStepStat[]> {
+  const res = await axiosClient.get<{ success: boolean; data: ScenarioStepStat[] }>(`/scenarios/${id}/step-stats`);
+  return res.data.data;
+}
+
 export interface SearchResultItem {
   type: "service" | "feature" | "scenario";
   id: string;

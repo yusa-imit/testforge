@@ -536,3 +536,101 @@ describe("POST /api/scenarios/:id/run", () => {
     expect([202, 500]).toContain(res.status);
   });
 });
+
+// ──────────────────────────────────────────────────────────────────────────────
+// GET /api/scenarios/:id/step-stats
+// ──────────────────────────────────────────────────────────────────────────────
+
+describe("GET /api/scenarios/:id/step-stats", () => {
+  it("returns 404 for unknown scenario", async () => {
+    const res = await req("GET", "/api/scenarios/nonexistent-id/step-stats");
+    expect(res.status).toBe(404);
+    const body = (await res.json()) as any;
+    expect(body.error.code).toBe("NOT_FOUND");
+  });
+
+  it("returns empty array when no step results exist", async () => {
+    const service = await createService();
+    const feature = await createFeature(service.id);
+    const scenario = await createScenario(feature.id, "No Runs Scenario");
+
+    const res = await req("GET", `/api/scenarios/${scenario.id}/step-stats`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.success).toBe(true);
+    expect(body.data).toEqual([]);
+  });
+
+  it("aggregates step durations across multiple runs", async () => {
+    const service = await createService();
+    const feature = await createFeature(service.id);
+    const scenario = await createScenario(feature.id, "Step Stats Scenario");
+    const env = { baseUrl: "http://test", variables: {} };
+
+    const run1 = await db.createTestRun({ id: uuid(), scenarioId: scenario.id, status: "passed", environment: env, createdAt: new Date() });
+    const run2 = await db.createTestRun({ id: uuid(), scenarioId: scenario.id, status: "passed", environment: env, createdAt: new Date() });
+
+    await db.createStepResult({ id: uuid(), runId: run1.id, stepId: uuid(), stepIndex: 0, status: "passed", duration: 100, createdAt: new Date() });
+    await db.createStepResult({ id: uuid(), runId: run1.id, stepId: uuid(), stepIndex: 1, status: "passed", duration: 200, createdAt: new Date() });
+    await db.createStepResult({ id: uuid(), runId: run2.id, stepId: uuid(), stepIndex: 0, status: "passed", duration: 300, createdAt: new Date() });
+    await db.createStepResult({ id: uuid(), runId: run2.id, stepId: uuid(), stepIndex: 1, status: "failed", duration: 50, createdAt: new Date() });
+
+    const res = await req("GET", `/api/scenarios/${scenario.id}/step-stats`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.success).toBe(true);
+    expect(body.data).toHaveLength(2);
+
+    const step0 = body.data.find((s: any) => s.stepIndex === 0);
+    expect(step0.count).toBe(2);
+    expect(step0.passCount).toBe(2);
+    expect(step0.failCount).toBe(0);
+    expect(step0.avgDuration).toBe(200); // (100 + 300) / 2
+    expect(step0.minDuration).toBe(100);
+    expect(step0.maxDuration).toBe(300);
+    expect(step0.failureRate).toBe(0);
+
+    const step1 = body.data.find((s: any) => s.stepIndex === 1);
+    expect(step1.count).toBe(2);
+    expect(step1.passCount).toBe(1);
+    expect(step1.failCount).toBe(1);
+    expect(step1.failureRate).toBe(0.5);
+  });
+
+  it("only includes step results from the given scenario", async () => {
+    const service = await createService();
+    const feature = await createFeature(service.id);
+    const scenarioA = await createScenario(feature.id, "Scenario A");
+    const scenarioB = await createScenario(feature.id, "Scenario B");
+    const env = { baseUrl: "http://test", variables: {} };
+
+    const runA = await db.createTestRun({ id: uuid(), scenarioId: scenarioA.id, status: "passed", environment: env, createdAt: new Date() });
+    const runB = await db.createTestRun({ id: uuid(), scenarioId: scenarioB.id, status: "passed", environment: env, createdAt: new Date() });
+
+    await db.createStepResult({ id: uuid(), runId: runA.id, stepId: uuid(), stepIndex: 0, status: "passed", duration: 111, createdAt: new Date() });
+    await db.createStepResult({ id: uuid(), runId: runB.id, stepId: uuid(), stepIndex: 0, status: "passed", duration: 999, createdAt: new Date() });
+
+    const res = await req("GET", `/api/scenarios/${scenarioA.id}/step-stats`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.data).toHaveLength(1);
+    expect(body.data[0].avgDuration).toBe(111);
+  });
+
+  it("orders results by step_index ascending", async () => {
+    const service = await createService();
+    const feature = await createFeature(service.id);
+    const scenario = await createScenario(feature.id, "Order Test");
+    const env = { baseUrl: "http://test", variables: {} };
+
+    const run = await db.createTestRun({ id: uuid(), scenarioId: scenario.id, status: "passed", environment: env, createdAt: new Date() });
+    await db.createStepResult({ id: uuid(), runId: run.id, stepId: uuid(), stepIndex: 2, status: "passed", duration: 30, createdAt: new Date() });
+    await db.createStepResult({ id: uuid(), runId: run.id, stepId: uuid(), stepIndex: 0, status: "passed", duration: 10, createdAt: new Date() });
+    await db.createStepResult({ id: uuid(), runId: run.id, stepId: uuid(), stepIndex: 1, status: "passed", duration: 20, createdAt: new Date() });
+
+    const res = await req("GET", `/api/scenarios/${scenario.id}/step-stats`);
+    const body = (await res.json()) as any;
+    const indices = body.data.map((s: any) => s.stepIndex);
+    expect(indices).toEqual([0, 1, 2]);
+  });
+});

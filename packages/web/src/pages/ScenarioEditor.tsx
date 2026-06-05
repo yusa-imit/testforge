@@ -5,7 +5,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { ko } from "date-fns/locale";
 import type { Scenario, Step, Variable } from "@testforge/core";
-import { getScenario, updateScenario, runScenario, deleteScenario, duplicateScenario, getRuns, getScenarioStats } from "../lib/api";
+import { getScenario, updateScenario, runScenario, deleteScenario, duplicateScenario, getRuns, getScenarioStats, getScenarioStepStats } from "../lib/api";
+import type { ScenarioStepStat } from "../lib/api";
 import { VariableEditor } from "../components/VariableEditor";
 import { StepEditModal } from "../components/StepEditModal";
 import { Button } from "../components/ui/button";
@@ -100,6 +101,15 @@ export default function ScenarioEditor() {
     enabled: !!id,
   });
   const stats = statsData?.data;
+
+  // Fetch step performance stats
+  const { data: stepStatsData } = useQuery({
+    queryKey: ["scenario-step-stats", id],
+    queryFn: () => getScenarioStepStats(id!),
+    enabled: !!id,
+    staleTime: 30_000,
+  });
+  const stepStats: ScenarioStepStat[] = stepStatsData ?? [];
 
   // Initialize state from fetched data
   React.useEffect(() => {
@@ -621,6 +631,50 @@ export default function ScenarioEditor() {
                 </div>
               </div>
             ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Step Performance Card */}
+      {stepStats.length > 0 && (
+        <Card className="p-6">
+          <h2 className="text-lg font-medium text-gray-900 mb-4">스텝 성능 분석</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-xs text-gray-500 uppercase tracking-wide">
+                  <th className="text-left pb-2 pr-4">스텝</th>
+                  <th className="text-right pb-2 px-3">실행 수</th>
+                  <th className="text-right pb-2 px-3">평균</th>
+                  <th className="text-right pb-2 px-3">최소</th>
+                  <th className="text-right pb-2 px-3">최대</th>
+                  <th className="text-right pb-2 pl-3">실패율</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stepStats.map((s) => {
+                  const stepDef = steps[s.stepIndex];
+                  const icon = stepDef ? (STEP_TYPE_ICONS[stepDef.type] || "📌") : "📌";
+                  const label = stepDef ? stepDef.description : `스텝 #${s.stepIndex + 1}`;
+                  const fmtMs = (ms: number | null) => ms == null ? "—" : ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`;
+                  const failPct = (s.failureRate * 100).toFixed(0);
+                  const failColor = s.failureRate >= 0.5 ? "text-red-600" : s.failureRate > 0 ? "text-yellow-600" : "text-green-600";
+                  return (
+                    <tr key={s.stepIndex} className="border-b last:border-0 hover:bg-gray-50">
+                      <td className="py-2 pr-4 max-w-[200px] truncate" title={label}>
+                        <span className="mr-1">{icon}</span>
+                        <span className="text-gray-700">{label}</span>
+                      </td>
+                      <td className="text-right py-2 px-3 text-gray-500">{s.count}</td>
+                      <td className="text-right py-2 px-3 font-mono">{fmtMs(s.avgDuration)}</td>
+                      <td className="text-right py-2 px-3 font-mono text-green-700">{fmtMs(s.minDuration)}</td>
+                      <td className="text-right py-2 px-3 font-mono text-gray-500">{fmtMs(s.maxDuration)}</td>
+                      <td className={`text-right py-2 pl-3 font-medium ${failColor}`}>{failPct}%</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </Card>
       )}

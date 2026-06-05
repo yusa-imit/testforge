@@ -80,6 +80,20 @@ const app = new Hono()
     return c.json({ success: true, data: stats });
   })
 
+  // GET /api/scenarios/:id/step-stats - 스텝별 성능 통계
+  .get("/:id/step-stats", async (c) => {
+    const db = await getDB();
+    const id = c.req.param("id");
+    const scenario = await db.getScenario(id);
+
+    if (!scenario) {
+      throw notFound("Scenario", id);
+    }
+
+    const stats = await db.getScenarioStepStats(id);
+    return c.json({ success: true, data: stats });
+  })
+
   // POST /api/scenarios/:id/run - 시나리오 실행 (body: { variables? })
   .post("/:id/run", zValidator("json", runScenarioSchema.optional()), async (c) => {
     const db = await getDB();
