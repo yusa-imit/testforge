@@ -21,6 +21,26 @@ import type {
 } from "@testforge/core";
 import { DuckDBConnection } from "./connection";
 
+export type WebhookEvent = "run.completed" | "run.passed" | "run.failed" | "run.healed";
+
+export interface Webhook {
+  id: string;
+  name: string;
+  url: string;
+  secret?: string;
+  events: WebhookEvent[];
+  enabled: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CreateWebhook {
+  name: string;
+  url: string;
+  secret?: string;
+  events: WebhookEvent[];
+}
+
 export interface ScenarioWithLastRun extends Scenario {
   lastRunId: string | null;
   lastRunStatus: string | null;
@@ -200,6 +220,19 @@ class RowConverter {
       reviewNote: row.review_note,
       propagatedTo: row.propagated_to || [],
       createdAt: new Date(row.created_at),
+    };
+  }
+
+  static toWebhook(row: any): Webhook {
+    return {
+      id: row.id,
+      name: row.name,
+      url: row.url,
+      secret: row.secret ?? undefined,
+      events: Array.isArray(row.events) ? row.events : (typeof row.events === "string" ? JSON.parse(row.events) : row.events),
+      enabled: Boolean(row.enabled),
+      createdAt: new Date(row.created_at),
+      updatedAt: new Date(row.updated_at),
     };
   }
 }
@@ -1697,5 +1730,69 @@ export class DuckDBDatabase {
         failureRate: total > 0 ? failCount / total : 0,
       };
     });
+  }
+
+  // ── Webhook CRUD ──────────────────────────────────────────────────────────
+
+  async getAllWebhooks(): Promise<Webhook[]> {
+    const rows = await this.db.all(
+      `SELECT * FROM webhooks ORDER BY created_at DESC`
+    ) as any[];
+    return rows.map(RowConverter.toWebhook);
+  }
+
+  async getWebhook(id: string): Promise<Webhook | undefined> {
+    const rows = await this.db.all(
+      `SELECT * FROM webhooks WHERE id = ? LIMIT 1`,
+      [id]
+    ) as any[];
+    return rows.length > 0 ? RowConverter.toWebhook(rows[0]) : undefined;
+  }
+
+  async getEnabledWebhooksForEvent(event: WebhookEvent): Promise<Webhook[]> {
+    const rows = await this.db.all(
+      `SELECT * FROM webhooks WHERE enabled = true AND list_contains(events, ?)`,
+      [event]
+    ) as any[];
+    return rows.map(RowConverter.toWebhook);
+  }
+
+  async createWebhook(data: CreateWebhook): Promise<Webhook> {
+    const id = uuid();
+    const now = new Date();
+    await this.db.run(
+      `INSERT INTO webhooks (id, name, url, secret, events, enabled, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, true, ?, ?)`,
+      [id, data.name, data.url, data.secret ?? null, JSON.stringify(data.events), now, now]
+    );
+    return (await this.getWebhook(id))!;
+  }
+
+  async updateWebhook(id: string, data: Partial<Omit<Webhook, "id" | "createdAt" | "updatedAt">>): Promise<Webhook | undefined> {
+    const existing = await this.getWebhook(id);
+    if (!existing) return undefined;
+    const now = new Date();
+    await this.db.run(
+      `UPDATE webhooks SET
+         name = ?, url = ?, secret = ?, events = ?, enabled = ?, updated_at = ?
+       WHERE id = ?`,
+      [
+        data.name ?? existing.name,
+        data.url ?? existing.url,
+        data.secret !== undefined ? data.secret : existing.secret ?? null,
+        JSON.stringify(data.events ?? existing.events),
+        data.enabled !== undefined ? data.enabled : existing.enabled,
+        now,
+        id,
+      ]
+    );
+    return this.getWebhook(id);
+  }
+
+  async deleteWebhook(id: string): Promise<boolean> {
+    const existing = await this.getWebhook(id);
+    if (!existing) return false;
+    await this.db.run(`DELETE FROM webhooks WHERE id = ?`, [id]);
+    return true;
   }
 }

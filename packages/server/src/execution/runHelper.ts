@@ -4,6 +4,7 @@ import { v4 as uuid } from "uuid";
 import { ExecutionManager } from "./manager";
 import type { DuckDBDatabase } from "../db/database";
 import { logger } from "../utils/logger";
+import { dispatchWebhooks } from "./webhookDispatcher";
 
 /**
  * Shared helper to execute a single scenario and return the runId.
@@ -62,6 +63,11 @@ export async function executeScenarioRun(
           createdAt: new Date(),
         });
       }
+
+      // Dispatch webhooks (fire-and-forget, errors are logged not thrown)
+      dispatchWebhooks(db, result.run, scenario.name).catch((err) => {
+        logger.warn("Webhook dispatch failed", { error: err instanceof Error ? err.message : String(err) });
+      });
 
       return result;
     } catch (error) {

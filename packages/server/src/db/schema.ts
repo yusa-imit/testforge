@@ -230,6 +230,24 @@ export const indexes = [
 ];
 
 /**
+ * Webhooks Table
+ *
+ * Webhook subscriptions for outbound run completion notifications.
+ */
+export const webhooksTable = `
+  CREATE TABLE IF NOT EXISTS webhooks (
+    id VARCHAR PRIMARY KEY,
+    name VARCHAR NOT NULL,
+    url VARCHAR NOT NULL,
+    secret VARCHAR,
+    events VARCHAR[] NOT NULL,
+    enabled BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  )
+`;
+
+/**
  * All table creation statements in dependency order
  */
 export const allTables = [
@@ -242,4 +260,5 @@ export const allTables = [
   healingRecordsTable,
   elementRegistryTable,
   componentUsagesTable,
+  webhooksTable,
 ];

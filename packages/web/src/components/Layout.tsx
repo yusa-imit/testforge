@@ -10,6 +10,7 @@ const navigation = [
   { name: "Element Registry", href: "/registry" },
   { name: "실행 이력", href: "/runs" },
   { name: "성능 모니터링", href: "/metrics" },
+  { name: "Webhooks", href: "/webhooks" },
 ];
 
 export default function Layout() {

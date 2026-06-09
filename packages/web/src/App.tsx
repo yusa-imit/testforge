@@ -13,6 +13,7 @@ import ElementRegistry from "./pages/ElementRegistry";
 import Runs from "./pages/Runs";
 import RunDetail from "./pages/RunDetail";
 import Metrics from "./pages/Metrics";
+import Webhooks from "./pages/Webhooks";
 
 function App() {
   return (
@@ -32,6 +33,7 @@ function App() {
           <Route path="/runs" element={<Runs />} />
           <Route path="/scenarios/:scenarioId/runs/:runId" element={<RunDetail />} />
           <Route path="/metrics" element={<Metrics />} />
+          <Route path="/webhooks" element={<Webhooks />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

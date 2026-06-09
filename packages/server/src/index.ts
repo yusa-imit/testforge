@@ -17,6 +17,7 @@ import registry from "./routes/registry";
 import metrics from "./routes/metrics";
 import backup from "./routes/backup";
 import search from "./routes/search";
+import webhooks from "./routes/webhooks";
 
 const app = new Hono()
   .use("*", honoLogger())
@@ -35,7 +36,8 @@ const app = new Hono()
   .route("/api/registry", registry)
   .route("/api/metrics", metrics)
   .route("/api/backup", backup)
-  .route("/api/search", search);
+  .route("/api/search", search)
+  .route("/api/webhooks", webhooks);
 
 export type AppType = typeof app;
 export default app;

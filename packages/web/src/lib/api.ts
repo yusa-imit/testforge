@@ -332,3 +332,47 @@ export async function search(q: string, limit = 20): Promise<SearchResultItem[]>
   );
   return res.data.data;
 }
+
+// ── Webhooks ────────────────────────────────────────────────────────────────
+
+export type WebhookEvent = "run.completed" | "run.passed" | "run.failed" | "run.healed";
+
+export interface Webhook {
+  id: string;
+  name: string;
+  url: string;
+  secret?: string;
+  events: WebhookEvent[];
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateWebhookPayload {
+  name: string;
+  url: string;
+  secret?: string;
+  events: WebhookEvent[];
+}
+
+export async function getWebhooks(): Promise<Webhook[]> {
+  const res = await axiosClient.get<{ data: Webhook[] }>("/webhooks");
+  return res.data.data;
+}
+
+export async function createWebhook(payload: CreateWebhookPayload): Promise<Webhook> {
+  const res = await axiosClient.post<{ data: Webhook }>("/webhooks", payload);
+  return res.data.data;
+}
+
+export async function updateWebhook(
+  id: string,
+  payload: Partial<CreateWebhookPayload & { enabled: boolean }>
+): Promise<Webhook> {
+  const res = await axiosClient.put<{ data: Webhook }>(`/webhooks/${id}`, payload);
+  return res.data.data;
+}
+
+export async function deleteWebhook(id: string): Promise<void> {
+  await axiosClient.delete(`/webhooks/${id}`);
+}
