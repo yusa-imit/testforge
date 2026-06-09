@@ -35,6 +35,33 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 - **CSV Export** (test runs export with filter support)
 - **Variable Override on Run** (POST /api/scenarios/:id/run accepts { variables })
 - **Step Performance Analytics** (GET /api/scenarios/:id/step-stats — per-step avg/min/max duration + failure rate)
+- **Step Retry/Disabled UI** (StepEditModal exposes retries, retryDelay, disabled fields; engine already supported them)
+- **healed RunStatus** (added to core schema + RunDetail badge)
+
+## 최근 완료 (Session 70 - 2026-06-09)
+
+✅ **Step retry/disabled settings in StepEditModal UI + healed RunStatus fix** — Tests: 834 pass, 16 skip, 0 fail (0 new tests, type fixes)
+
+**StepEditModal advanced settings now include:**
+- `retries` (0-10): number of retries before failing the step
+- `retryDelay` (ms): delay between retries (default 1000ms)
+- `disabled` (bool): skip this step during execution
+
+**ScenarioEditor step card visual indicators:**
+- Disabled steps: muted/line-through style, gray step number, "비활성" badge
+- Steps with retries: purple "재시도 ×N" badge + retry info line in config preview
+
+**Type fixes:**
+- `runStatusSchema` now includes `"healed"` (matches actual DB usage)
+- `RunDetail.tsx` local `TestRun` interface + `StatusBadge` updated with `healed`
+- `runs.test.ts` `createTestRun` helper type updated to accept `"healed"`
+
+**Files changed:**
+- `packages/core/src/types/index.ts` — added "healed" to runStatusSchema
+- `packages/server/src/routes/runs.test.ts` — createTestRun accepts "healed"
+- `packages/web/src/components/StepEditModal.tsx` — retries/retryDelay/disabled fields
+- `packages/web/src/pages/RunDetail.tsx` — healed status in interface + badge
+- `packages/web/src/pages/ScenarioEditor.tsx` — disabled/retry visual indicators
 
 ## 최근 완료 (Session 69 - 2026-06-05)
 
