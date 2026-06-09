@@ -427,7 +427,7 @@ export default function ScenarioEditor() {
             {steps.map((step, index) => (
               <div
                 key={step.id}
-                className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                className={`flex items-start gap-3 p-4 rounded-lg transition-colors ${step.disabled ? "bg-gray-100 opacity-60 hover:opacity-80" : "bg-gray-50 hover:bg-gray-100"}`}
               >
                 {/* Drag Handle */}
                 <div className="flex flex-col gap-1 pt-1">
@@ -449,20 +449,28 @@ export default function ScenarioEditor() {
                 </div>
 
                 {/* Step Number */}
-                <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-blue-100 text-blue-600 rounded-full text-sm font-medium">
+                <div className={`flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium ${step.disabled ? "bg-gray-200 text-gray-400" : "bg-blue-100 text-blue-600"}`}>
                   {index + 1}
                 </div>
 
                 {/* Step Content */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <span className="text-lg">{STEP_TYPE_ICONS[step.type] || "📌"}</span>
-                    <span className="text-sm font-medium text-gray-900">
+                    <span className={`text-sm font-medium ${step.disabled ? "text-gray-400 line-through" : "text-gray-900"}`}>
                       {step.description}
                     </span>
                     <Badge variant="outline" className="text-xs">
                       {step.type}
                     </Badge>
+                    {step.disabled && (
+                      <Badge variant="secondary" className="text-xs">비활성</Badge>
+                    )}
+                    {step.retries !== undefined && step.retries > 0 && (
+                      <Badge variant="outline" className="text-xs text-purple-600 border-purple-300">
+                        재시도 ×{step.retries}
+                      </Badge>
+                    )}
                   </div>
 
                   {/* Step Config Preview */}
@@ -484,6 +492,11 @@ export default function ScenarioEditor() {
                     {step.timeout && <div className="text-orange-600">⏱ {step.timeout}ms</div>}
                     {step.continueOnError && (
                       <div className="text-yellow-600">⚠️ 실패해도 계속 진행</div>
+                    )}
+                    {step.retries !== undefined && step.retries > 0 && (
+                      <div className="text-purple-600">
+                        🔁 최대 {step.retries}회 재시도 {step.retryDelay ? `(${step.retryDelay}ms 간격)` : "(1000ms 간격)"}
+                      </div>
                     )}
                   </div>
                 </div>

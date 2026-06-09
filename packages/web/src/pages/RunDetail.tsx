@@ -44,7 +44,7 @@ const STEP_TYPE_ICONS: Record<string, string> = {
 interface TestRun {
   id: string;
   scenarioId: string;
-  status: "pending" | "running" | "passed" | "failed" | "cancelled";
+  status: "pending" | "running" | "passed" | "failed" | "cancelled" | "healed";
   startedAt?: string;
   finishedAt?: string;
   duration?: number;
@@ -102,6 +102,7 @@ function StatusBadge({ status }: { status: TestRun["status"] }) {
     passed: { variant: "default", label: "성공" },
     failed: { variant: "destructive", label: "실패" },
     cancelled: { variant: "outline", label: "취소됨" },
+    healed: { variant: "default", label: "복구됨" },
   };
 
   const config = variants[status];

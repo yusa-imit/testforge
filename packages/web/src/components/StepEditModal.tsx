@@ -55,6 +55,9 @@ export function StepEditModal({ open, onOpenChange, step, onSave }: StepEditModa
   const [description, setDescription] = useState(step?.description || "");
   const [timeout, setTimeout] = useState<number | undefined>(step?.timeout);
   const [continueOnError, setContinueOnError] = useState(step?.continueOnError || false);
+  const [retries, setRetries] = useState<number | undefined>(step?.retries);
+  const [retryDelay, setRetryDelay] = useState<number | undefined>(step?.retryDelay);
+  const [disabled, setDisabled] = useState(step?.disabled || false);
   const [config, setConfig] = useState<any>(step?.config || {}); // eslint-disable-line @typescript-eslint/no-explicit-any
 
   useEffect(() => {
@@ -63,6 +66,9 @@ export function StepEditModal({ open, onOpenChange, step, onSave }: StepEditModa
       setDescription(step.description);
       setTimeout(step.timeout);
       setContinueOnError(step.continueOnError);
+      setRetries(step.retries);
+      setRetryDelay(step.retryDelay);
+      setDisabled(step.disabled || false);
       setConfig(step.config);
     } else {
       // Reset for new step
@@ -70,6 +76,9 @@ export function StepEditModal({ open, onOpenChange, step, onSave }: StepEditModa
       setDescription("");
       setTimeout(undefined);
       setContinueOnError(false);
+      setRetries(undefined);
+      setRetryDelay(undefined);
+      setDisabled(false);
       setConfig({});
     }
   }, [step, open]);
@@ -121,6 +130,9 @@ export function StepEditModal({ open, onOpenChange, step, onSave }: StepEditModa
       description,
       timeout,
       continueOnError,
+      ...(retries !== undefined && { retries }),
+      ...(retryDelay !== undefined && { retryDelay }),
+      ...(disabled && { disabled }),
       config,
     };
     onSave(savedStep);
@@ -580,6 +592,33 @@ export function StepEditModal({ open, onOpenChange, step, onSave }: StepEditModa
                 className="mt-1"
               />
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="stepRetries">재시도 횟수 (선택)</Label>
+                <Input
+                  id="stepRetries"
+                  type="number"
+                  min={0}
+                  max={10}
+                  value={retries ?? ""}
+                  onChange={(e) => setRetries(e.target.value ? parseInt(e.target.value) : undefined)}
+                  placeholder="0 (재시도 없음)"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="stepRetryDelay">재시도 간격 (ms, 선택)</Label>
+                <Input
+                  id="stepRetryDelay"
+                  type="number"
+                  min={0}
+                  value={retryDelay ?? ""}
+                  onChange={(e) => setRetryDelay(e.target.value ? parseInt(e.target.value) : undefined)}
+                  placeholder="1000 (기본값)"
+                  className="mt-1"
+                />
+              </div>
+            </div>
             <div className="flex items-center space-x-2">
               <input
                 type="checkbox"
@@ -589,6 +628,16 @@ export function StepEditModal({ open, onOpenChange, step, onSave }: StepEditModa
                 className="rounded"
               />
               <Label htmlFor="continueOnError" className="text-sm">실패해도 계속 진행</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="stepDisabled"
+                checked={disabled}
+                onChange={(e) => setDisabled(e.target.checked)}
+                className="rounded"
+              />
+              <Label htmlFor="stepDisabled" className="text-sm">이 스텝 비활성화 (실행 시 건너뜀)</Label>
             </div>
           </div>
         </div>

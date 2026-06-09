@@ -32,7 +32,7 @@ async function req(method: string, path: string, body?: unknown): Promise<Respon
 }
 
 // Helper to seed a complete hierarchy and create a test run
-async function createTestRun(status: "passed" | "failed" | "running" = "passed") {
+async function createTestRun(status: "passed" | "failed" | "running" | "healed" = "passed") {
   const service = await db.createService({
     name: "Test Service",
     baseUrl: "https://example.com",
