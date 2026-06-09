@@ -6,6 +6,7 @@ import { errorHandler } from "./middleware/errorHandler";
 import { timing } from "./middleware/timing";
 import { logger } from "./utils/logger";
 import { getDB } from "./db";
+import { startScheduler, stopScheduler } from "./execution/scheduler";
 import services from "./routes/services";
 import features from "./routes/features";
 import scenarios from "./routes/scenarios";
@@ -18,6 +19,7 @@ import metrics from "./routes/metrics";
 import backup from "./routes/backup";
 import search from "./routes/search";
 import webhooks from "./routes/webhooks";
+import schedules from "./routes/schedules";
 
 const app = new Hono()
   .use("*", honoLogger())
@@ -37,7 +39,8 @@ const app = new Hono()
   .route("/api/metrics", metrics)
   .route("/api/backup", backup)
   .route("/api/search", search)
-  .route("/api/webhooks", webhooks);
+  .route("/api/webhooks", webhooks)
+  .route("/api/schedules", schedules);
 
 export type AppType = typeof app;
 export default app;
@@ -55,6 +58,9 @@ export { app };
  */
 export async function gracefulShutdown(signal: string, server?: ReturnType<typeof Bun.serve>): Promise<void> {
   logger.info(`Received ${signal}, starting graceful shutdown...`);
+
+  // Stop background scheduler
+  stopScheduler();
 
   // Stop accepting new connections
   if (server) {
@@ -100,6 +106,9 @@ if (import.meta.main) {
   // Register shutdown handlers
   process.on("SIGTERM", () => gracefulShutdown("SIGTERM", server));
   process.on("SIGINT", () => gracefulShutdown("SIGINT", server));
+
+  // Start background scheduler for automated test runs
+  startScheduler();
 
   // Log successful startup
   logger.info("Server started successfully", {

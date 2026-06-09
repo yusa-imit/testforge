@@ -23,6 +23,25 @@ import { DuckDBConnection } from "./connection";
 
 export type WebhookEvent = "run.completed" | "run.passed" | "run.failed" | "run.healed";
 
+export interface Schedule {
+  id: string;
+  name: string;
+  scenarioId: string;
+  scenarioName?: string;
+  intervalMinutes: number;
+  enabled: boolean;
+  lastRunAt: Date | null;
+  nextRunAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CreateSchedule {
+  name: string;
+  scenarioId: string;
+  intervalMinutes: number;
+}
+
 export interface Webhook {
   id: string;
   name: string;
@@ -231,6 +250,21 @@ class RowConverter {
       secret: row.secret ?? undefined,
       events: Array.isArray(row.events) ? row.events : (typeof row.events === "string" ? JSON.parse(row.events) : row.events),
       enabled: Boolean(row.enabled),
+      createdAt: new Date(row.created_at),
+      updatedAt: new Date(row.updated_at),
+    };
+  }
+
+  static toSchedule(row: any): Schedule {
+    return {
+      id: row.id,
+      name: row.name,
+      scenarioId: row.scenario_id,
+      scenarioName: row.scenario_name ?? undefined,
+      intervalMinutes: Number(row.interval_minutes),
+      enabled: Boolean(row.enabled),
+      lastRunAt: row.last_run_at ? new Date(row.last_run_at) : null,
+      nextRunAt: row.next_run_at ? new Date(row.next_run_at) : null,
       createdAt: new Date(row.created_at),
       updatedAt: new Date(row.updated_at),
     };
@@ -1793,6 +1827,97 @@ export class DuckDBDatabase {
     const existing = await this.getWebhook(id);
     if (!existing) return false;
     await this.db.run(`DELETE FROM webhooks WHERE id = ?`, [id]);
+    return true;
+  }
+
+  // ── Schedule CRUD ─────────────────────────────────────────────────────────
+
+  async getAllSchedules(): Promise<Schedule[]> {
+    const rows = await this.db.all(
+      `SELECT s.*, sc.name AS scenario_name
+       FROM schedules s
+       LEFT JOIN scenarios sc ON s.scenario_id = sc.id
+       ORDER BY s.created_at DESC`
+    ) as any[];
+    return rows.map(RowConverter.toSchedule);
+  }
+
+  async getSchedule(id: string): Promise<Schedule | undefined> {
+    const rows = await this.db.all(
+      `SELECT s.*, sc.name AS scenario_name
+       FROM schedules s
+       LEFT JOIN scenarios sc ON s.scenario_id = sc.id
+       WHERE s.id = ? LIMIT 1`,
+      [id]
+    ) as any[];
+    return rows.length > 0 ? RowConverter.toSchedule(rows[0]) : undefined;
+  }
+
+  async getDueSchedules(): Promise<Schedule[]> {
+    const now = new Date();
+    const rows = await this.db.all(
+      `SELECT s.*, sc.name AS scenario_name
+       FROM schedules s
+       LEFT JOIN scenarios sc ON s.scenario_id = sc.id
+       WHERE s.enabled = true AND s.next_run_at <= ?`,
+      [now]
+    ) as any[];
+    return rows.map(RowConverter.toSchedule);
+  }
+
+  async createSchedule(data: CreateSchedule): Promise<Schedule> {
+    const id = uuid();
+    const now = new Date();
+    const nextRunAt = new Date(now.getTime() + data.intervalMinutes * 60 * 1000);
+    await this.db.run(
+      `INSERT INTO schedules (id, name, scenario_id, interval_minutes, enabled, last_run_at, next_run_at, created_at, updated_at)
+       VALUES (?, ?, ?, ?, true, NULL, ?, ?, ?)`,
+      [id, data.name, data.scenarioId, data.intervalMinutes, nextRunAt, now, now]
+    );
+    return (await this.getSchedule(id))!;
+  }
+
+  async updateSchedule(id: string, data: Partial<Omit<Schedule, "id" | "createdAt" | "updatedAt" | "lastRunAt" | "nextRunAt" | "scenarioName">>): Promise<Schedule | undefined> {
+    const existing = await this.getSchedule(id);
+    if (!existing) return undefined;
+    const now = new Date();
+    const newIntervalMinutes = data.intervalMinutes ?? existing.intervalMinutes;
+    // Recalculate nextRunAt if intervalMinutes changed and schedule not yet run
+    const nextRunAt = data.intervalMinutes && !existing.lastRunAt
+      ? new Date(existing.createdAt.getTime() + newIntervalMinutes * 60 * 1000)
+      : existing.nextRunAt;
+    await this.db.run(
+      `UPDATE schedules SET name = ?, scenario_id = ?, interval_minutes = ?, enabled = ?, next_run_at = ?, updated_at = ?
+       WHERE id = ?`,
+      [
+        data.name ?? existing.name,
+        data.scenarioId ?? existing.scenarioId,
+        newIntervalMinutes,
+        data.enabled !== undefined ? data.enabled : existing.enabled,
+        nextRunAt,
+        now,
+        id,
+      ]
+    );
+    return this.getSchedule(id);
+  }
+
+  async recordScheduleRun(id: string): Promise<Schedule | undefined> {
+    const existing = await this.getSchedule(id);
+    if (!existing) return undefined;
+    const now = new Date();
+    const nextRunAt = new Date(now.getTime() + existing.intervalMinutes * 60 * 1000);
+    await this.db.run(
+      `UPDATE schedules SET last_run_at = ?, next_run_at = ?, updated_at = ? WHERE id = ?`,
+      [now, nextRunAt, now, id]
+    );
+    return this.getSchedule(id);
+  }
+
+  async deleteSchedule(id: string): Promise<boolean> {
+    const existing = await this.getSchedule(id);
+    if (!existing) return false;
+    await this.db.run(`DELETE FROM schedules WHERE id = ?`, [id]);
     return true;
   }
 }

@@ -11,6 +11,13 @@ const runScenarioSchema = z.object({
 });
 
 const app = new Hono()
+  // GET /api/scenarios - 전체 시나리오 목록 (스케줄 드롭다운 등에서 사용)
+  .get("/", async (c) => {
+    const db = await getDB();
+    const scenarios = await db.getAllScenarios();
+    return c.json({ success: true, data: scenarios });
+  })
+
   // GET /api/scenarios/:id - 시나리오 상세
   .get("/:id", async (c) => {
     const db = await getDB();

@@ -11,6 +11,7 @@ const navigation = [
   { name: "실행 이력", href: "/runs" },
   { name: "성능 모니터링", href: "/metrics" },
   { name: "Webhooks", href: "/webhooks" },
+  { name: "스케줄", href: "/schedules" },
 ];
 
 export default function Layout() {

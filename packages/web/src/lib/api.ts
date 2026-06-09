@@ -53,6 +53,11 @@ export async function getScenarios(featureId: string) {
   return res.json();
 }
 
+export async function getAllScenarios(): Promise<{ id: string; name: string; featureId: string }[]> {
+  const res = await axiosClient.get<{ data: { id: string; name: string; featureId: string }[] }>("/scenarios");
+  return res.data.data;
+}
+
 export async function getScenario(id: string) {
   const res = await api.api.scenarios[":id"].$get({ param: { id } });
   return res.json();
@@ -375,4 +380,63 @@ export async function updateWebhook(
 
 export async function deleteWebhook(id: string): Promise<void> {
   await axiosClient.delete(`/webhooks/${id}`);
+}
+
+// ── Schedules ────────────────────────────────────────────────────────────────
+
+export const SCHEDULE_INTERVALS = [
+  { value: 15, label: "15분마다" },
+  { value: 30, label: "30분마다" },
+  { value: 60, label: "매 시간" },
+  { value: 180, label: "3시간마다" },
+  { value: 360, label: "6시간마다" },
+  { value: 720, label: "12시간마다" },
+  { value: 1440, label: "매일" },
+  { value: 10080, label: "매주" },
+] as const;
+
+export interface Schedule {
+  id: string;
+  name: string;
+  scenarioId: string;
+  scenarioName?: string;
+  intervalMinutes: number;
+  enabled: boolean;
+  lastRunAt: string | null;
+  nextRunAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateSchedulePayload {
+  name: string;
+  scenarioId: string;
+  intervalMinutes: number;
+}
+
+export async function getSchedules(): Promise<Schedule[]> {
+  const res = await axiosClient.get<{ data: Schedule[] }>("/schedules");
+  return res.data.data;
+}
+
+export async function createSchedule(payload: CreateSchedulePayload): Promise<Schedule> {
+  const res = await axiosClient.post<{ data: Schedule }>("/schedules", payload);
+  return res.data.data;
+}
+
+export async function updateSchedule(
+  id: string,
+  payload: Partial<CreateSchedulePayload & { enabled: boolean }>
+): Promise<Schedule> {
+  const res = await axiosClient.put<{ data: Schedule }>(`/schedules/${id}`, payload);
+  return res.data.data;
+}
+
+export async function deleteSchedule(id: string): Promise<void> {
+  await axiosClient.delete(`/schedules/${id}`);
+}
+
+export async function triggerSchedule(id: string): Promise<{ runId: string }> {
+  const res = await axiosClient.post<{ data: { runId: string } }>(`/schedules/${id}/trigger`);
+  return res.data.data;
 }
