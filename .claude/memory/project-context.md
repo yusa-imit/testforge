@@ -38,6 +38,47 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 - **Step Retry/Disabled UI** (StepEditModal exposes retries, retryDelay, disabled fields; engine already supported them)
 - **healed RunStatus** (added to core schema + RunDetail badge)
 - **Webhook Notifications** (POST to configured URLs on run.completed/passed/failed/healed; HMAC-SHA256 signing)
+- **Scheduled Test Runs** (interval-based automation: 15m/30m/1h/3h/6h/12h/daily/weekly; background scheduler; manual trigger)
+
+## 최근 완료 (Session 72 - 2026-06-10)
+
+✅ **Scheduled Test Runs** — Tests: 866 pass, 16 skip, 0 fail (+17 tests)
+
+**Automated scenario execution on interval schedule:**
+- `schedules` table (migration 0006): id, name, scenario_id, interval_minutes, enabled, last_run_at, next_run_at
+- Valid intervals: 15, 30, 60, 180, 360, 720, 1440, 10080 minutes
+- `getDueSchedules()`: fetches enabled schedules where next_run_at <= now()
+- `recordScheduleRun()`: updates last_run_at + advances next_run_at by interval
+- `execution/scheduler.ts`: setInterval 60s background runner; finds due schedules, fires executeScenarioRun (fire-and-forget)
+- `startScheduler/stopScheduler` wired into index.ts main block + graceful shutdown
+
+**API: CRUD /api/schedules**
+- `GET /api/schedules` — list all (joined with scenario name)
+- `POST /api/schedules` — create (Zod: name, scenarioId UUID, intervalMinutes enum)
+- `GET/PUT/DELETE /api/schedules/:id` — get/update/delete
+- `POST /api/schedules/:id/trigger` — manual trigger returns runId
+
+**Also added: `GET /api/scenarios`** — root endpoint returning all scenarios (needed for dropdown)
+
+**Web: Schedules.tsx page**
+- List cards: enabled/disabled indicator, scenario name, interval badge, last/next run times
+- Manual "지금 실행" button per card
+- Create/edit dialog: name input, scenario dropdown (all scenarios), interval picker
+- Enable/disable toggle, delete with confirm dialog
+- Nav link "스케줄" in Layout
+
+**Files changed:**
+- `packages/server/src/db/migrations/0006_schedules.sql`
+- `packages/server/src/db/database.ts` — Schedule type + 7 CRUD methods
+- `packages/server/src/routes/schedules.ts` — API routes
+- `packages/server/src/routes/schedules.test.ts` — 17 tests
+- `packages/server/src/routes/scenarios.ts` — GET / root endpoint
+- `packages/server/src/execution/scheduler.ts` — background scheduler
+- `packages/server/src/index.ts` — route registration + scheduler start/stop
+- `packages/web/src/lib/api.ts` — Schedule types + API functions + getAllScenarios
+- `packages/web/src/pages/Schedules.tsx` — management page
+- `packages/web/src/App.tsx` — route
+- `packages/web/src/components/Layout.tsx` — nav link
 
 ## 최근 완료 (Session 71 - 2026-06-09)
 
