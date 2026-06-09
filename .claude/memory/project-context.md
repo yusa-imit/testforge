@@ -37,6 +37,43 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 - **Step Performance Analytics** (GET /api/scenarios/:id/step-stats — per-step avg/min/max duration + failure rate)
 - **Step Retry/Disabled UI** (StepEditModal exposes retries, retryDelay, disabled fields; engine already supported them)
 - **healed RunStatus** (added to core schema + RunDetail badge)
+- **Webhook Notifications** (POST to configured URLs on run.completed/passed/failed/healed; HMAC-SHA256 signing)
+
+## 최근 완료 (Session 71 - 2026-06-09)
+
+✅ **Webhook notifications on run completion** — Tests: 849 pass, 16 skip, 0 fail (+15 tests)
+
+**New: Webhook subscriptions with run event delivery**
+- `webhooks` table (migration 0005): id, name, url, secret, events[], enabled
+- Events: `run.completed` (any), `run.passed`, `run.failed`, `run.healed`
+- `webhookDispatcher.ts`: after run saves, fires POST to each matching enabled webhook; fire-and-forget, errors logged
+- HMAC-SHA256 signing: if `secret` set, adds `X-TestForge-Signature: sha256=<hex>` header
+- `runHelper.ts`: calls `dispatchWebhooks(db, result.run, scenario.name)` after saving results
+
+**API: CRUD /api/webhooks**
+- `GET /api/webhooks` — list all
+- `POST /api/webhooks` — create (Zod: name, url, secret?, events[])
+- `GET/PUT/DELETE /api/webhooks/:id` — get/update/delete
+
+**Web: Webhooks.tsx page**
+- List cards with enable/disable toggle, edit, delete
+- Create/edit dialog: name, URL, secret, event checkboxes
+- Empty state with CTA
+- Nav link "Webhooks" in Layout
+
+**Files changed:**
+- `packages/server/src/db/migrations/0005_webhooks.sql`
+- `packages/server/src/db/schema.ts` — webhooksTable added
+- `packages/server/src/db/database.ts` — Webhook types + 5 CRUD methods
+- `packages/server/src/execution/webhookDispatcher.ts` — new dispatcher
+- `packages/server/src/execution/runHelper.ts` — dispatch after save
+- `packages/server/src/routes/webhooks.ts` — API routes
+- `packages/server/src/routes/webhooks.test.ts` — 15 tests
+- `packages/server/src/index.ts` — route registration
+- `packages/web/src/lib/api.ts` — webhook API functions + types
+- `packages/web/src/pages/Webhooks.tsx` — management page
+- `packages/web/src/App.tsx` — route
+- `packages/web/src/components/Layout.tsx` — nav link
 
 ## 최근 완료 (Session 70 - 2026-06-09)
 
