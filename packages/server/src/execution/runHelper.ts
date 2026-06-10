@@ -14,7 +14,8 @@ export async function executeScenarioRun(
   scenario: Scenario,
   service: Service,
   db: DuckDBDatabase,
-  variables?: Record<string, any>
+  variables?: Record<string, any>,
+  environmentOverride?: { baseUrl?: string; variables?: Record<string, any> }
 ): Promise<string> {
   const executor = new TestExecutor();
   const executionManager = ExecutionManager.getInstance();
@@ -28,14 +29,25 @@ export async function executeScenarioRun(
     });
   });
 
+  // Merge environment override into service
+  const effectiveService: Service = environmentOverride?.baseUrl
+    ? { ...service, baseUrl: environmentOverride.baseUrl }
+    : service;
+
+  // Merge environment variables with run-level variables (run-level takes precedence)
+  const mergedVariables: Record<string, any> | undefined =
+    environmentOverride?.variables
+      ? { ...environmentOverride.variables, ...(variables ?? {}) }
+      : variables;
+
   // Start execution in background
   let capturedRunId: string | null = null;
 
   const _executionPromise = (async () => {
     try {
-      const result = await executor.execute(scenario, service, {
+      const result = await executor.execute(scenario, effectiveService, {
         headless: true,
-        variables,
+        variables: mergedVariables,
         componentLoader: async (componentId: string) => {
           return db.getComponent(componentId);
         },

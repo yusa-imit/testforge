@@ -8,6 +8,7 @@ import { executeScenarioRun } from "../execution/runHelper";
 
 const runScenarioSchema = z.object({
   variables: z.record(z.unknown()).optional(),
+  environmentId: z.string().optional(),
 });
 
 const app = new Hono()
@@ -135,7 +136,20 @@ const app = new Hono()
     }
 
     const overrideVars = body?.variables as Record<string, any> | undefined;
-    const runId = await executeScenarioRun(scenario, service, db, overrideVars);
+
+    // Resolve environment override if environmentId provided
+    let environmentOverride: { baseUrl?: string; variables?: Record<string, any> } | undefined;
+    if (body?.environmentId) {
+      const env = await db.getEnvironment(body.environmentId);
+      if (env) {
+        environmentOverride = {
+          baseUrl: env.baseUrl,
+          variables: Object.keys(env.variables).length > 0 ? env.variables : undefined,
+        };
+      }
+    }
+
+    const runId = await executeScenarioRun(scenario, service, db, overrideVars, environmentOverride);
 
     return c.json(
       {

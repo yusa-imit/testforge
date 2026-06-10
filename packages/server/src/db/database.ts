@@ -42,6 +42,25 @@ export interface CreateSchedule {
   intervalMinutes: number;
 }
 
+export interface Environment {
+  id: string;
+  name: string;
+  description?: string;
+  baseUrl?: string;
+  variables: Record<string, any>;
+  isDefault: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CreateEnvironment {
+  name: string;
+  description?: string;
+  baseUrl?: string;
+  variables?: Record<string, any>;
+  isDefault?: boolean;
+}
+
 export interface Webhook {
   id: string;
   name: string;
@@ -171,6 +190,19 @@ class RowConverter {
   /**
    * Convert database row to Component entity
    */
+  static toEnvironment(row: any): Environment {
+    return {
+      id: row.id,
+      name: row.name,
+      description: row.description ?? undefined,
+      baseUrl: row.base_url ?? undefined,
+      variables: typeof row.variables === "string" ? JSON.parse(row.variables) : (row.variables ?? {}),
+      isDefault: Boolean(row.is_default),
+      createdAt: new Date(row.created_at),
+      updatedAt: new Date(row.updated_at),
+    };
+  }
+
   static toComponent(row: any): Component {
     return {
       id: row.id,
@@ -1976,5 +2008,94 @@ export class DuckDBDatabase {
       failCount: Number(r.fail_count),
       lastRunAt: new Date(r.last_run_at).toISOString(),
     }));
+  }
+
+  // ─── Environment Profile Methods ────────────────────────────────────────────
+
+  async getAllEnvironments(): Promise<Environment[]> {
+    const rows = await this.db.all(
+      `SELECT * FROM environments ORDER BY is_default DESC, name ASC`
+    ) as any[];
+    return rows.map(RowConverter.toEnvironment);
+  }
+
+  async getEnvironment(id: string): Promise<Environment | undefined> {
+    const row = await this.db.get(
+      `SELECT * FROM environments WHERE id = ?`,
+      [id]
+    ) as any;
+    return row ? RowConverter.toEnvironment(row) : undefined;
+  }
+
+  async getDefaultEnvironment(): Promise<Environment | undefined> {
+    const row = await this.db.get(
+      `SELECT * FROM environments WHERE is_default = true LIMIT 1`
+    ) as any;
+    return row ? RowConverter.toEnvironment(row) : undefined;
+  }
+
+  async createEnvironment(data: CreateEnvironment): Promise<Environment> {
+    const id = uuid();
+    const now = new Date();
+
+    if (data.isDefault) {
+      await this.db.run(`UPDATE environments SET is_default = false`);
+    }
+
+    await this.db.run(
+      `INSERT INTO environments (id, name, description, base_url, variables, is_default, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        id,
+        data.name,
+        data.description ?? null,
+        data.baseUrl ?? null,
+        JSON.stringify(data.variables ?? {}),
+        data.isDefault ? true : false,
+        now,
+        now,
+      ]
+    );
+
+    return (await this.getEnvironment(id))!;
+  }
+
+  async updateEnvironment(id: string, data: Partial<CreateEnvironment>): Promise<Environment | undefined> {
+    const existing = await this.getEnvironment(id);
+    if (!existing) return undefined;
+
+    if (data.isDefault) {
+      await this.db.run(`UPDATE environments SET is_default = false WHERE id != ?`, [id]);
+    }
+
+    const now = new Date();
+    await this.db.run(
+      `UPDATE environments SET
+         name = ?,
+         description = ?,
+         base_url = ?,
+         variables = ?,
+         is_default = ?,
+         updated_at = ?
+       WHERE id = ?`,
+      [
+        data.name ?? existing.name,
+        data.description !== undefined ? data.description : (existing.description ?? null),
+        data.baseUrl !== undefined ? data.baseUrl : (existing.baseUrl ?? null),
+        JSON.stringify(data.variables !== undefined ? data.variables : existing.variables),
+        data.isDefault !== undefined ? data.isDefault : existing.isDefault,
+        now,
+        id,
+      ]
+    );
+
+    return this.getEnvironment(id);
+  }
+
+  async deleteEnvironment(id: string): Promise<boolean> {
+    const existing = await this.getEnvironment(id);
+    if (!existing) return false;
+    await this.db.run(`DELETE FROM environments WHERE id = ?`, [id]);
+    return true;
   }
 }

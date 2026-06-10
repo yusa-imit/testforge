@@ -12,6 +12,7 @@ const navigation = [
   { name: "성능 모니터링", href: "/metrics" },
   { name: "Webhooks", href: "/webhooks" },
   { name: "스케줄", href: "/schedules" },
+  { name: "환경", href: "/environments" },
 ];
 
 export default function Layout() {

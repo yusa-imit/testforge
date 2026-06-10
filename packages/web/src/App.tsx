@@ -15,6 +15,7 @@ import RunDetail from "./pages/RunDetail";
 import Metrics from "./pages/Metrics";
 import Webhooks from "./pages/Webhooks";
 import Schedules from "./pages/Schedules";
+import Environments from "./pages/Environments";
 
 function App() {
   return (
@@ -36,6 +37,7 @@ function App() {
           <Route path="/metrics" element={<Metrics />} />
           <Route path="/webhooks" element={<Webhooks />} />
           <Route path="/schedules" element={<Schedules />} />
+          <Route path="/environments" element={<Environments />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

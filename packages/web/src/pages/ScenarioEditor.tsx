@@ -5,8 +5,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { ko } from "date-fns/locale";
 import type { Scenario, Step, Variable } from "@testforge/core";
-import { getScenario, updateScenario, runScenario, deleteScenario, duplicateScenario, getRuns, getScenarioStats, getScenarioStepStats } from "../lib/api";
-import type { ScenarioStepStat } from "../lib/api";
+import { getScenario, updateScenario, runScenario, deleteScenario, duplicateScenario, getRuns, getScenarioStats, getScenarioStepStats, getEnvironments } from "../lib/api";
+import type { ScenarioStepStat, Environment } from "../lib/api";
 import { VariableEditor } from "../components/VariableEditor";
 import { StepEditModal } from "../components/StepEditModal";
 import { Button } from "../components/ui/button";
@@ -71,6 +71,7 @@ export default function ScenarioEditor() {
   // Run-with-variables dialog
   const [runVarsDialogOpen, setRunVarsDialogOpen] = useState(false);
   const [runVarOverrides, setRunVarOverrides] = useState<Record<string, string>>({});
+  const [selectedEnvId, setSelectedEnvId] = useState<string>("");
 
   // Fetch scenario
   const { data, isLoading } = useQuery({
@@ -111,6 +112,13 @@ export default function ScenarioEditor() {
   });
   const stepStats: ScenarioStepStat[] = stepStatsData ?? [];
 
+  // Fetch available environments for run dialog
+  const { data: environments = [] } = useQuery<Environment[]>({
+    queryKey: ["environments"],
+    queryFn: getEnvironments,
+    staleTime: 60_000,
+  });
+
   // Initialize state from fetched data
   React.useEffect(() => {
     if (data?.success && data.data) {
@@ -141,9 +149,10 @@ export default function ScenarioEditor() {
     },
   });
 
-  // Run mutation (accepts optional variable overrides)
+  // Run mutation (accepts optional variable overrides + environmentId)
   const runMutation = useMutation({
-    mutationFn: (vars?: Record<string, unknown>) => runScenario(id!, vars),
+    mutationFn: ({ vars, envId }: { vars?: Record<string, unknown>; envId?: string } = {}) =>
+      runScenario(id!, vars, envId),
     onSuccess: (result) => {
       toast({
         title: "실행 시작",
@@ -212,20 +221,19 @@ export default function ScenarioEditor() {
   };
 
   const handleRun = () => {
-    if (variables.length > 0) {
-      // Pre-fill overrides with current default values
-      const defaults: Record<string, string> = {};
-      for (const v of variables) {
-        defaults[v.name] = v.defaultValue != null ? String(v.defaultValue) : "";
-      }
-      setRunVarOverrides(defaults);
-      setRunVarsDialogOpen(true);
-    } else {
-      doRun();
+    // Pre-fill variable overrides with defaults
+    const defaults: Record<string, string> = {};
+    for (const v of variables) {
+      defaults[v.name] = v.defaultValue != null ? String(v.defaultValue) : "";
     }
+    setRunVarOverrides(defaults);
+    // Pre-select default environment if available
+    const defaultEnv = environments.find((e) => e.isDefault);
+    setSelectedEnvId(defaultEnv?.id ?? "");
+    setRunVarsDialogOpen(true);
   };
 
-  const doRun = (varOverrides?: Record<string, string>) => {
+  const doRun = (varOverrides?: Record<string, string>, envId?: string) => {
     saveMutation.mutate(
       { priority, tags, variables, steps },
       {
@@ -234,7 +242,7 @@ export default function ScenarioEditor() {
             varOverrides && Object.keys(varOverrides).length > 0
               ? (varOverrides as Record<string, unknown>)
               : undefined;
-          runMutation.mutate(overrides);
+          runMutation.mutate({ vars: overrides, envId: envId || undefined });
         },
       }
     );
@@ -700,33 +708,61 @@ export default function ScenarioEditor() {
         onSave={handleSaveStep}
       />
 
-      {/* Run with Variables Dialog */}
+      {/* Run Dialog (variables + environment) */}
       <Dialog open={runVarsDialogOpen} onOpenChange={setRunVarsDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>변수 설정 후 실행</DialogTitle>
+            <DialogTitle>실행 설정</DialogTitle>
             <DialogDescription>
-              실행 전에 변수 값을 확인하거나 변경하세요. 빈 값은 기본값을 사용합니다.
+              환경 및 변수를 선택한 후 실행하세요.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 py-2">
-            {variables.map((v) => (
-              <div key={v.name} className="space-y-1">
-                <label className="text-sm font-medium text-gray-700">
-                  {v.name}
-                  {v.description && (
-                    <span className="ml-2 text-xs text-gray-400">{v.description}</span>
-                  )}
-                </label>
-                <Input
-                  value={runVarOverrides[v.name] ?? ""}
-                  onChange={(e) =>
-                    setRunVarOverrides((prev) => ({ ...prev, [v.name]: e.target.value }))
-                  }
-                  placeholder={v.defaultValue != null ? String(v.defaultValue) : "값 없음"}
-                />
+          <div className="space-y-4 py-2">
+            {/* Environment selector */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700">환경</label>
+              <Select value={selectedEnvId} onValueChange={setSelectedEnvId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="서비스 기본 환경 사용" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">서비스 기본 환경</SelectItem>
+                  {environments.map((env) => (
+                    <SelectItem key={env.id} value={env.id}>
+                      {env.name}
+                      {env.isDefault && " ★"}
+                      {env.baseUrl && (
+                        <span className="text-gray-400 text-xs ml-1">({env.baseUrl})</span>
+                      )}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Variable overrides */}
+            {variables.length > 0 && (
+              <div className="space-y-3">
+                <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">변수</p>
+                {variables.map((v) => (
+                  <div key={v.name} className="space-y-1">
+                    <label className="text-sm font-medium text-gray-700">
+                      {v.name}
+                      {v.description && (
+                        <span className="ml-2 text-xs text-gray-400">{v.description}</span>
+                      )}
+                    </label>
+                    <Input
+                      value={runVarOverrides[v.name] ?? ""}
+                      onChange={(e) =>
+                        setRunVarOverrides((prev) => ({ ...prev, [v.name]: e.target.value }))
+                      }
+                      placeholder={v.defaultValue != null ? String(v.defaultValue) : "값 없음"}
+                    />
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setRunVarsDialogOpen(false)}>
@@ -735,7 +771,7 @@ export default function ScenarioEditor() {
             <Button
               onClick={() => {
                 setRunVarsDialogOpen(false);
-                doRun(runVarOverrides);
+                doRun(runVarOverrides, selectedEnvId || undefined);
               }}
               disabled={runMutation.isPending || saveMutation.isPending}
             >

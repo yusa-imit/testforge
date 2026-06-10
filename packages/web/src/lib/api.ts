@@ -126,10 +126,17 @@ export async function deleteScenario(id: string) {
   return res.json();
 }
 
-export async function runScenario(id: string, variables?: Record<string, unknown>) {
+export async function runScenario(
+  id: string,
+  variables?: Record<string, unknown>,
+  environmentId?: string
+) {
+  const body: Record<string, unknown> = {};
+  if (variables) body.variables = variables;
+  if (environmentId) body.environmentId = environmentId;
   const res = await api.api.scenarios[":id"].run.$post({
     param: { id },
-    json: variables ? { variables } : {},
+    json: body,
   });
   return res.json();
 }
@@ -463,3 +470,52 @@ export async function getFlakyScenarios(minRuns = 3, days = 30): Promise<FlakySc
   );
   return res.data.data ?? [];
 }
+
+// ── Environment Profiles ─────────────────────────────────────────────────────
+
+export interface Environment {
+  id: string;
+  name: string;
+  description?: string;
+  baseUrl?: string;
+  variables: Record<string, any>;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateEnvironmentPayload {
+  name: string;
+  description?: string;
+  baseUrl?: string;
+  variables?: Record<string, any>;
+  isDefault?: boolean;
+}
+
+export async function getEnvironments(): Promise<Environment[]> {
+  const res = await axiosClient.get<{ data: Environment[] }>("/environments");
+  return res.data.data;
+}
+
+export async function getEnvironment(id: string): Promise<Environment> {
+  const res = await axiosClient.get<{ data: Environment }>(`/environments/${id}`);
+  return res.data.data;
+}
+
+export async function createEnvironment(payload: CreateEnvironmentPayload): Promise<Environment> {
+  const res = await axiosClient.post<{ data: Environment }>("/environments", payload);
+  return res.data.data;
+}
+
+export async function updateEnvironment(
+  id: string,
+  payload: Partial<CreateEnvironmentPayload>
+): Promise<Environment> {
+  const res = await axiosClient.put<{ data: Environment }>(`/environments/${id}`, payload);
+  return res.data.data;
+}
+
+export async function deleteEnvironment(id: string): Promise<void> {
+  await axiosClient.delete(`/environments/${id}`);
+}
+
