@@ -39,6 +39,27 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 - **healed RunStatus** (added to core schema + RunDetail badge)
 - **Webhook Notifications** (POST to configured URLs on run.completed/passed/failed/healed; HMAC-SHA256 signing)
 - **Scheduled Test Runs** (interval-based automation: 15m/30m/1h/3h/6h/12h/daily/weekly; background scheduler; manual trigger)
+- **Flaky Test Detection** (GET /api/scenarios/flaky; pass rate 10-90% threshold; Dashboard widget)
+
+## 최근 완료 (Session 73 - 2026-06-10)
+
+✅ **Flaky Test Detection** — Tests: 871 pass, 16 skip, 0 fail (+5 tests)
+
+**Automatic identification of scenarios with inconsistent pass rates:**
+- `getFlakyScenarios(minRuns=3, days=30)` DB method: JOIN query across test_runs/scenarios/features/services
+  - HAVING: pass_rate > 0.1 AND pass_rate < 0.9 (excludes consistently passing/failing)
+  - Returns: scenarioId/Name, featureId/Name, serviceId/Name, runCount, passRate, passCount, failCount, lastRunAt
+- `GET /api/scenarios/flaky?minRuns=3&days=30` — route placed BEFORE `/:id` to avoid routing conflict
+- 5 route tests: empty when below minRuns, flaky detection at 50% pass rate, excludes 100% pass, excludes 0% pass, breadcrumb fields
+- `FlakyScenario` interface + `getFlakyScenarios()` in api.ts
+- Dashboard "불안정 테스트" card: shown when flakyScenarios.length > 0; pass rate progress bar (yellow/red), scenario count badge, service/feature breadcrumb
+
+**Files changed:**
+- `packages/server/src/db/database.ts` — getFlakyScenarios method
+- `packages/server/src/routes/scenarios.ts` — GET /flaky route
+- `packages/server/src/routes/scenarios.test.ts` — 5 new tests
+- `packages/web/src/lib/api.ts` — FlakyScenario interface + getFlakyScenarios()
+- `packages/web/src/pages/Dashboard.tsx` — flaky tests card
 
 ## 최근 완료 (Session 72 - 2026-06-10)
 
