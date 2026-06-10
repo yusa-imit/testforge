@@ -1920,4 +1920,61 @@ export class DuckDBDatabase {
     await this.db.run(`DELETE FROM schedules WHERE id = ?`, [id]);
     return true;
   }
+
+  async getFlakyScenarios(minRuns = 3, days = 30): Promise<{
+    scenarioId: string;
+    scenarioName: string;
+    featureId: string;
+    featureName: string;
+    serviceId: string;
+    serviceName: string;
+    runCount: number;
+    passRate: number;
+    passCount: number;
+    failCount: number;
+    lastRunAt: string;
+  }[]> {
+    const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+    const rows = await this.db.all(
+      `SELECT
+         s.id AS scenario_id,
+         s.name AS scenario_name,
+         f.id AS feature_id,
+         f.name AS feature_name,
+         sv.id AS service_id,
+         sv.name AS service_name,
+         COUNT(*) AS run_count,
+         COUNT(*) FILTER (WHERE t.status IN ('passed', 'healed')) AS pass_count,
+         COUNT(*) FILTER (WHERE t.status = 'failed') AS fail_count,
+         1.0 * COUNT(*) FILTER (WHERE t.status IN ('passed', 'healed')) / COUNT(*) AS pass_rate,
+         MAX(t.created_at) AS last_run_at
+       FROM test_runs t
+       JOIN scenarios s ON t.scenario_id = s.id
+       JOIN features f ON s.feature_id = f.id
+       JOIN services sv ON f.service_id = sv.id
+       WHERE t.created_at >= ?
+       GROUP BY s.id, s.name, f.id, f.name, sv.id, sv.name
+       HAVING COUNT(*) >= ?
+         AND 1.0 * COUNT(*) FILTER (WHERE t.status IN ('passed', 'healed')) / COUNT(*) > 0.1
+         AND 1.0 * COUNT(*) FILTER (WHERE t.status IN ('passed', 'healed')) / COUNT(*) < 0.9
+       ORDER BY pass_rate ASC
+       LIMIT 20`,
+      [cutoff, minRuns]
+    ) as any[];
+
+    return rows.map((r) => ({
+      scenarioId: String(r.scenario_id),
+      scenarioName: String(r.scenario_name),
+      featureId: String(r.feature_id),
+      featureName: String(r.feature_name),
+      serviceId: String(r.service_id),
+      serviceName: String(r.service_name),
+      runCount: Number(r.run_count),
+      passRate: Number(r.pass_rate),
+      passCount: Number(r.pass_count),
+      failCount: Number(r.fail_count),
+      lastRunAt: new Date(r.last_run_at).toISOString(),
+    }));
+  }
 }

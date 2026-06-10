@@ -634,3 +634,97 @@ describe("GET /api/scenarios/:id/step-stats", () => {
     expect(indices).toEqual([0, 1, 2]);
   });
 });
+
+// ──────────────────────────────────────────────────────────────────────────────
+// GET /api/scenarios/flaky
+// ──────────────────────────────────────────────────────────────────────────────
+
+describe("GET /api/scenarios/flaky", () => {
+  const env = { baseUrl: "http://test", variables: {} };
+
+  it("returns empty array when no scenarios have enough runs", async () => {
+    const service = await createService();
+    const feature = await createFeature(service.id);
+    const scenario = await createScenario(feature.id, "Low Run Scenario");
+    // 1 pass + 1 fail = 2 runs, below minRuns=5
+    await db.createTestRun({ id: uuid(), scenarioId: scenario.id, status: "passed", environment: env, createdAt: new Date() });
+    await db.createTestRun({ id: uuid(), scenarioId: scenario.id, status: "failed", environment: env, createdAt: new Date() });
+
+    const res = await req("GET", "/api/scenarios/flaky?minRuns=5");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.success).toBe(true);
+    expect(body.data).toHaveLength(0);
+  });
+
+  it("returns flaky scenarios with mixed pass/fail results", async () => {
+    const service = await createService();
+    const feature = await createFeature(service.id);
+    const scenario = await createScenario(feature.id, "Flaky Scenario");
+    // 2 pass + 2 fail = 50% pass rate → flaky
+    for (let i = 0; i < 2; i++) {
+      await db.createTestRun({ id: uuid(), scenarioId: scenario.id, status: "passed", environment: env, createdAt: new Date() });
+    }
+    for (let i = 0; i < 2; i++) {
+      await db.createTestRun({ id: uuid(), scenarioId: scenario.id, status: "failed", environment: env, createdAt: new Date() });
+    }
+
+    const res = await req("GET", "/api/scenarios/flaky?minRuns=3");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    const found = body.data.find((s: any) => s.scenarioId === scenario.id);
+    expect(found).toBeDefined();
+    expect(found.passRate).toBeCloseTo(0.5);
+    expect(found.runCount).toBe(4);
+    expect(found.passCount).toBe(2);
+    expect(found.failCount).toBe(2);
+  });
+
+  it("excludes consistently passing scenarios (≥90% pass rate)", async () => {
+    const service = await createService();
+    const feature = await createFeature(service.id);
+    const scenario = await createScenario(feature.id, "Always Passing");
+    for (let i = 0; i < 5; i++) {
+      await db.createTestRun({ id: uuid(), scenarioId: scenario.id, status: "passed", environment: env, createdAt: new Date() });
+    }
+
+    const res = await req("GET", "/api/scenarios/flaky?minRuns=3");
+    const body = (await res.json()) as any;
+    const found = body.data.find((s: any) => s.scenarioId === scenario.id);
+    expect(found).toBeUndefined();
+  });
+
+  it("excludes consistently failing scenarios (≤10% pass rate)", async () => {
+    const service = await createService();
+    const feature = await createFeature(service.id);
+    const scenario = await createScenario(feature.id, "Always Failing");
+    for (let i = 0; i < 5; i++) {
+      await db.createTestRun({ id: uuid(), scenarioId: scenario.id, status: "failed", environment: env, createdAt: new Date() });
+    }
+
+    const res = await req("GET", "/api/scenarios/flaky?minRuns=3");
+    const body = (await res.json()) as any;
+    const found = body.data.find((s: any) => s.scenarioId === scenario.id);
+    expect(found).toBeUndefined();
+  });
+
+  it("includes service/feature breadcrumb in results", async () => {
+    const service = await createService();
+    const feature = await createFeature(service.id);
+    const scenario = await createScenario(feature.id, "Breadcrumb Test");
+    for (let i = 0; i < 3; i++) {
+      await db.createTestRun({ id: uuid(), scenarioId: scenario.id, status: "passed", environment: env, createdAt: new Date() });
+      await db.createTestRun({ id: uuid(), scenarioId: scenario.id, status: "failed", environment: env, createdAt: new Date() });
+    }
+
+    const res = await req("GET", "/api/scenarios/flaky?minRuns=3");
+    const body = (await res.json()) as any;
+    const found = body.data.find((s: any) => s.scenarioId === scenario.id);
+    expect(found).toBeDefined();
+    expect(found.featureId).toBe(feature.id);
+    expect(found.featureName).toBe("Test Feature");
+    expect(found.serviceId).toBe(service.id);
+    expect(found.serviceName).toBe("Test Service");
+    expect(found.lastRunAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  });
+});

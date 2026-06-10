@@ -440,3 +440,26 @@ export async function triggerSchedule(id: string): Promise<{ runId: string }> {
   const res = await axiosClient.post<{ data: { runId: string } }>(`/schedules/${id}/trigger`);
   return res.data.data;
 }
+
+// ── Flaky Test Detection ─────────────────────────────────────────────────────
+
+export interface FlakyScenario {
+  scenarioId: string;
+  scenarioName: string;
+  featureId: string;
+  featureName: string;
+  serviceId: string;
+  serviceName: string;
+  runCount: number;
+  passRate: number;
+  passCount: number;
+  failCount: number;
+  lastRunAt: string;
+}
+
+export async function getFlakyScenarios(minRuns = 3, days = 30): Promise<FlakyScenario[]> {
+  const res = await axiosClient.get<{ success: boolean; data: FlakyScenario[] }>(
+    `/scenarios/flaky?minRuns=${minRuns}&days=${days}`
+  );
+  return res.data.data ?? [];
+}

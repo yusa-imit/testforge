@@ -2,7 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { ko } from "date-fns/locale";
-import { getServices, getHealingStats, getDashboardData } from "../lib/api";
+import { getServices, getHealingStats, getDashboardData, getFlakyScenarios } from "../lib/api";
+import type { FlakyScenario } from "../lib/api";
 
 interface RecentFailureRun {
   id: string;
@@ -65,11 +66,18 @@ export default function Dashboard() {
     refetchInterval: 30000,
   });
 
+  const { data: flakyData } = useQuery({
+    queryKey: ["flaky-scenarios"],
+    queryFn: () => getFlakyScenarios(3, 30),
+    staleTime: 60000,
+  });
+
   const services = servicesData?.data ?? [];
   const healStats = healingStats?.data;
   const stats = (dashboardData?.data as any)?.stats ?? { total: 0, passed: 0, failed: 0, healed: 0 };
   const recentFailures = (dashboardData?.data as any)?.recentFailures ?? [];
   const globalStats = (dashboardData?.data as any)?.globalStats as GlobalStats | undefined;
+  const flakyScenarios: FlakyScenario[] = flakyData ?? [];
 
   const successRate = stats.total > 0
     ? ((stats.passed / stats.total) * 100).toFixed(1)
@@ -256,6 +264,62 @@ export default function Dashboard() {
                 </div>
               </li>
             ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Flaky Tests Card */}
+      {flakyScenarios.length > 0 && (
+        <div className="bg-white rounded-lg shadow">
+          <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-medium text-gray-900">불안정 테스트</h3>
+              <p className="text-xs text-gray-500 mt-0.5">최근 30일 내 성공률 10~90% 시나리오</p>
+            </div>
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+              {flakyScenarios.length}개
+            </span>
+          </div>
+          <ul className="divide-y divide-gray-200">
+            {flakyScenarios.map((s) => {
+              const passRatePct = Math.round(s.passRate * 100);
+              const barColor =
+                s.passRate >= 0.7 ? "#eab308" : "#ef4444";
+              return (
+                <li key={s.scenarioId} className="px-6 py-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <Link
+                        to={`/scenarios/${s.scenarioId}`}
+                        className="text-sm font-medium text-gray-900 hover:text-blue-600 truncate block"
+                      >
+                        {s.scenarioName}
+                      </Link>
+                      <div className="text-xs text-gray-400 mt-0.5 truncate">
+                        {s.serviceName} / {s.featureName}
+                      </div>
+                      <div className="mt-2 flex items-center gap-3">
+                        <div className="flex-1 max-w-[160px] bg-gray-200 rounded-full h-1.5">
+                          <div
+                            className="h-1.5 rounded-full transition-all"
+                            style={{ width: `${passRatePct}%`, backgroundColor: barColor }}
+                          />
+                        </div>
+                        <span className="text-xs font-medium" style={{ color: barColor }}>
+                          {passRatePct}% 성공
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex-shrink-0 text-right">
+                      <div className="text-xs text-gray-500">{s.runCount}회 실행</div>
+                      <div className="text-xs text-gray-400 mt-0.5">
+                        {s.passCount}성공 / {s.failCount}실패
+                      </div>
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}

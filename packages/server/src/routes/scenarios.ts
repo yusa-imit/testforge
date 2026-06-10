@@ -18,6 +18,17 @@ const app = new Hono()
     return c.json({ success: true, data: scenarios });
   })
 
+  // GET /api/scenarios/flaky - 불안정 시나리오 목록
+  .get("/flaky", async (c) => {
+    const db = await getDB();
+    const minRunsRaw = parseInt(c.req.query("minRuns") ?? "3", 10);
+    const daysRaw = parseInt(c.req.query("days") ?? "30", 10);
+    const minRuns = isNaN(minRunsRaw) || minRunsRaw < 1 ? 3 : Math.min(minRunsRaw, 100);
+    const days = isNaN(daysRaw) || daysRaw < 1 ? 30 : Math.min(daysRaw, 365);
+    const scenarios = await db.getFlakyScenarios(minRuns, days);
+    return c.json({ success: true, data: scenarios });
+  })
+
   // GET /api/scenarios/:id - 시나리오 상세
   .get("/:id", async (c) => {
     const db = await getDB();
