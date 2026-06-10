@@ -40,6 +40,36 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 - **Webhook Notifications** (POST to configured URLs on run.completed/passed/failed/healed; HMAC-SHA256 signing)
 - **Scheduled Test Runs** (interval-based automation: 15m/30m/1h/3h/6h/12h/daily/weekly; background scheduler; manual trigger)
 - **Flaky Test Detection** (GET /api/scenarios/flaky; pass rate 10-90% threshold; Dashboard widget)
+- **Environment Profiles** (CRUD /api/environments; base URL + variable overrides; run-time environment selection; ScenarioEditor run dialog)
+
+## 최근 완료 (Session 74 - 2026-06-11)
+
+✅ **Environment Profiles** — Tests: 885 pass, 16 skip, 0 fail (+14 tests)
+
+**Named test environments (Staging, Production, etc.) with base URL and variable overrides:**
+- Migration 0007: `environments` table (id, name, description, base_url, variables JSON, is_default)
+- `DuckDBDatabase`: Environment type + getAllEnvironments/getEnvironment/getDefaultEnvironment/
+  createEnvironment/updateEnvironment/deleteEnvironment (single-default enforcement)
+- `GET/POST/PUT/DELETE /api/environments` routes with Zod validation — 14 tests
+- `runHelper.ts`: `environmentOverride` param merges baseUrl+variables before execution; run-level vars take precedence
+- `POST /api/scenarios/:id/run` body now accepts optional `environmentId`
+- Frontend: `Environment` interface + 5 API functions in api.ts
+- `Environments.tsx`: management page — card grid, create/edit dialog with JSON variable editor, isDefault badge
+- `ScenarioEditor.tsx`: run dialog shows environment dropdown (pre-selects default env); environments fetched lazily
+- App.tsx + Layout.tsx: `/environments` route + nav link
+
+**Files changed:**
+- `packages/server/src/db/migrations/0007_environments.sql`
+- `packages/server/src/db/database.ts` — Environment type + converter + 6 CRUD methods
+- `packages/server/src/routes/environments.ts` — API routes
+- `packages/server/src/routes/environments.test.ts` — 14 tests
+- `packages/server/src/execution/runHelper.ts` — environmentOverride param
+- `packages/server/src/routes/scenarios.ts` — environmentId in runScenarioSchema
+- `packages/server/src/index.ts` — route registration
+- `packages/web/src/lib/api.ts` — Environment interface + 5 functions + updated runScenario()
+- `packages/web/src/pages/Environments.tsx` — management page
+- `packages/web/src/pages/ScenarioEditor.tsx` — environment selector in run dialog
+- `packages/web/src/App.tsx` + `packages/web/src/components/Layout.tsx` — route + nav
 
 ## 최근 완료 (Session 73 - 2026-06-10)
 
