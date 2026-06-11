@@ -717,14 +717,34 @@ export class TestExecutor extends EventEmitter {
    * PRD 부록 B: {{$timestamp}}, {{$randomString}}, {{$randomNumber}}, {{$uuid}} 지원
    */
   private interpolate(text: string, variables: Record<string, any>): string {
-    return text.replace(/\{\{([\w$]+)\}\}/g, (match, key) => {
+    // Supports: {{simple}}, {{response.data.id}}, {{items[0].name}}, {{$builtins}}
+    return text.replace(/\{\{([\w$][\w$.[\]]*)\}\}/g, (match, path) => {
       // Built-in variables (PRD Appendix B)
-      if (key === "$timestamp") return String(Date.now());
-      if (key === "$randomString") return Math.random().toString(36).slice(2, 10);
-      if (key === "$randomNumber") return String(Math.floor(Math.random() * 1000000));
-      if (key === "$uuid") return uuid();
-      return variables[key] !== undefined ? String(variables[key]) : match;
+      if (path === "$timestamp") return String(Date.now());
+      if (path === "$randomString") return Math.random().toString(36).slice(2, 10);
+      if (path === "$randomNumber") return String(Math.floor(Math.random() * 1000000));
+      if (path === "$uuid") return uuid();
+      const value = this.resolvePath(variables, path);
+      return value !== undefined ? String(value) : match;
     });
+  }
+
+  /**
+   * Resolves a dotted/bracketed path against an object.
+   * e.g. "response.data.id", "items[0].name"
+   */
+  private resolvePath(obj: Record<string, any>, path: string): any {
+    // Tokenize: split on '.' and expand bracket notation into segments
+    const tokens = path
+      .replace(/\[(\d+)\]/g, ".$1")
+      .split(".")
+      .filter(Boolean);
+    let current: any = obj;
+    for (const token of tokens) {
+      if (current === null || current === undefined) return undefined;
+      current = current[token];
+    }
+    return current;
   }
 
   /**

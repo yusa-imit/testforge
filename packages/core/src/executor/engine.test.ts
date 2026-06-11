@@ -182,6 +182,60 @@ describe("TestExecutor.interpolate", () => {
     );
     expect(result).toMatch(/^user=Alice,ts=\d+$/);
   });
+
+  // Nested object access (PRD Appendix B: {{response.data.id}})
+  it("resolves nested object path {{response.data.id}}", () => {
+    const result = executor.testInterpolate("id={{response.data.id}}", {
+      response: { data: { id: "abc-123" } },
+    });
+    expect(result).toBe("id=abc-123");
+  });
+
+  it("resolves deeply nested path {{a.b.c.d}}", () => {
+    expect(
+      executor.testInterpolate("{{a.b.c.d}}", { a: { b: { c: { d: 42 } } } })
+    ).toBe("42");
+  });
+
+  it("leaves {{response.missing}} as-is when path is absent", () => {
+    expect(
+      executor.testInterpolate("{{response.missing}}", { response: {} })
+    ).toBe("{{response.missing}}");
+  });
+
+  // Array access (PRD Appendix B: {{items[0].name}})
+  it("resolves array index {{items[0].name}}", () => {
+    const result = executor.testInterpolate("name={{items[0].name}}", {
+      items: [{ name: "first" }, { name: "second" }],
+    });
+    expect(result).toBe("name=first");
+  });
+
+  it("resolves second array element {{items[1].value}}", () => {
+    expect(
+      executor.testInterpolate("{{items[1].value}}", {
+        items: [{ value: 10 }, { value: 20 }],
+      })
+    ).toBe("20");
+  });
+
+  it("resolves top-level array element {{arr[0]}}", () => {
+    expect(executor.testInterpolate("{{arr[0]}}", { arr: ["alpha", "beta"] })).toBe("alpha");
+  });
+
+  it("leaves {{arr[5]}} as-is when index out of bounds", () => {
+    expect(executor.testInterpolate("{{arr[5]}}", { arr: [1, 2] })).toBe(
+      "{{arr[5]}}"
+    );
+  });
+
+  it("mixes flat, nested, and built-in variables", () => {
+    const result = executor.testInterpolate(
+      "{{name}}/{{resp.code}}/{{$randomNumber}}",
+      { name: "Bob", resp: { code: 200 } }
+    );
+    expect(result).toMatch(/^Bob\/200\/\d+$/);
+  });
 });
 
 // ============================================================
