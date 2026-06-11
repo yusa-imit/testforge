@@ -42,6 +42,23 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 - **Flaky Test Detection** (GET /api/scenarios/flaky; pass rate 10-90% threshold; Dashboard widget)
 - **Environment Profiles** (CRUD /api/environments; base URL + variable overrides; run-time environment selection; ScenarioEditor run dialog)
 - **Built-in Variables** ({{$timestamp}}, {{$randomString}}, {{$randomNumber}}, {{$uuid}} — PRD Appendix B; resolved in engine interpolate())
+- **Nested Variable Paths** ({{response.data.id}}, {{items[0].name}} — PRD Appendix B; resolvePath() helper + extended regex in interpolate())
+
+## 최근 완료 (Session 76 - 2026-06-12)
+
+✅ **Nested Variable Paths** — Tests: 899 pass, 16 skip, 0 fail (+8 tests)
+
+**PRD Appendix B nested object/array path support in interpolate():**
+- `{{response.data.id}}` → traverses nested objects via dotted path
+- `{{items[0].name}}` → bracket notation expanded to dotted tokens
+- `resolvePath(obj, path)` private helper tokenizes path, walks the object tree
+- Regex updated: `/\{\{([\w$]+)\}\}/g` → `/\{\{([\w$][\w$.[\]]*)\}\}/g` to capture `.` and `[]`
+- Out-of-bounds / missing paths leave `{{...}}` unchanged (consistent with prior behavior)
+- 8 new unit tests: nested 2-level, deeply nested 4-level, missing path, array index 0/1, top-level array, out-of-bounds, mixed all
+
+**Files changed:**
+- `packages/core/src/executor/engine.ts` — interpolate() + resolvePath() methods
+- `packages/core/src/executor/engine.test.ts` — 8 new tests
 
 ## 최근 완료 (Session 75 - 2026-06-11)
 
