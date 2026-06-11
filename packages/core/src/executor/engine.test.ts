@@ -140,6 +140,48 @@ describe("TestExecutor.interpolate", () => {
       executor.testInterpolate("{{a}}{{b}}", { a: "hello", b: "world" })
     ).toBe("helloworld");
   });
+
+  // Built-in variables (PRD Appendix B)
+  it("resolves {{$timestamp}} to a numeric string", () => {
+    const before = Date.now();
+    const result = executor.testInterpolate("ts={{$timestamp}}", {});
+    const after = Date.now();
+    const ts = Number(result.replace("ts=", ""));
+    expect(ts).toBeGreaterThanOrEqual(before);
+    expect(ts).toBeLessThanOrEqual(after);
+  });
+
+  it("resolves {{$randomString}} to a non-empty alphanumeric string", () => {
+    const result = executor.testInterpolate("{{$randomString}}", {});
+    expect(result).toMatch(/^[a-z0-9]+$/);
+    expect(result.length).toBeGreaterThan(0);
+  });
+
+  it("resolves {{$randomNumber}} to a numeric string", () => {
+    const result = executor.testInterpolate("{{$randomNumber}}", {});
+    expect(Number(result)).not.toBeNaN();
+  });
+
+  it("resolves {{$uuid}} to a valid UUID v4", () => {
+    const result = executor.testInterpolate("id={{$uuid}}", {});
+    expect(result).toMatch(
+      /^id=[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+    );
+  });
+
+  it("generates different values for each {{$uuid}} occurrence", () => {
+    const result = executor.testInterpolate("{{$uuid}}|{{$uuid}}", {});
+    const [a, b] = result.split("|");
+    expect(a).not.toBe(b);
+  });
+
+  it("mixes built-in and user variables in the same string", () => {
+    const result = executor.testInterpolate(
+      "user={{name}},ts={{$timestamp}}",
+      { name: "Alice" }
+    );
+    expect(result).toMatch(/^user=Alice,ts=\d+$/);
+  });
 });
 
 // ============================================================

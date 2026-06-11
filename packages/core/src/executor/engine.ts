@@ -714,10 +714,16 @@ export class TestExecutor extends EventEmitter {
 
   /**
    * 문자열 내 변수를 치환합니다.
+   * PRD 부록 B: {{$timestamp}}, {{$randomString}}, {{$randomNumber}}, {{$uuid}} 지원
    */
   private interpolate(text: string, variables: Record<string, any>): string {
-    return text.replace(/\{\{(\w+)\}\}/g, (_, key) => {
-      return variables[key] ?? `{{${key}}}`;
+    return text.replace(/\{\{([\w$]+)\}\}/g, (match, key) => {
+      // Built-in variables (PRD Appendix B)
+      if (key === "$timestamp") return String(Date.now());
+      if (key === "$randomString") return Math.random().toString(36).slice(2, 10);
+      if (key === "$randomNumber") return String(Math.floor(Math.random() * 1000000));
+      if (key === "$uuid") return uuid();
+      return variables[key] !== undefined ? String(variables[key]) : match;
     });
   }
 
