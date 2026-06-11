@@ -41,6 +41,23 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 - **Scheduled Test Runs** (interval-based automation: 15m/30m/1h/3h/6h/12h/daily/weekly; background scheduler; manual trigger)
 - **Flaky Test Detection** (GET /api/scenarios/flaky; pass rate 10-90% threshold; Dashboard widget)
 - **Environment Profiles** (CRUD /api/environments; base URL + variable overrides; run-time environment selection; ScenarioEditor run dialog)
+- **Built-in Variables** ({{$timestamp}}, {{$randomString}}, {{$randomNumber}}, {{$uuid}} — PRD Appendix B; resolved in engine interpolate())
+
+## 최근 완료 (Session 75 - 2026-06-11)
+
+✅ **Built-in Variables** — Tests: 891 pass, 16 skip, 0 fail (+6 tests)
+
+**PRD Appendix B built-in variable support in test execution engine:**
+- `{{$timestamp}}` → current Unix timestamp in ms
+- `{{$randomString}}` → random 8-char alphanumeric string (Math.random().toString(36).slice(2,10))
+- `{{$randomNumber}}` → random integer 0–999,999
+- `{{$uuid}}` → UUID v4 (each occurrence generates a unique value)
+- Regex updated: `/\{\{(\w+)\}\}/g` → `/\{\{([\w$]+)\}\}/g` to capture `$` prefix
+- 6 new unit tests in engine.test.ts cover all four built-ins, uniqueness per occurrence, and mixed usage
+
+**Files changed:**
+- `packages/core/src/executor/engine.ts` — interpolate() method
+- `packages/core/src/executor/engine.test.ts` — 6 new tests
 
 ## 최근 완료 (Session 74 - 2026-06-11)
 
