@@ -43,6 +43,44 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 - **Environment Profiles** (CRUD /api/environments; base URL + variable overrides; run-time environment selection; ScenarioEditor run dialog)
 - **Built-in Variables** ({{$timestamp}}, {{$randomString}}, {{$randomNumber}}, {{$uuid}} — PRD Appendix B; resolved in engine interpolate())
 - **Nested Variable Paths** ({{response.data.id}}, {{items[0].name}} — PRD Appendix B; resolvePath() helper + extended regex in interpolate())
+- **Service Default Variables** (Service.defaultVariables — PRD Appendix B priority 4; propagated to engine buildVariables() + ServiceDetail UI editor)
+
+## 최근 완료 (Session 77 - 2026-06-12)
+
+✅ **Service Default Variables** — Tests: 908 pass, 16 skip, 0 fail (+9 tests)
+
+**PRD Appendix B variable priority chain completion:**
+- `defaultVariables?: Variable[]` field added to `serviceSchema` (optional in type)
+- Migration 0008: `ALTER TABLE services ADD COLUMN default_variables JSON DEFAULT '[]'`
+- `schema.ts` `servicesTable` updated with the new column
+- `RowConverter.toService()` parses `default_variables` JSON column
+- `createService/updateService/importService` persist `defaultVariables`
+- `getAllServicesWithStats` SELECT includes `sv.default_variables`
+- Engine `buildVariables(scenario, service, overrides)` — 3-level merge:
+  - Priority 4 (lowest): service.defaultVariables
+  - Priority 2: scenario.variables override service defaults
+  - Priority 1: run-level overrides take highest precedence
+- `ServiceDetail.tsx`: "서비스 기본 변수" card displays current vars + edit dialog (VariableEditor)
+- `api.ts`: `ServiceVariable` interface added
+- `backup.ts`: `importService` now includes `defaultVariables` field
+
+**Tests (+9):**
+- 5 route tests: create/get/update/list with defaultVariables
+- 5 engine unit tests: service defaults at lowest priority, scenario override, run override, 3-level merge, empty service vars
+
+**Files changed:**
+- `packages/core/src/types/index.ts` — variableSchema moved before serviceSchema; defaultVariables field added
+- `packages/core/src/executor/engine.ts` — buildVariables() with service param
+- `packages/core/src/executor/engine.test.ts` — testBuildVariables updated + 5 new tests
+- `packages/core/src/executor/script.integration.test.ts` — defaultVariables: [] added to mock service
+- `packages/server/src/db/migrations/0008_service_default_variables.sql` — new migration
+- `packages/server/src/db/schema.ts` — servicesTable updated
+- `packages/server/src/db/database.ts` — converter + CRUD + stats query
+- `packages/server/src/db/database.test.ts` — importService calls updated
+- `packages/server/src/routes/services.test.ts` — 5 new defaultVariables tests
+- `packages/server/src/routes/backup.ts` — importService call updated
+- `packages/web/src/lib/api.ts` — ServiceVariable interface
+- `packages/web/src/pages/ServiceDetail.tsx` — defaultVariables card + edit dialog
 
 ## 최근 완료 (Session 76 - 2026-06-12)
 
