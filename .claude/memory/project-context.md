@@ -44,6 +44,26 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 - **Built-in Variables** ({{$timestamp}}, {{$randomString}}, {{$randomNumber}}, {{$uuid}} — PRD Appendix B; resolved in engine interpolate())
 - **Nested Variable Paths** ({{response.data.id}}, {{items[0].name}} — PRD Appendix B; resolvePath() helper + extended regex in interpolate())
 - **Service Default Variables** (Service.defaultVariables — PRD Appendix B priority 4; propagated to engine buildVariables() + ServiceDetail UI editor)
+- **JUnit XML Export** (GET /api/runs/export?format=junit — standard CI/CD format; <testsuites> wrapping; <failure> elements for failed/cancelled; XML escaping; separate JUnit XML button in Runs page)
+
+## 최근 완료 (Session 78 - 2026-06-13)
+
+✅ **JUnit XML Export** — Tests: 915 pass, 16 skip, 0 fail (+7 tests)
+
+**GET /api/runs/export?format=junit** — new export format for CI/CD integration:
+- Extended `/api/runs/export` with `?format=junit|csv` (default: csv)
+- Generates valid JUnit XML: `<testsuites>` → `<testsuite>` → `<testcase>` per run
+- `<failure>` elements for failed/cancelled runs (includes status + step summary)
+- XML-escaped scenario names (handles `<`, `>`, `&`, `"`, `'`)
+- `tests/failures/errors` counts in testsuites/testsuite attributes
+- `time` attribute in seconds (float, 3 decimal places)
+- 7 new tests: content-type, XML skeleton, .xml filename, testcase count, failure elements, count accuracy, XML escaping
+- Frontend: renamed CSV button to just "CSV", added separate "JUnit XML" button in Runs page filter bar
+
+**Files changed:**
+- `packages/server/src/routes/runs.ts` — ?format=junit branch in /export handler
+- `packages/server/src/routes/runs.test.ts` — 7 new JUnit XML tests
+- `packages/web/src/pages/Runs.tsx` — triggerDownload() + separate JUnit XML button
 
 ## 최근 완료 (Session 77 - 2026-06-12)
 
