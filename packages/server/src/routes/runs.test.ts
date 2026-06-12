@@ -477,6 +477,78 @@ describe("GET /api/runs/export", () => {
   });
 });
 
+describe("GET /api/runs/export?format=junit", () => {
+  it("returns application/xml content-type", async () => {
+    const res = await req("GET", "/api/runs/export?format=junit");
+    expect(res.status).toBe(200);
+    const contentType = res.headers.get("content-type") ?? "";
+    expect(contentType).toContain("application/xml");
+  });
+
+  it("returns valid XML skeleton even when no runs exist", async () => {
+    const res = await req("GET", "/api/runs/export?format=junit");
+    const text = await res.text();
+    expect(text).toContain('<?xml version="1.0"');
+    expect(text).toContain("<testsuites");
+    expect(text).toContain("<testsuite");
+    expect(text).toContain('tests="0"');
+  });
+
+  it("sets .xml Content-Disposition filename", async () => {
+    const res = await req("GET", "/api/runs/export?format=junit");
+    const disposition = res.headers.get("content-disposition") ?? "";
+    expect(disposition).toContain("attachment");
+    expect(disposition).toContain("testforge-runs-");
+    expect(disposition).toContain(".xml");
+  });
+
+  it("includes a <testcase> per run", async () => {
+    await createTestRun("passed");
+    await createTestRun("failed");
+    const res = await req("GET", "/api/runs/export?format=junit");
+    const text = await res.text();
+    const testcaseCount = (text.match(/<testcase /g) ?? []).length;
+    expect(testcaseCount).toBe(2);
+  });
+
+  it("adds <failure> element for failed runs only", async () => {
+    await createTestRun("passed");
+    await createTestRun("failed");
+    const res = await req("GET", "/api/runs/export?format=junit");
+    const text = await res.text();
+    const failureCount = (text.match(/<failure /g) ?? []).length;
+    expect(failureCount).toBe(1);
+    expect(text).toContain('type="TestFailure"');
+  });
+
+  it("reflects correct tests/failures counts in testsuites element", async () => {
+    await createTestRun("passed");
+    await createTestRun("failed");
+    await createTestRun("failed");
+    const res = await req("GET", "/api/runs/export?format=junit");
+    const text = await res.text();
+    expect(text).toContain('tests="3"');
+    expect(text).toContain('failures="2"');
+  });
+
+  it("escapes XML special characters in scenario names", async () => {
+    const service = await db.createService({ name: "S", baseUrl: "https://x.com", defaultTimeout: 30000 });
+    const feature = await db.createFeature({ serviceId: service.id, name: "F", owners: [] });
+    await db.createScenario({ featureId: feature.id, name: 'Login <admin> & "root"', steps: [], variables: [], tags: [], priority: "medium" });
+    const scenario = (await db.getScenariosByFeature(feature.id))[0];
+    const { v4: uuidFn } = await import("uuid");
+    const runId = uuidFn();
+    const now = new Date();
+    await db.createTestRun({ id: runId, scenarioId: scenario.id, status: "passed", environment: { baseUrl: "https://x.com", variables: {} }, startedAt: now, createdAt: now });
+
+    const res = await req("GET", "/api/runs/export?format=junit");
+    const text = await res.text();
+    expect(text).toContain("&lt;admin&gt;");
+    expect(text).toContain("&amp;");
+    expect(text).toContain("&quot;root&quot;");
+  });
+});
+
 describe("GET /api/runs/:id", () => {
   it("returns a run by ID", async () => {
     const { runId } = await createTestRun("passed");

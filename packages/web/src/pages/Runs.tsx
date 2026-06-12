@@ -58,10 +58,11 @@ export default function Runs() {
     setPage(0);
   };
 
-  const handleExportCSV = () => {
+  const triggerDownload = (format: "csv" | "junit") => {
     const params = new URLSearchParams();
     if (serverStatus) params.set("status", serverStatus);
     if (serverFrom) params.set("from", serverFrom);
+    if (format === "junit") params.set("format", "junit");
     const qs = params.toString();
     const url = `/api/runs/export${qs ? `?${qs}` : ""}`;
     const a = document.createElement("a");
@@ -155,12 +156,21 @@ export default function Runs() {
         <Button
           variant="outline"
           size="sm"
-          onClick={handleExportCSV}
+          onClick={() => triggerDownload("csv")}
           className="ml-auto"
           title="현재 필터 조건으로 CSV 내보내기"
         >
           <Download className="h-4 w-4 mr-1" />
-          CSV 내보내기
+          CSV
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => triggerDownload("junit")}
+          title="JUnit XML 형식으로 내보내기 (CI/CD 연동용)"
+        >
+          <Download className="h-4 w-4 mr-1" />
+          JUnit XML
         </Button>
         <span className="text-sm text-gray-500">
           {searchQuery.trim()

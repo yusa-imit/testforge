@@ -58,9 +58,10 @@ const app = new Hono()
     });
   })
 
-  // GET /api/runs/export - CSV 다운로드 (all filters supported)
+  // GET /api/runs/export - 다운로드 (CSV 또는 JUnit XML, ?format=junit|csv)
   .get("/export", async (c) => {
     const db = await getDB();
+    const format = c.req.query("format") || "csv";
     const scenarioId = c.req.query("scenarioId") || undefined;
     const status = c.req.query("status") || undefined;
     const featureId = c.req.query("featureId") || undefined;
@@ -71,7 +72,56 @@ const app = new Hono()
     const to = toParam ? new Date(toParam) : undefined;
 
     const runs = await db.getAllTestRuns(10000, { scenarioId, status, featureId, serviceId, from, to }, 0);
+    const dateStr = new Date().toISOString().slice(0, 10);
 
+    if (format === "junit") {
+      const escapeXml = (str: string): string =>
+        str
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&apos;");
+
+      const totalTests = runs.length;
+      const totalFailures = runs.filter((r) => r.status === "failed" || r.status === "cancelled").length;
+      const totalTime = runs.reduce((acc, r) => acc + (r.duration ?? 0), 0) / 1000;
+
+      const testcases = runs.map((run) => {
+        const name = escapeXml((run as any).scenarioName ?? run.scenarioId);
+        const timeS = ((run.duration ?? 0) / 1000).toFixed(3);
+        const timestamp = (run.startedAt ?? run.createdAt).toISOString();
+        const failed = run.status === "failed" || run.status === "cancelled";
+        const failureEl = failed
+          ? `      <failure message="${escapeXml(`Run ${run.status}`)}" type="TestFailure">` +
+            `Status: ${run.status}` +
+            (run.summary ? `&#10;Steps: ${run.summary.totalSteps} total, ${run.summary.passedSteps} passed, ${run.summary.failedSteps} failed` : "") +
+            `</failure>\n`
+          : "";
+        return (
+          `    <testcase name="${name}" classname="${name}" time="${timeS}" timestamp="${timestamp}">\n` +
+          failureEl +
+          `    </testcase>`
+        );
+      });
+
+      const xml =
+        `<?xml version="1.0" encoding="UTF-8"?>\n` +
+        `<testsuites name="TestForge" tests="${totalTests}" failures="${totalFailures}" errors="0" time="${totalTime.toFixed(3)}">\n` +
+        `  <testsuite name="TestForge Run Export" tests="${totalTests}" failures="${totalFailures}" errors="0" time="${totalTime.toFixed(3)}" timestamp="${new Date().toISOString()}">\n` +
+        testcases.join("\n") + "\n" +
+        `  </testsuite>\n` +
+        `</testsuites>`;
+
+      return new Response(xml, {
+        headers: {
+          "Content-Type": "application/xml; charset=utf-8",
+          "Content-Disposition": `attachment; filename="testforge-runs-${dateStr}.xml"`,
+        },
+      });
+    }
+
+    // Default: CSV
     const escapeCSV = (val: unknown): string => {
       if (val === null || val === undefined) return "";
       const str = String(val);
@@ -107,12 +157,11 @@ const app = new Hono()
     );
 
     const csv = [header.join(","), ...rows].join("\n");
-    const filename = `testforge-runs-${new Date().toISOString().slice(0, 10)}.csv`;
 
     return new Response(csv, {
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": `attachment; filename="${filename}"`,
+        "Content-Disposition": `attachment; filename="testforge-runs-${dateStr}.csv"`,
       },
     });
   })
