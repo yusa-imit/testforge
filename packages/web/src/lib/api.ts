@@ -473,6 +473,13 @@ export async function getFlakyScenarios(minRuns = 3, days = 30): Promise<FlakySc
 
 // ── Environment Profiles ─────────────────────────────────────────────────────
 
+export interface ServiceVariable {
+  name: string;
+  type: "string" | "number" | "boolean" | "json";
+  defaultValue?: unknown;
+  description?: string;
+}
+
 export interface Environment {
   id: string;
   name: string;

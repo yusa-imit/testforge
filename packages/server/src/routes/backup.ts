@@ -222,6 +222,7 @@ backup.post("/import", zValidator("json", importSchema), async (c) => {
           description: service.description,
           baseUrl: service.baseUrl,
           defaultTimeout: service.defaultTimeout ?? 30000,
+          defaultVariables: service.defaultVariables ?? [],
           createdAt: new Date(service.createdAt ?? Date.now()),
           updatedAt: new Date(service.updatedAt ?? Date.now()),
         });

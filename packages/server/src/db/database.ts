@@ -116,6 +116,9 @@ class RowConverter {
       description: row.description,
       baseUrl: row.base_url,
       defaultTimeout: row.default_timeout,
+      defaultVariables: row.default_variables
+        ? (typeof row.default_variables === "string" ? JSON.parse(row.default_variables) : row.default_variables)
+        : [],
       createdAt: new Date(row.created_at),
       updatedAt: new Date(row.updated_at),
     };
@@ -328,9 +331,10 @@ export class DuckDBDatabase {
     const now = new Date();
 
     await this.db.run(
-      `INSERT INTO services (id, name, description, base_url, default_timeout, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [id, data.name, data.description ?? null, data.baseUrl, data.defaultTimeout ?? 30000, now, now]
+      `INSERT INTO services (id, name, description, base_url, default_timeout, default_variables, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, data.name, data.description ?? null, data.baseUrl, data.defaultTimeout ?? 30000,
+       JSON.stringify(data.defaultVariables ?? []), now, now]
     );
 
     const row = await this.db.get("SELECT * FROM services WHERE id = ?", [id]);
@@ -350,7 +354,7 @@ export class DuckDBDatabase {
   async getAllServicesWithStats(): Promise<ServiceWithStats[]> {
     const rows = await this.db.all(
       `SELECT
-         sv.id, sv.name, sv.description, sv.base_url, sv.default_timeout, sv.created_at, sv.updated_at,
+         sv.id, sv.name, sv.description, sv.base_url, sv.default_timeout, sv.default_variables, sv.created_at, sv.updated_at,
          COALESCE(fc.feature_count, 0) AS feature_count,
          COALESCE(sc.scenario_count, 0) AS scenario_count,
          lr.last_run_id, lr.last_run_status, lr.last_run_at
@@ -405,6 +409,10 @@ export class DuckDBDatabase {
       updates.push("default_timeout = ?");
       params.push(data.defaultTimeout);
     }
+    if (data.defaultVariables !== undefined) {
+      updates.push("default_variables = ?");
+      params.push(JSON.stringify(data.defaultVariables));
+    }
 
     updates.push("updated_at = ?");
     params.push(new Date());
@@ -428,9 +436,10 @@ export class DuckDBDatabase {
 
   async importService(data: Service): Promise<Service> {
     await this.db.run(
-      `INSERT INTO services (id, name, description, base_url, default_timeout, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO services (id, name, description, base_url, default_timeout, default_variables, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [data.id, data.name, data.description ?? null, data.baseUrl, data.defaultTimeout ?? 30000,
+       JSON.stringify(data.defaultVariables ?? []),
        new Date(data.createdAt), new Date(data.updatedAt)]
     );
     const row = await this.db.get("SELECT * FROM services WHERE id = ?", [data.id]);

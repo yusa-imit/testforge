@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { ko } from "date-fns/locale";
+import type { Variable } from "@testforge/core";
 import { getService, getFeatures, api, runService, getServiceStats } from "../lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "../hooks/use-toast";
+import { VariableEditor } from "../components/VariableEditor";
 
 function FeatureLastRunBadge({ status, at }: { status: string | null; at: string | null }) {
   if (!status) return <span className="text-xs text-muted-foreground">미실행</span>;
@@ -37,6 +39,8 @@ export default function ServiceDetail() {
   const { toast } = useToast();
   const [isCreating, setIsCreating] = useState(false);
   const [featureName, setFeatureName] = useState("");
+  const [isEditingVars, setIsEditingVars] = useState(false);
+  const [editVars, setEditVars] = useState<Variable[]>([]);
 
   const { data: serviceData, isLoading: serviceLoading } = useQuery({
     queryKey: ["service", id],
@@ -90,6 +94,24 @@ export default function ServiceDetail() {
     },
   });
 
+  const updateVarsMutation = useMutation({
+    mutationFn: async (vars: Variable[]) => {
+      const res = await api.api.services[":id"].$put({
+        param: { id: id! },
+        json: { defaultVariables: vars } as any,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["service", id] });
+      setIsEditingVars(false);
+      toast({ title: "저장됨", description: "서비스 기본 변수가 업데이트되었습니다." });
+    },
+    onError: () => {
+      toast({ title: "오류", description: "변수 저장에 실패했습니다.", variant: "destructive" });
+    },
+  });
+
   if (serviceLoading || featuresLoading) {
     return <div className="text-center py-12">로딩 중...</div>;
   }
@@ -126,6 +148,63 @@ export default function ServiceDetail() {
           </p>
         </CardContent>
       </Card>
+
+      {/* Service Default Variables (PRD Appendix B — priority 4 in variable resolution) */}
+      <Card>
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-medium">서비스 기본 변수</CardTitle>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setEditVars((service as any).defaultVariables ?? []);
+                setIsEditingVars(true);
+              }}
+            >
+              편집
+            </Button>
+          </div>
+          <CardDescription className="text-xs">
+            이 서비스의 모든 시나리오에 기본 적용되는 변수 (시나리오/실행 변수로 재정의 가능)
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {((service as any).defaultVariables ?? []).length === 0 ? (
+            <p className="text-xs text-muted-foreground">설정된 기본 변수가 없습니다.</p>
+          ) : (
+            <div className="space-y-1">
+              {((service as any).defaultVariables as Variable[]).map((v) => (
+                <div key={v.name} className="flex items-center gap-2 text-xs">
+                  <code className="bg-muted px-1.5 py-0.5 rounded font-mono">{`{{${v.name}}}`}</code>
+                  <span className="text-muted-foreground">=</span>
+                  <span className="font-medium">{v.defaultValue !== undefined ? String(v.defaultValue) : "(없음)"}</span>
+                  <span className="text-muted-foreground ml-auto">{v.type}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Edit Default Variables Dialog */}
+      <Dialog open={isEditingVars} onOpenChange={setIsEditingVars}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>서비스 기본 변수 편집</DialogTitle>
+          </DialogHeader>
+          <VariableEditor variables={editVars} onChange={setEditVars} />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditingVars(false)}>취소</Button>
+            <Button
+              onClick={() => updateVarsMutation.mutate(editVars)}
+              disabled={updateVarsMutation.isPending}
+            >
+              {updateVarsMutation.isPending ? "저장 중..." : "저장"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Service Run Stats */}
       {serviceStatsData?.data && serviceStatsData.data.totalRuns > 0 && (() => {

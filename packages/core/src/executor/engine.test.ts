@@ -37,10 +37,11 @@ class TestExecutorTestable extends TestExecutor {
 
   public testBuildVariables(
     scenario: Pick<Scenario, "variables">,
-    overrides: Record<string, unknown>
+    overrides: Record<string, unknown>,
+    serviceDefaults?: { name: string; defaultValue: unknown }[]
   ) {
     // @ts-expect-error accessing private method for testing
-    return this.buildVariables(scenario, overrides);
+    return this.buildVariables(scenario, { defaultVariables: serviceDefaults ?? [] }, overrides);
   }
 }
 
@@ -397,6 +398,40 @@ describe("TestExecutor.buildVariables", () => {
   it("returns empty object when no variables and no overrides", () => {
     const scenario = { variables: [] };
     expect(executor.testBuildVariables(scenario, {})).toEqual({});
+  });
+
+  it("includes service default variables at lowest priority", () => {
+    const scenario = { variables: [] };
+    const serviceDefaults = [{ name: "apiKey", defaultValue: "svc-key", type: "string" as const }];
+    const result = executor.testBuildVariables(scenario, {}, serviceDefaults);
+    expect(result).toEqual({ apiKey: "svc-key" });
+  });
+
+  it("scenario variables override service default variables", () => {
+    const scenario = {
+      variables: [{ name: "apiKey", type: "string" as const, defaultValue: "scenario-key" }],
+    };
+    const serviceDefaults = [{ name: "apiKey", defaultValue: "svc-key", type: "string" as const }];
+    const result = executor.testBuildVariables(scenario, {}, serviceDefaults);
+    expect(result).toEqual({ apiKey: "scenario-key" });
+  });
+
+  it("run-level overrides take highest priority over scenario and service defaults", () => {
+    const scenario = {
+      variables: [{ name: "apiKey", type: "string" as const, defaultValue: "scenario-key" }],
+    };
+    const serviceDefaults = [{ name: "apiKey", defaultValue: "svc-key", type: "string" as const }];
+    const result = executor.testBuildVariables(scenario, { apiKey: "override-key" }, serviceDefaults);
+    expect(result).toEqual({ apiKey: "override-key" });
+  });
+
+  it("merges all three levels correctly", () => {
+    const scenario = {
+      variables: [{ name: "scenarioVar", type: "string" as const, defaultValue: "sc" }],
+    };
+    const serviceDefaults = [{ name: "svcVar", defaultValue: "sv", type: "string" as const }];
+    const result = executor.testBuildVariables(scenario, { runVar: "rv" }, serviceDefaults);
+    expect(result).toEqual({ svcVar: "sv", scenarioVar: "sc", runVar: "rv" });
   });
 });
 

@@ -358,3 +358,66 @@ describe("GET /api/services/:id/stats", () => {
     expect(body.data.totalRuns).toBe(1);
   });
 });
+
+// ============================================================
+// defaultVariables: PRD Appendix B — service-level variable defaults
+// ============================================================
+describe("Service defaultVariables", () => {
+  it("creates service with defaultVariables and returns them", async () => {
+    const res = await req("POST", "/api/services", {
+      name: "Var Service",
+      baseUrl: "https://example.com",
+      defaultVariables: [
+        { name: "apiKey", type: "string", defaultValue: "secret-123" },
+        { name: "retries", type: "number", defaultValue: 3 },
+      ],
+    });
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as any;
+    expect(body.data.defaultVariables).toHaveLength(2);
+    expect(body.data.defaultVariables[0].name).toBe("apiKey");
+    expect(body.data.defaultVariables[0].defaultValue).toBe("secret-123");
+  });
+
+  it("defaults to empty array when not provided", async () => {
+    const res = await req("POST", "/api/services", servicePayload);
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as any;
+    expect(body.data.defaultVariables).toEqual([]);
+  });
+
+  it("returns defaultVariables in GET /api/services/:id", async () => {
+    const svc = await db.createService({
+      ...servicePayload,
+      defaultVariables: [{ name: "env", type: "string", defaultValue: "staging" }],
+    });
+    const res = await req("GET", `/api/services/${svc.id}`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.data.defaultVariables).toHaveLength(1);
+    expect(body.data.defaultVariables[0].name).toBe("env");
+  });
+
+  it("updates defaultVariables via PUT", async () => {
+    const svc = await db.createService(servicePayload);
+    const res = await req("PUT", `/api/services/${svc.id}`, {
+      defaultVariables: [{ name: "timeout", type: "number", defaultValue: 5000 }],
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.data.defaultVariables).toHaveLength(1);
+    expect(body.data.defaultVariables[0].name).toBe("timeout");
+  });
+
+  it("returns defaultVariables in GET /api/services list", async () => {
+    await db.createService({
+      ...servicePayload,
+      defaultVariables: [{ name: "region", type: "string", defaultValue: "us-east-1" }],
+    });
+    const res = await req("GET", "/api/services");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.data[0].defaultVariables).toHaveLength(1);
+    expect(body.data[0].defaultVariables[0].name).toBe("region");
+  });
+});

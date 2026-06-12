@@ -1,6 +1,19 @@
 import { z } from "zod";
 
 // ============================================
+// Variable - 시나리오에서 사용할 변수 (정의 순서 주의: Service보다 먼저)
+// ============================================
+
+export const variableSchema = z.object({
+  name: z.string().min(1),
+  type: z.enum(["string", "number", "boolean", "json"]),
+  defaultValue: z.any().optional(),
+  description: z.string().optional(),
+});
+
+export type Variable = z.infer<typeof variableSchema>;
+
+// ============================================
 // Service - 테스트 대상 애플리케이션의 최상위 단위
 // ============================================
 
@@ -10,6 +23,7 @@ export const serviceSchema = z.object({
   description: z.string().optional(),
   baseUrl: z.string().url(),
   defaultTimeout: z.number().default(30000),
+  defaultVariables: z.array(variableSchema).optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
 });
@@ -47,19 +61,6 @@ export const createFeatureSchema = featureSchema.omit({
 });
 
 export type CreateFeature = z.infer<typeof createFeatureSchema>;
-
-// ============================================
-// Variable - 시나리오에서 사용할 변수
-// ============================================
-
-export const variableSchema = z.object({
-  name: z.string().min(1),
-  type: z.enum(["string", "number", "boolean", "json"]),
-  defaultValue: z.any().optional(),
-  description: z.string().optional(),
-});
-
-export type Variable = z.infer<typeof variableSchema>;
 
 // ============================================
 // Locator Strategy - 다층 셀렉터 전략

@@ -16,6 +16,7 @@ describe("Script Step Integration", () => {
     baseUrl: "data:text/html,<html><body><h1>Test Page</h1></body></html>",
     description: "Test service for script steps",
     defaultTimeout: 30000,
+    defaultVariables: [],
     createdAt: new Date(),
     updatedAt: new Date(),
   });

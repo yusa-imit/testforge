@@ -17,6 +17,7 @@ export const servicesTable = `
     description VARCHAR,
     base_url VARCHAR NOT NULL,
     default_timeout INTEGER DEFAULT 30000,
+    default_variables JSON DEFAULT '[]',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   )

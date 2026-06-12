@@ -103,7 +103,7 @@ export class TestExecutor extends EventEmitter {
       status: "running",
       environment: {
         baseUrl: service.baseUrl,
-        variables: { ...this.buildVariables(scenario, variables) },
+        variables: { ...this.buildVariables(scenario, service, variables) },
       },
       createdAt: new Date(),
       startedAt: new Date(),
@@ -698,17 +698,29 @@ export class TestExecutor extends EventEmitter {
 
   /**
    * 변수를 빌드합니다.
+   * PRD Appendix B 변수 우선순위 (낮음 → 높음):
+   *   4. 서비스 기본 변수 (Service.defaultVariables)
+   *   2. 시나리오 변수 (Scenario.variables)
+   *   1. 실행 시 재정의 (overrides)
    */
   private buildVariables(
-    scenario: Scenario,
+    scenario: Pick<Scenario, "variables">,
+    service: Pick<Service, "defaultVariables">,
     overrides: Record<string, any>
   ): Record<string, any> {
     const vars: Record<string, any> = {};
 
+    // Priority 4 (lowest): service default variables
+    for (const variable of service.defaultVariables ?? []) {
+      vars[variable.name] = variable.defaultValue;
+    }
+
+    // Priority 2: scenario variables override service defaults
     for (const variable of scenario.variables) {
       vars[variable.name] = variable.defaultValue;
     }
 
+    // Priority 1 (highest non-step): run-level overrides
     return { ...vars, ...overrides };
   }
 

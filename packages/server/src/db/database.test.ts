@@ -2019,6 +2019,7 @@ describe("DuckDBDatabase - Import Methods", () => {
       description: "From backup",
       baseUrl: "https://example.com",
       defaultTimeout: 5000,
+      defaultVariables: [],
       createdAt: originalCreatedAt,
       updatedAt: originalUpdatedAt,
     });
@@ -2041,6 +2042,7 @@ describe("DuckDBDatabase - Import Methods", () => {
       name: "Parent Service",
       baseUrl: "https://example.com",
       defaultTimeout: 30000,
+      defaultVariables: [],
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -2074,6 +2076,7 @@ describe("DuckDBDatabase - Import Methods", () => {
       name: "Service",
       baseUrl: "https://example.com",
       defaultTimeout: 30000,
+      defaultVariables: [],
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -2099,6 +2102,7 @@ describe("DuckDBDatabase - Import Methods", () => {
       name: "Service",
       baseUrl: "https://example.com",
       defaultTimeout: 30000,
+      defaultVariables: [],
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -2173,6 +2177,7 @@ describe("DuckDBDatabase - Import Methods", () => {
       name: "Root Service",
       baseUrl: "https://example.com",
       defaultTimeout: 30000,
+      defaultVariables: [],
       createdAt: new Date(),
       updatedAt: new Date(),
     });
