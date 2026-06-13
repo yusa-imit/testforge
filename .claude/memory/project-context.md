@@ -46,6 +46,25 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 - **Service Default Variables** (Service.defaultVariables — PRD Appendix B priority 4; propagated to engine buildVariables() + ServiceDetail UI editor)
 - **JUnit XML Export** (GET /api/runs/export?format=junit — standard CI/CD format; <testsuites> wrapping; <failure> elements for failed/cancelled; XML escaping; separate JUnit XML button in Runs page)
 - **Run by Tag** (POST /api/scenarios/run-by-tag — batch execute all scenarios with a given tag, optional featureId/serviceId scope; FeatureDetail "tag 실행" button when tag filter active)
+- **Scenario Move** (PUT /api/scenarios/:id/move — move scenario to different feature; service+feature picker dialog in ScenarioEditor; "이동" button)
+
+## 최근 완료 (Session 80 - 2026-06-14)
+
+✅ **Scenario Move** — Tests: 925 pass, 16 skip, 0 fail (+4 tests)
+
+**PUT /api/scenarios/:id/move** — reorganize scenarios between features:
+- Body: `{ featureId: string }` (UUID required)
+- `moveScenario(id, newFeatureId)` DB method: validates scenario exists, updates feature_id + version
+- Route validates both scenario and target feature exist before calling DB method
+- 4 tests: basic move, target list verification, unknown scenario 404, unknown feature 404
+- Frontend: `moveScenario()` in api.ts; "이동" button (FolderInput icon) + service/feature picker dialog in ScenarioEditor
+
+**Files changed:**
+- `packages/server/src/db/database.ts` — moveScenario method
+- `packages/server/src/routes/scenarios.ts` — moveScenarioSchema + PUT /:id/move route
+- `packages/server/src/routes/scenarios.test.ts` — 4 new tests
+- `packages/web/src/lib/api.ts` — moveScenario() function
+- `packages/web/src/pages/ScenarioEditor.tsx` — move button + dialog with service/feature pickers
 
 ## 최근 완료 (Session 79 - 2026-06-13)
 
