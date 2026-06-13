@@ -17,6 +17,10 @@ const runByTagSchema = z.object({
   serviceId: z.string().optional(),
 });
 
+const moveScenarioSchema = z.object({
+  featureId: z.string().uuid(),
+});
+
 const app = new Hono()
   // GET /api/scenarios - 전체 시나리오 목록 (스케줄 드롭다운 등에서 사용)
   .get("/", async (c) => {
@@ -212,6 +216,22 @@ const app = new Hono()
       },
       202
     );
+  })
+
+  // PUT /api/scenarios/:id/move - 시나리오를 다른 기능으로 이동
+  .put("/:id/move", zValidator("json", moveScenarioSchema), async (c) => {
+    const db = await getDB();
+    const id = c.req.param("id");
+    const { featureId } = c.req.valid("json");
+
+    const scenario = await db.getScenario(id);
+    if (!scenario) throw notFound("Scenario", id);
+
+    const feature = await db.getFeature(featureId);
+    if (!feature) throw notFound("Feature", featureId);
+
+    const moved = await db.moveScenario(id, featureId);
+    return c.json({ success: true, data: moved });
   })
 
   // GET /api/scenarios/:id/runs - 시나리오 실행 이력

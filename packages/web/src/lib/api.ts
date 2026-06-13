@@ -172,6 +172,14 @@ export async function duplicateScenario(id: string) {
   return res.json();
 }
 
+export async function moveScenario(id: string, featureId: string) {
+  const res = await axiosClient.put<{ success: boolean; data: { featureId: string } }>(
+    `/scenarios/${id}/move`,
+    { featureId }
+  );
+  return res.data;
+}
+
 export async function cancelRun(id: string) {
   const res = await api.api.runs[":id"].$delete({ param: { id } });
   return res.json();
@@ -543,4 +551,5 @@ export async function updateEnvironment(
 export async function deleteEnvironment(id: string): Promise<void> {
   await axiosClient.delete(`/environments/${id}`);
 }
+
 

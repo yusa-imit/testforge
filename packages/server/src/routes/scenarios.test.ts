@@ -808,3 +808,57 @@ describe("POST /api/scenarios/run-by-tag", () => {
     expect(res.status).toBe(400);
   });
 });
+
+// ──────────────────────────────────────────────────────────────────────────────
+// PUT /api/scenarios/:id/move
+// ──────────────────────────────────────────────────────────────────────────────
+
+describe("PUT /api/scenarios/:id/move", () => {
+  it("moves a scenario to a different feature", async () => {
+    const service = await createService();
+    const featureA = await createFeature(service.id);
+    const featureB = await createFeature(service.id);
+    const scenario = await createScenario(featureA.id, "Move Me");
+
+    const res = await req("PUT", `/api/scenarios/${scenario.id}/move`, { featureId: featureB.id });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.success).toBe(true);
+    expect(body.data.featureId).toBe(featureB.id);
+    expect(body.data.id).toBe(scenario.id);
+  });
+
+  it("scenario appears in target feature's scenario list after move", async () => {
+    const service = await createService();
+    const featureA = await createFeature(service.id);
+    const featureB = await createFeature(service.id);
+    const scenario = await createScenario(featureA.id, "Moved Scenario");
+
+    await req("PUT", `/api/scenarios/${scenario.id}/move`, { featureId: featureB.id });
+
+    const res = await req("GET", `/api/features/${featureB.id}/scenarios`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    const ids = body.data.map((s: any) => s.id);
+    expect(ids).toContain(scenario.id);
+  });
+
+  it("returns 404 when scenario does not exist", async () => {
+    const service = await createService();
+    const feature = await createFeature(service.id);
+    const res = await req("PUT", `/api/scenarios/${uuid()}/move`, { featureId: feature.id });
+    expect(res.status).toBe(404);
+    const body = (await res.json()) as any;
+    expect(body.error.code).toBe("NOT_FOUND");
+  });
+
+  it("returns 404 when target feature does not exist", async () => {
+    const service = await createService();
+    const feature = await createFeature(service.id);
+    const scenario = await createScenario(feature.id, "Move Me");
+    const res = await req("PUT", `/api/scenarios/${scenario.id}/move`, { featureId: uuid() });
+    expect(res.status).toBe(404);
+    const body = (await res.json()) as any;
+    expect(body.error.code).toBe("NOT_FOUND");
+  });
+});

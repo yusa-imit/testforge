@@ -807,6 +807,18 @@ export class DuckDBDatabase {
     return this.getScenario(newId);
   }
 
+  async moveScenario(id: string, newFeatureId: string): Promise<Scenario | undefined> {
+    const scenario = await this.getScenario(id);
+    if (!scenario) return undefined;
+
+    await this.db.run(
+      "UPDATE scenarios SET feature_id = ?, version = version + 1, updated_at = ? WHERE id = ?",
+      [newFeatureId, new Date(), id]
+    );
+
+    return this.getScenario(id);
+  }
+
   // ============================================
   // Components
   // ============================================
