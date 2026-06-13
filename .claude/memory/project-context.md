@@ -45,6 +45,27 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 - **Nested Variable Paths** ({{response.data.id}}, {{items[0].name}} — PRD Appendix B; resolvePath() helper + extended regex in interpolate())
 - **Service Default Variables** (Service.defaultVariables — PRD Appendix B priority 4; propagated to engine buildVariables() + ServiceDetail UI editor)
 - **JUnit XML Export** (GET /api/runs/export?format=junit — standard CI/CD format; <testsuites> wrapping; <failure> elements for failed/cancelled; XML escaping; separate JUnit XML button in Runs page)
+- **Run by Tag** (POST /api/scenarios/run-by-tag — batch execute all scenarios with a given tag, optional featureId/serviceId scope; FeatureDetail "tag 실행" button when tag filter active)
+
+## 최근 완료 (Session 79 - 2026-06-13)
+
+✅ **Run Scenarios by Tag** — Tests: 921 pass, 16 skip, 0 fail (+6 tests)
+
+**POST /api/scenarios/run-by-tag** — batch CI/CD smoke test trigger:
+- Body: `{ tag: string, featureId?: string, serviceId?: string }` for scoped execution
+- `getScenariosByTag()` DB method: JOIN with features, `list_contains(tags, ?)` filter, optional featureId/serviceId scope
+- Batch-fetches unique services to avoid N+1 queries
+- Returns `{ tag, count, runs: [{ scenarioId, scenarioName, runId }] }`
+- 6 tests: basic tag run, empty result, featureId scope, serviceId scope, missing tag, empty tag
+- Frontend: `runScenariosByTag()` + `TagRunResult` interface in api.ts
+- FeatureDetail: `runByTagMutation` + "tag 실행 (N)" button shown when tagFilter active
+
+**Files changed:**
+- `packages/server/src/db/database.ts` — getScenariosByTag method
+- `packages/server/src/routes/scenarios.ts` — runByTagSchema + POST /run-by-tag route
+- `packages/server/src/routes/scenarios.test.ts` — 6 new tests
+- `packages/web/src/lib/api.ts` — runScenariosByTag() + TagRunResult interface
+- `packages/web/src/pages/FeatureDetail.tsx` — runByTagMutation + tag run button
 
 ## 최근 완료 (Session 78 - 2026-06-13)
 
