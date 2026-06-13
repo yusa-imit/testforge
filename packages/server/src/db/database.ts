@@ -673,6 +673,33 @@ export class DuckDBDatabase {
     return rows.map(RowConverter.toScenario);
   }
 
+  async getScenariosByTag(
+    tag: string,
+    filters?: { featureId?: string; serviceId?: string }
+  ): Promise<Array<Scenario & { serviceId: string }>> {
+    const conditions: string[] = ["list_contains(s.tags, ?)"];
+    const params: any[] = [tag];
+
+    if (filters?.featureId) {
+      conditions.push("s.feature_id = ?");
+      params.push(filters.featureId);
+    }
+    if (filters?.serviceId) {
+      conditions.push("f.service_id = ?");
+      params.push(filters.serviceId);
+    }
+
+    const rows = await this.db.all(
+      `SELECT s.*, f.service_id AS service_id
+       FROM scenarios s
+       JOIN features f ON s.feature_id = f.id
+       WHERE ${conditions.join(" AND ")}
+       ORDER BY s.created_at DESC`,
+      params
+    );
+    return rows.map((row) => ({ ...RowConverter.toScenario(row), serviceId: row.service_id as string }));
+  }
+
   async updateScenario(id: string, data: Partial<CreateScenario>): Promise<Scenario | undefined> {
     const existing = await this.getScenario(id);
     if (!existing) return undefined;

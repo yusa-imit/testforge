@@ -728,3 +728,83 @@ describe("GET /api/scenarios/flaky", () => {
     expect(found.lastRunAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
   });
 });
+
+// ──────────────────────────────────────────────────────────────────────────────
+// POST /api/scenarios/run-by-tag
+// ──────────────────────────────────────────────────────────────────────────────
+
+describe("POST /api/scenarios/run-by-tag", () => {
+  async function createTaggedScenario(featureId: string, name: string, tags: string[]) {
+    return db.createScenario({ featureId, name, steps: [], priority: "medium", tags, variables: [] });
+  }
+
+  it("returns 202 and run entries for matching tagged scenarios", async () => {
+    const service = await createService();
+    const feature = await createFeature(service.id);
+    await createTaggedScenario(feature.id, "Smoke A", ["smoke", "login"]);
+    await createTaggedScenario(feature.id, "Smoke B", ["smoke"]);
+    await createTaggedScenario(feature.id, "Regression Only", ["regression"]);
+
+    const res = await req("POST", "/api/scenarios/run-by-tag", { tag: "smoke" });
+    expect(res.status).toBe(202);
+    const body = (await res.json()) as any;
+    expect(body.success).toBe(true);
+    expect(body.data.tag).toBe("smoke");
+    expect(body.data.count).toBe(2);
+    expect(body.data.runs).toHaveLength(2);
+    expect(body.data.runs[0]).toHaveProperty("scenarioId");
+    expect(body.data.runs[0]).toHaveProperty("scenarioName");
+    expect(body.data.runs[0]).toHaveProperty("runId");
+  });
+
+  it("returns empty runs when no scenarios match the tag", async () => {
+    const service = await createService();
+    const feature = await createFeature(service.id);
+    await createTaggedScenario(feature.id, "Regression", ["regression"]);
+
+    const res = await req("POST", "/api/scenarios/run-by-tag", { tag: "smoke" });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.data.count).toBe(0);
+    expect(body.data.runs).toHaveLength(0);
+  });
+
+  it("scopes run to featureId when provided", async () => {
+    const service = await createService();
+    const featureA = await createFeature(service.id);
+    const featureB = await createFeature(service.id);
+    await createTaggedScenario(featureA.id, "A-Smoke", ["smoke"]);
+    await createTaggedScenario(featureB.id, "B-Smoke", ["smoke"]);
+
+    const res = await req("POST", "/api/scenarios/run-by-tag", { tag: "smoke", featureId: featureA.id });
+    expect(res.status).toBe(202);
+    const body = (await res.json()) as any;
+    expect(body.data.count).toBe(1);
+    expect(body.data.runs[0].scenarioName).toBe("A-Smoke");
+  });
+
+  it("scopes run to serviceId when provided", async () => {
+    const serviceA = await createService();
+    const serviceB = await createService();
+    const featureA = await createFeature(serviceA.id);
+    const featureB = await createFeature(serviceB.id);
+    await createTaggedScenario(featureA.id, "A-Smoke", ["smoke"]);
+    await createTaggedScenario(featureB.id, "B-Smoke", ["smoke"]);
+
+    const res = await req("POST", "/api/scenarios/run-by-tag", { tag: "smoke", serviceId: serviceA.id });
+    expect(res.status).toBe(202);
+    const body = (await res.json()) as any;
+    expect(body.data.count).toBe(1);
+    expect(body.data.runs[0].scenarioName).toBe("A-Smoke");
+  });
+
+  it("returns 400 when tag is missing", async () => {
+    const res = await req("POST", "/api/scenarios/run-by-tag", {});
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 when tag is an empty string", async () => {
+    const res = await req("POST", "/api/scenarios/run-by-tag", { tag: "" });
+    expect(res.status).toBe(400);
+  });
+});

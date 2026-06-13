@@ -11,6 +11,12 @@ const runScenarioSchema = z.object({
   environmentId: z.string().optional(),
 });
 
+const runByTagSchema = z.object({
+  tag: z.string().min(1),
+  featureId: z.string().optional(),
+  serviceId: z.string().optional(),
+});
+
 const app = new Hono()
   // GET /api/scenarios - 전체 시나리오 목록 (스케줄 드롭다운 등에서 사용)
   .get("/", async (c) => {
@@ -28,6 +34,50 @@ const app = new Hono()
     const days = isNaN(daysRaw) || daysRaw < 1 ? 30 : Math.min(daysRaw, 365);
     const scenarios = await db.getFlakyScenarios(minRuns, days);
     return c.json({ success: true, data: scenarios });
+  })
+
+  // POST /api/scenarios/run-by-tag - 태그로 시나리오 일괄 실행
+  .post("/run-by-tag", zValidator("json", runByTagSchema), async (c) => {
+    const db = await getDB();
+    const { tag, featureId, serviceId } = c.req.valid("json");
+
+    const scenariosWithCtx = await db.getScenariosByTag(tag, { featureId, serviceId });
+
+    if (scenariosWithCtx.length === 0) {
+      return c.json({
+        success: true,
+        data: { tag, count: 0, runs: [], message: "No scenarios found with this tag." },
+      });
+    }
+
+    // Batch-fetch unique services to avoid N+1
+    const uniqueServiceIds = [...new Set(scenariosWithCtx.map((s) => s.serviceId))];
+    const serviceMap = new Map<string, Awaited<ReturnType<typeof db.getService>>>();
+    for (const sid of uniqueServiceIds) {
+      const svc = await db.getService(sid);
+      if (svc) serviceMap.set(sid, svc);
+    }
+
+    const runs: Array<{ scenarioId: string; scenarioName: string; runId: string }> = [];
+    for (const scenario of scenariosWithCtx) {
+      const service = serviceMap.get(scenario.serviceId);
+      if (!service) continue;
+      const runId = await executeScenarioRun(scenario, service, db);
+      runs.push({ scenarioId: scenario.id, scenarioName: scenario.name, runId });
+    }
+
+    return c.json(
+      {
+        success: true,
+        data: {
+          tag,
+          count: runs.length,
+          runs,
+          message: `Started ${runs.length} scenario(s) with tag "${tag}". Connect to /api/runs/:id/stream for updates.`,
+        },
+      },
+      202
+    );
   })
 
   // GET /api/scenarios/:id - 시나리오 상세

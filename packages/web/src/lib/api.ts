@@ -187,6 +187,24 @@ export async function runService(id: string) {
   return res.json();
 }
 
+export interface TagRunResult {
+  tag: string;
+  count: number;
+  runs: Array<{ scenarioId: string; scenarioName: string; runId: string }>;
+  message: string;
+}
+
+export async function runScenariosByTag(
+  tag: string,
+  options?: { featureId?: string; serviceId?: string }
+): Promise<{ success: boolean; data: TagRunResult }> {
+  const res = await axiosClient.post<{ success: boolean; data: TagRunResult }>(
+    "/api/scenarios/run-by-tag",
+    { tag, ...options }
+  );
+  return res.data;
+}
+
 export async function getRun(id: string) {
   const res = await api.api.runs[":id"].$get({ param: { id } });
   return res.json();

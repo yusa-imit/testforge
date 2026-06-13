@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { ko } from "date-fns/locale";
 import { MoreHorizontal, Play, Copy, Trash2 } from "lucide-react";
-import { getFeature, getScenarios, api, runFeature, runScenario, deleteScenario, duplicateScenario, getFeatureStats } from "../lib/api";
+import { getFeature, getScenarios, api, runFeature, runScenario, deleteScenario, duplicateScenario, getFeatureStats, runScenariosByTag } from "../lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -102,6 +102,26 @@ export default function FeatureDetail() {
       toast({
         title: "실행 실패",
         description: error.message || "기능 실행 중 오류가 발생했습니다.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const runByTagMutation = useMutation({
+    mutationFn: (tag: string) => runScenariosByTag(tag, { featureId: id }),
+    onSuccess: (result) => {
+      const { count, tag } = result.data;
+      toast({
+        title: "태그 실행 시작",
+        description: count > 0
+          ? `"${tag}" 태그 시나리오 ${count}개 실행이 시작되었습니다.`
+          : `"${tag}" 태그에 해당하는 시나리오가 없습니다.`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "실행 실패",
+        description: error.message || "태그 실행 중 오류가 발생했습니다.",
         variant: "destructive",
       });
     },
@@ -292,6 +312,16 @@ export default function FeatureDetail() {
       <div className="flex justify-between items-center">
         <h2 className="text-lg font-semibold">시나리오</h2>
         <div className="flex space-x-2">
+          {tagFilter !== "all" && filteredScenarios.length > 0 && (
+            <Button
+              variant="outline"
+              onClick={() => runByTagMutation.mutate(tagFilter)}
+              disabled={runByTagMutation.isPending}
+              title={`"${tagFilter}" 태그 시나리오 ${filteredScenarios.length}개 실행`}
+            >
+              {runByTagMutation.isPending ? "실행 중..." : `"${tagFilter}" 태그 실행 (${filteredScenarios.length})`}
+            </Button>
+          )}
           {scenarios.length > 0 && (
             <Button
               variant="outline"
