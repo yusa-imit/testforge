@@ -446,6 +446,73 @@ export class DuckDBDatabase {
     return RowConverter.toService(row);
   }
 
+  async duplicateService(id: string): Promise<Service | undefined> {
+    const original = await this.getService(id);
+    if (!original) return undefined;
+
+    const newServiceId = uuid();
+    const now = new Date();
+
+    await this.db.run(
+      `INSERT INTO services (id, name, description, base_url, default_timeout, default_variables, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        newServiceId,
+        `${original.name} (복사본)`,
+        original.description ?? null,
+        original.baseUrl,
+        original.defaultTimeout ?? 30000,
+        JSON.stringify((original as any).defaultVariables ?? []),
+        now,
+        now,
+      ]
+    );
+
+    // Duplicate all features and their scenarios
+    const features = await this.getFeaturesByService(id);
+    for (const feature of features) {
+      const newFeatureId = uuid();
+      await this.db.run(
+        `INSERT INTO features (id, service_id, name, description, owners, created_at, updated_at)
+         VALUES (?, ?, ?, ?, CAST(? AS VARCHAR[]), ?, ?)`,
+        [
+          newFeatureId,
+          newServiceId,
+          feature.name,
+          feature.description ?? null,
+          feature.owners?.length ? JSON.stringify(feature.owners) : null,
+          now,
+          now,
+        ]
+      );
+
+      const scenarios = await this.getScenariosByFeature(feature.id);
+      for (const scenario of scenarios) {
+        const newScenarioId = uuid();
+        await this.db.run(
+          `INSERT INTO scenarios (id, feature_id, name, description, tags, priority, variables, steps, version, created_at, updated_at)
+           VALUES (?, ?, ?, ?, CAST(? AS VARCHAR[]), ?, ?, ?, ?, ?, ?)`,
+          [
+            newScenarioId,
+            newFeatureId,
+            scenario.name,
+            scenario.description ?? null,
+            scenario.tags?.length ? JSON.stringify(scenario.tags) : null,
+            scenario.priority,
+            JSON.stringify(scenario.variables),
+            JSON.stringify(scenario.steps),
+            1,
+            now,
+            now,
+          ]
+        );
+        await this.updateComponentUsagesForScenario(newScenarioId, scenario.steps);
+      }
+    }
+
+    return this.getService(newServiceId);
+  }
+
   // ============================================
   // Features
   // ============================================

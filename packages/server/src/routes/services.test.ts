@@ -421,3 +421,55 @@ describe("Service defaultVariables", () => {
     expect(body.data[0].defaultVariables[0].name).toBe("region");
   });
 });
+
+// POST /api/services/:id/duplicate
+// ──────────────────────────────────────────────────────────────────────────────
+
+describe("POST /api/services/:id/duplicate", () => {
+  it("duplicates a service with (복사본) suffix", async () => {
+    const svc = await db.createService({ ...servicePayload, name: "Payments" });
+    const res = await req("POST", `/api/services/${svc.id}/duplicate`);
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as any;
+    expect(body.success).toBe(true);
+    expect(body.data.name).toBe("Payments (복사본)");
+    expect(body.data.baseUrl).toBe(svc.baseUrl);
+    expect(body.data.id).not.toBe(svc.id);
+  });
+
+  it("duplicates all features and scenarios into the new service", async () => {
+    const svc = await db.createService(servicePayload);
+    const feat = await db.createFeature({ serviceId: svc.id, name: "Auth", owners: [] });
+    await db.createScenario({ featureId: feat.id, name: "Login", steps: [], priority: "high", tags: ["smoke"], variables: [] });
+    await db.createScenario({ featureId: feat.id, name: "Logout", steps: [], priority: "low", tags: [], variables: [] });
+
+    const res = await req("POST", `/api/services/${svc.id}/duplicate`);
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as any;
+    const newServiceId = body.data.id;
+
+    const newFeatures = await db.getFeaturesByService(newServiceId);
+    expect(newFeatures.length).toBe(1);
+    expect(newFeatures[0].name).toBe("Auth");
+    expect(newFeatures[0].serviceId).toBe(newServiceId);
+
+    const newScenarios = await db.getScenariosByFeature(newFeatures[0].id);
+    expect(newScenarios.length).toBe(2);
+    expect(newScenarios.map((s: any) => s.name).sort()).toEqual(["Login", "Logout"]);
+  });
+
+  it("duplicates a service with no features", async () => {
+    const svc = await db.createService({ ...servicePayload, name: "Empty Service" });
+    const res = await req("POST", `/api/services/${svc.id}/duplicate`);
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as any;
+    const newServiceId = body.data.id;
+    const features = await db.getFeaturesByService(newServiceId);
+    expect(features.length).toBe(0);
+  });
+
+  it("returns 404 for unknown service", async () => {
+    const res = await req("POST", "/api/services/00000000-0000-0000-0000-000000000000/duplicate");
+    expect(res.status).toBe(404);
+  });
+});

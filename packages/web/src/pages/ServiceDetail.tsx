@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { ko } from "date-fns/locale";
 import type { Variable } from "@testforge/core";
-import { getService, getFeatures, api, runService, getServiceStats } from "../lib/api";
+import { getService, getFeatures, api, runService, getServiceStats, duplicateService } from "../lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "../hooks/use-toast";
 import { VariableEditor } from "../components/VariableEditor";
+import { Copy } from "lucide-react";
 
 function FeatureLastRunBadge({ status, at }: { status: string | null; at: string | null }) {
   if (!status) return <span className="text-xs text-muted-foreground">미실행</span>;
@@ -36,6 +37,7 @@ function FeatureLastRunBadge({ status, at }: { status: string | null; at: string
 export default function ServiceDetail() {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [isCreating, setIsCreating] = useState(false);
   const [featureName, setFeatureName] = useState("");
@@ -58,6 +60,21 @@ export default function ServiceDetail() {
     queryKey: ["serviceStats", id],
     queryFn: () => getServiceStats(id!),
     enabled: !!id,
+  });
+
+  const duplicateServiceMutation = useMutation({
+    mutationFn: () => duplicateService(id!),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["services"] });
+      const newService = data?.data as any;
+      toast({ title: "복제 완료", description: `"${newService?.name}" 서비스가 생성되었습니다.` });
+      if (newService?.id) {
+        navigate(`/services/${newService.id}`);
+      }
+    },
+    onError: (error: Error) => {
+      toast({ title: "복제 실패", description: error.message || "서비스 복제 중 오류가 발생했습니다.", variant: "destructive" });
+    },
   });
 
   const runServiceMutation = useMutation({
@@ -137,10 +154,23 @@ export default function ServiceDetail() {
       {/* Service Info */}
       <Card>
         <CardHeader>
-          <CardTitle>{service.name}</CardTitle>
-          {service.description && (
-            <CardDescription>{service.description}</CardDescription>
-          )}
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>{service.name}</CardTitle>
+              {service.description && (
+                <CardDescription>{service.description}</CardDescription>
+              )}
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => duplicateServiceMutation.mutate()}
+              disabled={duplicateServiceMutation.isPending}
+            >
+              <Copy className="h-4 w-4 mr-1" />
+              복제
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">

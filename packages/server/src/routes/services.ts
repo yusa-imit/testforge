@@ -131,6 +131,19 @@ const app = new Hono()
     );
   })
 
+  // POST /api/services/:id/duplicate - 서비스 복제
+  .post("/:id/duplicate", async (c) => {
+    const db = await getDB();
+    const id = c.req.param("id");
+    const duplicated = await db.duplicateService(id);
+
+    if (!duplicated) {
+      throw notFound("Service", id);
+    }
+
+    return c.json({ success: true, data: duplicated }, 201);
+  })
+
   // POST /api/services/:serviceId/features - 기능 생성
   .post("/:serviceId/features", zValidator("json", createFeatureSchema), async (c) => {
     const db = await getDB();
