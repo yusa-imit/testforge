@@ -48,6 +48,26 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 - **Run by Tag** (POST /api/scenarios/run-by-tag — batch execute all scenarios with a given tag, optional featureId/serviceId scope; FeatureDetail "tag 실행" button when tag filter active)
 - **Scenario Move** (PUT /api/scenarios/:id/move — move scenario to different feature; service+feature picker dialog in ScenarioEditor; "이동" button)
 - **Feature Duplicate** (POST /api/features/:id/duplicate — copy feature + all scenarios; "복제" button in FeatureDetail header)
+- **Service Duplicate** (POST /api/services/:id/duplicate — copy service + all features + all scenarios; "복제" button in ServiceDetail header, navigates to new service)
+
+## 최근 완료 (Session 82 - 2026-06-15)
+
+✅ **Service Duplicate** — Tests: 933 pass, 16 skip, 0 fail (+4 tests)
+
+**POST /api/services/:id/duplicate** — copy a service and all its features and scenarios:
+- Creates new service with `(복사본)` name suffix, same baseUrl/defaultTimeout/defaultVariables
+- Copies all features with new IDs pointing to new service; preserves name/description/owners
+- Copies all scenarios with new IDs pointing to new features; preserves name/steps/tags/priority/variables
+- Updates component usages index for each duplicated scenario
+- 4 tests: basic duplicate with suffix, features+scenarios copied correctly, empty service, 404 for unknown
+- Frontend: `duplicateService()` in api.ts; "복제" button (Copy icon) in ServiceDetail Service Info card header; navigates to new service on success
+
+**Files changed:**
+- `packages/server/src/db/database.ts` — duplicateService method
+- `packages/server/src/routes/services.ts` — POST /:id/duplicate route
+- `packages/server/src/routes/services.test.ts` — 4 new tests
+- `packages/web/src/lib/api.ts` — duplicateService() function
+- `packages/web/src/pages/ServiceDetail.tsx` — duplicateServiceMutation + duplicate button in Service Info card + useNavigate
 
 ## 최근 완료 (Session 81 - 2026-06-14)
 
