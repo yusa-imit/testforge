@@ -551,6 +551,54 @@ export class DuckDBDatabase {
     return true;
   }
 
+  async duplicateFeature(id: string): Promise<Feature | undefined> {
+    const original = await this.getFeature(id);
+    if (!original) return undefined;
+
+    const newFeatureId = uuid();
+    const now = new Date();
+
+    await this.db.run(
+      `INSERT INTO features (id, service_id, name, description, owners, created_at, updated_at)
+       VALUES (?, ?, ?, ?, CAST(? AS VARCHAR[]), ?, ?)`,
+      [
+        newFeatureId,
+        original.serviceId,
+        `${original.name} (복사본)`,
+        original.description ?? null,
+        original.owners?.length ? JSON.stringify(original.owners) : null,
+        now,
+        now,
+      ]
+    );
+
+    // Duplicate all scenarios in the original feature
+    const scenarios = await this.getScenariosByFeature(id);
+    for (const scenario of scenarios) {
+      const newScenarioId = uuid();
+      await this.db.run(
+        `INSERT INTO scenarios (id, feature_id, name, description, tags, priority, variables, steps, version, created_at, updated_at)
+         VALUES (?, ?, ?, ?, CAST(? AS VARCHAR[]), ?, ?, ?, ?, ?, ?)`,
+        [
+          newScenarioId,
+          newFeatureId,
+          scenario.name,
+          scenario.description ?? null,
+          scenario.tags?.length ? JSON.stringify(scenario.tags) : null,
+          scenario.priority,
+          JSON.stringify(scenario.variables),
+          JSON.stringify(scenario.steps),
+          1,
+          now,
+          now,
+        ]
+      );
+      await this.updateComponentUsagesForScenario(newScenarioId, scenario.steps);
+    }
+
+    return this.getFeature(newFeatureId);
+  }
+
   async importFeature(data: Feature): Promise<Feature> {
     await this.db.run(
       `INSERT INTO features (id, service_id, name, description, owners, created_at, updated_at)

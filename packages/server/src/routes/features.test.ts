@@ -383,3 +383,52 @@ describe("GET /api/features/:id/stats", () => {
     expect(body.data.trend.length).toBeGreaterThan(0);
   });
 });
+
+// ──────────────────────────────────────────────────────────────────────────────
+// POST /api/features/:id/duplicate
+// ──────────────────────────────────────────────────────────────────────────────
+
+describe("POST /api/features/:id/duplicate", () => {
+  it("duplicates a feature with (복사본) suffix", async () => {
+    const service = await createService();
+    const feature = await createFeature(service.id, "Checkout Feature");
+    const res = await req("POST", `/api/features/${feature.id}/duplicate`);
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as any;
+    expect(body.success).toBe(true);
+    expect(body.data.name).toBe("Checkout Feature (복사본)");
+    expect(body.data.serviceId).toBe(service.id);
+    expect(body.data.id).not.toBe(feature.id);
+  });
+
+  it("duplicates all scenarios into the new feature", async () => {
+    const service = await createService();
+    const feature = await createFeature(service.id);
+    await db.createScenario({ featureId: feature.id, name: "Step A", steps: [], priority: "high", tags: ["smoke"], variables: [] });
+    await db.createScenario({ featureId: feature.id, name: "Step B", steps: [], priority: "low", tags: [], variables: [] });
+    const res = await req("POST", `/api/features/${feature.id}/duplicate`);
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as any;
+    const newFeatureId = body.data.id;
+    const scenarios = await db.getScenariosByFeature(newFeatureId);
+    expect(scenarios.length).toBe(2);
+    expect(scenarios.map((s: any) => s.name).sort()).toEqual(["Step A", "Step B"]);
+    expect(scenarios.every((s: any) => s.featureId === newFeatureId)).toBe(true);
+  });
+
+  it("duplicates feature with no scenarios", async () => {
+    const service = await createService();
+    const feature = await createFeature(service.id, "Empty Feature");
+    const res = await req("POST", `/api/features/${feature.id}/duplicate`);
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as any;
+    const newFeatureId = body.data.id;
+    const scenarios = await db.getScenariosByFeature(newFeatureId);
+    expect(scenarios.length).toBe(0);
+  });
+
+  it("returns 404 for unknown feature", async () => {
+    const res = await req("POST", "/api/features/00000000-0000-0000-0000-000000000000/duplicate");
+    expect(res.status).toBe(404);
+  });
+});

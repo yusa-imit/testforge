@@ -167,6 +167,11 @@ export async function getDashboardData() {
   return res.json();
 }
 
+export async function duplicateFeature(id: string) {
+  const res = await axiosClient.post<{ success: boolean; data: unknown }>(`/features/${id}/duplicate`);
+  return res.data;
+}
+
 export async function duplicateScenario(id: string) {
   const res = await api.api.scenarios[":id"].duplicate.$post({ param: { id } });
   return res.json();

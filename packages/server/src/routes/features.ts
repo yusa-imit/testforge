@@ -121,6 +121,19 @@ const app = new Hono()
     );
   })
 
+  // POST /api/features/:id/duplicate - 기능 복제
+  .post("/:id/duplicate", async (c) => {
+    const db = await getDB();
+    const id = c.req.param("id");
+    const duplicated = await db.duplicateFeature(id);
+
+    if (!duplicated) {
+      throw notFound("Feature", id);
+    }
+
+    return c.json({ success: true, data: duplicated }, 201);
+  })
+
   // POST /api/features/:featureId/scenarios - 시나리오 생성
   .post("/:featureId/scenarios", zValidator("json", createScenarioSchema), async (c) => {
     const db = await getDB();

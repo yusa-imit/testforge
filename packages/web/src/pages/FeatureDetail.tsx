@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { ko } from "date-fns/locale";
 import { MoreHorizontal, Play, Copy, Trash2 } from "lucide-react";
-import { getFeature, getScenarios, api, runFeature, runScenario, deleteScenario, duplicateScenario, getFeatureStats, runScenariosByTag } from "../lib/api";
+import { getFeature, getScenarios, api, runFeature, runScenario, deleteScenario, duplicateScenario, duplicateFeature, getFeatureStats, runScenariosByTag } from "../lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -86,6 +86,17 @@ export default function FeatureDetail() {
     queryKey: ["feature-stats", id],
     queryFn: () => getFeatureStats(id!),
     enabled: !!id,
+  });
+
+  const duplicateFeatureMutation = useMutation({
+    mutationFn: () => duplicateFeature(id!),
+    onSuccess: (data: any) => {
+      toast({ title: "복제 완료", description: `"${data.data?.name}" 기능이 생성되었습니다.` });
+      queryClient.invalidateQueries({ queryKey: ["features"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "복제 실패", description: error.message || "기능 복제 중 오류가 발생했습니다.", variant: "destructive" });
+    },
   });
 
   const runFeatureMutation = useMutation({
@@ -239,11 +250,22 @@ export default function FeatureDetail() {
 
       {/* Feature Info */}
       <Card>
-        <CardHeader>
-          <CardTitle>{feature.name}</CardTitle>
-          {feature.description && (
-            <CardDescription>{feature.description}</CardDescription>
-          )}
+        <CardHeader className="flex flex-row items-start justify-between">
+          <div>
+            <CardTitle>{feature.name}</CardTitle>
+            {feature.description && (
+              <CardDescription>{feature.description}</CardDescription>
+            )}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => duplicateFeatureMutation.mutate()}
+            disabled={duplicateFeatureMutation.isPending}
+          >
+            <Copy className="h-4 w-4 mr-1" />
+            복제
+          </Button>
         </CardHeader>
       </Card>
 
