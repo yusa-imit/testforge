@@ -47,6 +47,25 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 - **JUnit XML Export** (GET /api/runs/export?format=junit — standard CI/CD format; <testsuites> wrapping; <failure> elements for failed/cancelled; XML escaping; separate JUnit XML button in Runs page)
 - **Run by Tag** (POST /api/scenarios/run-by-tag — batch execute all scenarios with a given tag, optional featureId/serviceId scope; FeatureDetail "tag 실행" button when tag filter active)
 - **Scenario Move** (PUT /api/scenarios/:id/move — move scenario to different feature; service+feature picker dialog in ScenarioEditor; "이동" button)
+- **Feature Duplicate** (POST /api/features/:id/duplicate — copy feature + all scenarios; "복제" button in FeatureDetail header)
+
+## 최근 완료 (Session 81 - 2026-06-14)
+
+✅ **Feature Duplicate** — Tests: 929 pass, 16 skip, 0 fail (+4 tests)
+
+**POST /api/features/:id/duplicate** — copy a feature and all its scenarios:
+- Creates new feature with `(복사본)` name suffix, same serviceId
+- Copies all scenarios with new IDs pointing to new feature; preserves name/steps/tags/priority/variables
+- Updates component usages index for each duplicated scenario
+- 4 tests: basic duplicate with suffix, scenarios copied correctly, empty feature, 404 for unknown
+- Frontend: `duplicateFeature()` in api.ts; "복제" button (Copy icon) in FeatureDetail Feature Info card header
+
+**Files changed:**
+- `packages/server/src/db/database.ts` — duplicateFeature method
+- `packages/server/src/routes/features.ts` — POST /:id/duplicate route
+- `packages/server/src/routes/features.test.ts` — 4 new tests
+- `packages/web/src/lib/api.ts` — duplicateFeature() function
+- `packages/web/src/pages/FeatureDetail.tsx` — duplicateFeatureMutation + duplicate button in Feature Info card
 
 ## 최근 완료 (Session 80 - 2026-06-14)
 
