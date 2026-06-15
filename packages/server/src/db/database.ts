@@ -947,6 +947,36 @@ export class DuckDBDatabase {
     return this.getScenario(id);
   }
 
+  async copyScenarioToFeature(id: string, targetFeatureId: string): Promise<Scenario | undefined> {
+    const original = await this.getScenario(id);
+    if (!original) return undefined;
+
+    const newId = uuid();
+    const now = new Date();
+
+    await this.db.run(
+      `INSERT INTO scenarios (id, feature_id, name, description, tags, priority, variables, steps, version, created_at, updated_at)
+       VALUES (?, ?, ?, ?, CAST(? AS VARCHAR[]), ?, ?, ?, ?, ?, ?)`,
+      [
+        newId,
+        targetFeatureId,
+        `${original.name} (복사본)`,
+        original.description ?? null,
+        original.tags?.length ? JSON.stringify(original.tags) : null,
+        original.priority,
+        JSON.stringify(original.variables),
+        JSON.stringify(original.steps),
+        1,
+        now,
+        now,
+      ]
+    );
+
+    await this.updateComponentUsagesForScenario(newId, original.steps);
+
+    return this.getScenario(newId);
+  }
+
   // ============================================
   // Components
   // ============================================

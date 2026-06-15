@@ -190,6 +190,14 @@ export async function moveScenario(id: string, featureId: string) {
   return res.data;
 }
 
+export async function copyScenarioToFeature(id: string, featureId: string) {
+  const res = await axiosClient.post<{ success: boolean; data: { id: string; featureId: string; name: string } }>(
+    `/scenarios/${id}/copy`,
+    { featureId }
+  );
+  return res.data;
+}
+
 export async function cancelRun(id: string) {
   const res = await api.api.runs[":id"].$delete({ param: { id } });
   return res.json();

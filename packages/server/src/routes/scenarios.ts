@@ -21,6 +21,10 @@ const moveScenarioSchema = z.object({
   featureId: z.string().uuid(),
 });
 
+const copyScenarioSchema = z.object({
+  featureId: z.string().uuid(),
+});
+
 const app = new Hono()
   // GET /api/scenarios - 전체 시나리오 목록 (스케줄 드롭다운 등에서 사용)
   .get("/", async (c) => {
@@ -232,6 +236,22 @@ const app = new Hono()
 
     const moved = await db.moveScenario(id, featureId);
     return c.json({ success: true, data: moved });
+  })
+
+  // POST /api/scenarios/:id/copy - 시나리오를 다른 기능으로 복사 (원본 유지)
+  .post("/:id/copy", zValidator("json", copyScenarioSchema), async (c) => {
+    const db = await getDB();
+    const id = c.req.param("id");
+    const { featureId } = c.req.valid("json");
+
+    const scenario = await db.getScenario(id);
+    if (!scenario) throw notFound("Scenario", id);
+
+    const feature = await db.getFeature(featureId);
+    if (!feature) throw notFound("Feature", featureId);
+
+    const copied = await db.copyScenarioToFeature(id, featureId);
+    return c.json({ success: true, data: copied }, 201);
   })
 
   // GET /api/scenarios/:id/runs - 시나리오 실행 이력

@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { ko } from "date-fns/locale";
 import type { Scenario, Step, Variable } from "@testforge/core";
-import { getScenario, updateScenario, runScenario, deleteScenario, duplicateScenario, getRuns, getScenarioStats, getScenarioStepStats, getEnvironments, getServices, getFeatures, moveScenario } from "../lib/api";
+import { getScenario, updateScenario, runScenario, deleteScenario, duplicateScenario, getRuns, getScenarioStats, getScenarioStepStats, getEnvironments, getServices, getFeatures, moveScenario, copyScenarioToFeature } from "../lib/api";
 import type { ScenarioStepStat, Environment } from "../lib/api";
 import { VariableEditor } from "../components/VariableEditor";
 import { StepEditModal } from "../components/StepEditModal";
@@ -22,7 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../components/ui/dialog";
-import { ChevronLeft, Play, Save, Trash2, Edit, GripVertical, Copy, FolderInput } from "lucide-react";
+import { ChevronLeft, Play, Save, Trash2, Edit, GripVertical, Copy, FolderInput, CopyPlus } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
 
 const STEP_TYPE_ICONS: Record<string, string> = {
@@ -78,6 +78,11 @@ export default function ScenarioEditor() {
   const [moveTargetServiceId, setMoveTargetServiceId] = useState<string>("");
   const [moveTargetFeatureId, setMoveTargetFeatureId] = useState<string>("");
 
+  // Copy-to-feature dialog
+  const [copyDialogOpen, setCopyDialogOpen] = useState(false);
+  const [copyTargetServiceId, setCopyTargetServiceId] = useState<string>("");
+  const [copyTargetFeatureId, setCopyTargetFeatureId] = useState<string>("");
+
   // Fetch scenario
   const { data, isLoading } = useQuery({
     queryKey: ["scenario", id],
@@ -124,11 +129,11 @@ export default function ScenarioEditor() {
     staleTime: 60_000,
   });
 
-  // Fetch services for move dialog
+  // Fetch services for move/copy dialog
   const { data: servicesData } = useQuery({
     queryKey: ["services"],
     queryFn: getServices,
-    enabled: moveDialogOpen,
+    enabled: moveDialogOpen || copyDialogOpen,
     staleTime: 60_000,
   });
   const allServices = (servicesData?.data ?? []) as Array<{ id: string; name: string }>;
@@ -140,6 +145,14 @@ export default function ScenarioEditor() {
     enabled: moveDialogOpen && !!moveTargetServiceId,
   });
   const moveFeatures = (moveFeaturesData?.data ?? []) as Array<{ id: string; name: string }>;
+
+  // Fetch features for selected service in copy dialog
+  const { data: copyFeaturesData } = useQuery({
+    queryKey: ["features", copyTargetServiceId],
+    queryFn: () => getFeatures(copyTargetServiceId),
+    enabled: copyDialogOpen && !!copyTargetServiceId,
+  });
+  const copyFeatures = (copyFeaturesData?.data ?? []) as Array<{ id: string; name: string }>;
 
   // Initialize state from fetched data
   React.useEffect(() => {
@@ -248,6 +261,25 @@ export default function ScenarioEditor() {
       toast({
         title: "이동 실패",
         description: error.message || "시나리오 이동 중 오류가 발생했습니다.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Copy mutation
+  const copyMutation = useMutation({
+    mutationFn: (featureId: string) => copyScenarioToFeature(id!, featureId),
+    onSuccess: (result) => {
+      setCopyDialogOpen(false);
+      toast({
+        title: "복사 완료",
+        description: `"${result.data?.name}" 이(가) 대상 기능에 복사되었습니다.`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "복사 실패",
+        description: error.message || "시나리오 복사 중 오류가 발생했습니다.",
         variant: "destructive",
       });
     },
@@ -394,6 +426,17 @@ export default function ScenarioEditor() {
           >
             <FolderInput className="h-4 w-4 mr-2" />
             이동
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setCopyTargetServiceId("");
+              setCopyTargetFeatureId("");
+              setCopyDialogOpen(true);
+            }}
+          >
+            <CopyPlus className="h-4 w-4 mr-2" />
+            다른 기능으로 복사
           </Button>
           <Button
             variant="outline"
@@ -895,6 +938,72 @@ export default function ScenarioEditor() {
               disabled={!moveTargetFeatureId || moveMutation.isPending}
             >
               이동
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Copy to Feature Dialog */}
+      <Dialog open={copyDialogOpen} onOpenChange={setCopyDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>다른 기능으로 복사</DialogTitle>
+            <DialogDescription>
+              복사본을 생성할 대상 서비스와 기능을 선택하세요. 원본은 유지됩니다.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">서비스</label>
+              <Select
+                value={copyTargetServiceId}
+                onValueChange={(v) => {
+                  setCopyTargetServiceId(v);
+                  setCopyTargetFeatureId("");
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="서비스 선택..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {allServices.map((svc) => (
+                    <SelectItem key={svc.id} value={svc.id}>
+                      {svc.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">기능</label>
+              <Select
+                value={copyTargetFeatureId}
+                onValueChange={setCopyTargetFeatureId}
+                disabled={!copyTargetServiceId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={copyTargetServiceId ? "기능 선택..." : "먼저 서비스를 선택하세요"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {copyFeatures.map((f) => (
+                    <SelectItem key={f.id} value={f.id}>
+                      {f.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCopyDialogOpen(false)}>
+              취소
+            </Button>
+            <Button
+              onClick={() => copyMutation.mutate(copyTargetFeatureId)}
+              disabled={!copyTargetFeatureId || copyMutation.isPending}
+            >
+              <CopyPlus className="h-4 w-4 mr-2" />
+              복사
             </Button>
           </DialogFooter>
         </DialogContent>

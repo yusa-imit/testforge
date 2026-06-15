@@ -862,3 +862,53 @@ describe("PUT /api/scenarios/:id/move", () => {
     expect(body.error.code).toBe("NOT_FOUND");
   });
 });
+
+describe("POST /api/scenarios/:id/copy", () => {
+  it("copies a scenario to a different feature with (복사본) suffix", async () => {
+    const service = await createService();
+    const featureA = await createFeature(service.id);
+    const featureB = await createFeature(service.id);
+    const scenario = await createScenario(featureA.id, "Original");
+
+    const res = await req("POST", `/api/scenarios/${scenario.id}/copy`, { featureId: featureB.id });
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as any;
+    expect(body.success).toBe(true);
+    expect(body.data.name).toBe("Original (복사본)");
+    expect(body.data.featureId).toBe(featureB.id);
+    expect(body.data.id).not.toBe(scenario.id);
+  });
+
+  it("original remains in source feature after copy", async () => {
+    const service = await createService();
+    const featureA = await createFeature(service.id);
+    const featureB = await createFeature(service.id);
+    const scenario = await createScenario(featureA.id, "Keep Me");
+
+    await req("POST", `/api/scenarios/${scenario.id}/copy`, { featureId: featureB.id });
+
+    const srcRes = await req("GET", `/api/features/${featureA.id}/scenarios`);
+    const srcBody = (await srcRes.json()) as any;
+    const ids = srcBody.data.map((s: any) => s.id);
+    expect(ids).toContain(scenario.id);
+  });
+
+  it("returns 404 when scenario does not exist", async () => {
+    const service = await createService();
+    const feature = await createFeature(service.id);
+    const res = await req("POST", `/api/scenarios/${uuid()}/copy`, { featureId: feature.id });
+    expect(res.status).toBe(404);
+    const body = (await res.json()) as any;
+    expect(body.error.code).toBe("NOT_FOUND");
+  });
+
+  it("returns 404 when target feature does not exist", async () => {
+    const service = await createService();
+    const feature = await createFeature(service.id);
+    const scenario = await createScenario(feature.id, "Copy Me");
+    const res = await req("POST", `/api/scenarios/${scenario.id}/copy`, { featureId: uuid() });
+    expect(res.status).toBe(404);
+    const body = (await res.json()) as any;
+    expect(body.error.code).toBe("NOT_FOUND");
+  });
+});
