@@ -49,6 +49,27 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 - **Scenario Move** (PUT /api/scenarios/:id/move — move scenario to different feature; service+feature picker dialog in ScenarioEditor; "이동" button)
 - **Feature Duplicate** (POST /api/features/:id/duplicate — copy feature + all scenarios; "복제" button in FeatureDetail header)
 - **Service Duplicate** (POST /api/services/:id/duplicate — copy service + all features + all scenarios; "복제" button in ServiceDetail header, navigates to new service)
+- **Tags Overview** (GET /api/tags — UNNEST VARCHAR[] to aggregate counts; Tags.tsx with search + per-tag run button; nav link "태그")
+
+## 최근 완료 (Session 83 - 2026-06-15)
+
+✅ **Tags Overview** — Tests: 938 pass, 16 skip, 0 fail (+5 tests)
+
+**GET /api/tags** — aggregates all unique tags across scenarios with scenario counts:
+- `getAllTags()` DB method: `SELECT UNNEST(tags) AS tag, COUNT(*) AS scenario_count FROM scenarios GROUP BY tag ORDER BY count DESC, tag ASC`
+- 5 tests: empty when no tags, single tag count=1, multi-scenario counts, sort order, response envelope
+- Frontend: `Tags.tsx` page with search filter, color-coded count badges (blue ≥10, green ≥5, gray <5), per-tag "전체 실행" button (calls runScenariosByTag)
+- "태그" nav link in Layout, `/tags` route in App.tsx
+
+**Files changed:**
+- `packages/server/src/db/database.ts` — getAllTags method
+- `packages/server/src/routes/tags.ts` — GET / route
+- `packages/server/src/routes/tags.test.ts` — 5 tests
+- `packages/server/src/index.ts` — route registration
+- `packages/web/src/lib/api.ts` — TagStat interface + getTags()
+- `packages/web/src/pages/Tags.tsx` — Tags overview page
+- `packages/web/src/App.tsx` — /tags route
+- `packages/web/src/components/Layout.tsx` — "태그" nav link
 
 ## 최근 완료 (Session 82 - 2026-06-15)
 
