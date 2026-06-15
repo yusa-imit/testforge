@@ -50,6 +50,25 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 - **Feature Duplicate** (POST /api/features/:id/duplicate — copy feature + all scenarios; "복제" button in FeatureDetail header)
 - **Service Duplicate** (POST /api/services/:id/duplicate — copy service + all features + all scenarios; "복제" button in ServiceDetail header, navigates to new service)
 - **Tags Overview** (GET /api/tags — UNNEST VARCHAR[] to aggregate counts; Tags.tsx with search + per-tag run button; nav link "태그")
+- **Scenario Copy to Feature** (POST /api/scenarios/:id/copy — copy to different feature, original preserved; service+feature picker dialog in ScenarioEditor; "다른 기능으로 복사" button with CopyPlus icon)
+
+## 최근 완료 (Session 84 - 2026-06-16)
+
+✅ **Scenario Copy to Feature** — Tests: 942 pass, 16 skip, 0 fail (+4 tests)
+
+**POST /api/scenarios/:id/copy** — copies a scenario into any feature while keeping the original in place:
+- `copyScenarioToFeature(id, targetFeatureId)` DB method: inserts new scenario with `(복사본)` suffix, target featureId, copies all steps/tags/priority/variables; updates component usages index
+- Route: validates both scenario and target feature exist (404 if not), returns 201 with new scenario
+- 4 tests: name suffix + target feature, original retained in source, 404 for unknown scenario, 404 for unknown target feature
+- `copyScenarioToFeature()` in api.ts using axiosClient.post
+- ScenarioEditor: `CopyPlus` icon button "다른 기능으로 복사" + picker dialog (service → feature cascade, same UX as move dialog); success toast shows copied scenario name
+
+**Files changed:**
+- `packages/server/src/db/database.ts` — copyScenarioToFeature method
+- `packages/server/src/routes/scenarios.ts` — copyScenarioSchema + POST /:id/copy route
+- `packages/server/src/routes/scenarios.test.ts` — 4 new tests
+- `packages/web/src/lib/api.ts` — copyScenarioToFeature() function
+- `packages/web/src/pages/ScenarioEditor.tsx` — copy state/query/mutation + copy button + dialog
 
 ## 최근 완료 (Session 83 - 2026-06-15)
 
