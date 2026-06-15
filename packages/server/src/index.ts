@@ -21,6 +21,7 @@ import search from "./routes/search";
 import webhooks from "./routes/webhooks";
 import schedules from "./routes/schedules";
 import environments from "./routes/environments";
+import tags from "./routes/tags";
 
 const app = new Hono()
   .use("*", honoLogger())
@@ -42,7 +43,8 @@ const app = new Hono()
   .route("/api/search", search)
   .route("/api/webhooks", webhooks)
   .route("/api/schedules", schedules)
-  .route("/api/environments", environments);
+  .route("/api/environments", environments)
+  .route("/api/tags", tags);
 
 export type AppType = typeof app;
 export default app;

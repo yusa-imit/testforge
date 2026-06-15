@@ -13,6 +13,7 @@ const navigation = [
   { name: "Webhooks", href: "/webhooks" },
   { name: "스케줄", href: "/schedules" },
   { name: "환경", href: "/environments" },
+  { name: "태그", href: "/tags" },
 ];
 
 export default function Layout() {

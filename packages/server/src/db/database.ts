@@ -815,6 +815,19 @@ export class DuckDBDatabase {
     return rows.map((row) => ({ ...RowConverter.toScenario(row), serviceId: row.service_id as string }));
   }
 
+  async getAllTags(): Promise<Array<{ tag: string; scenarioCount: number }>> {
+    const rows = await this.db.all(
+      `SELECT tag, COUNT(*) AS scenario_count
+       FROM (SELECT UNNEST(tags) AS tag FROM scenarios WHERE tags IS NOT NULL)
+       GROUP BY tag
+       ORDER BY scenario_count DESC, tag ASC`
+    );
+    return rows.map((row) => ({
+      tag: row.tag as string,
+      scenarioCount: Number(row.scenario_count),
+    }));
+  }
+
   async updateScenario(id: string, data: Partial<CreateScenario>): Promise<Scenario | undefined> {
     const existing = await this.getScenario(id);
     if (!existing) return undefined;

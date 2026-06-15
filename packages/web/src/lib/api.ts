@@ -562,4 +562,14 @@ export async function deleteEnvironment(id: string): Promise<void> {
   await axiosClient.delete(`/environments/${id}`);
 }
 
+export interface TagStat {
+  tag: string;
+  scenarioCount: number;
+}
+
+export async function getTags(): Promise<TagStat[]> {
+  const res = await axiosClient.get<{ data: TagStat[] }>("/tags");
+  return res.data.data;
+}
+
 
