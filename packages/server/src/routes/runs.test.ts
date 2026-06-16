@@ -779,3 +779,55 @@ describe("GET /api/runs/:id/stream (SSE)", () => {
     expect(text).toContain("passed");
   });
 });
+
+describe("DELETE /api/runs/cleanup", () => {
+  it("returns 400 for invalid olderThan value", async () => {
+    const res = await req("DELETE", "/api/runs/cleanup?olderThan=0");
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as any;
+    expect(body.error.code).toBe("BAD_REQUEST");
+  });
+
+  it("returns 400 for olderThan > 365", async () => {
+    const res = await req("DELETE", "/api/runs/cleanup?olderThan=366");
+    expect(res.status).toBe(400);
+  });
+
+  it("returns deleted count 0 when no old runs exist", async () => {
+    await createTestRun("passed");
+    // All runs created just now, not older than 30 days
+    const res = await req("DELETE", "/api/runs/cleanup?olderThan=30");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.success).toBe(true);
+    expect(body.data.deleted).toBe(0);
+    expect(body.data.olderThanDays).toBe(30);
+  });
+
+  it("does not delete running runs", async () => {
+    const { runId } = await createTestRun("running");
+    // Use DB directly to verify running runs are preserved
+    const deleted = await db.cleanupRuns(1, new Date("2099-01-01"));
+    expect(deleted).toBe(0);
+
+    const run = await db.getTestRun(runId);
+    expect(run).toBeDefined();
+  });
+
+  it("deletes completed runs older than threshold (via DB method)", async () => {
+    const { runId } = await createTestRun("passed");
+    // Use far-future reference date: all runs created now appear "old"
+    const deleted = await db.cleanupRuns(1, new Date("2099-01-01"));
+    expect(deleted).toBe(1);
+
+    const run = await db.getTestRun(runId);
+    expect(run).toBeUndefined();
+  });
+
+  it("returns default olderThan=30 when not specified", async () => {
+    const res = await req("DELETE", "/api/runs/cleanup");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.data.olderThanDays).toBe(30);
+  });
+});

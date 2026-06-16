@@ -179,6 +179,20 @@ const app = new Hono()
     return c.json({ success: true, data: run });
   })
 
+  // DELETE /api/runs/cleanup - 오래된 실행 삭제 (유지보수)
+  .delete("/cleanup", async (c) => {
+    const db = await getDB();
+    const olderThanParam = c.req.query("olderThan");
+    const olderThanDays = olderThanParam ? parseInt(olderThanParam, 10) : 30;
+
+    if (isNaN(olderThanDays) || olderThanDays < 1 || olderThanDays > 365) {
+      throw badRequest("olderThan must be between 1 and 365 days", { code: "INVALID_PARAM" });
+    }
+
+    const deleted = await db.cleanupRuns(olderThanDays);
+    return c.json({ success: true, data: { deleted, olderThanDays } });
+  })
+
   // GET /api/runs/:id/steps - 실행의 스텝 결과
   .get("/:id/steps", async (c) => {
     const db = await getDB();

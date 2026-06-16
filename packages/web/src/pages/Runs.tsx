@@ -1,11 +1,14 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { Download } from "lucide-react";
+import { Download, Trash2 } from "lucide-react";
 import { getRuns } from "../lib/api";
+import { axiosClient } from "../lib/api";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/components/ui/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 const PAGE_SIZE = 50;
 
@@ -24,6 +27,11 @@ export default function Runs() {
   const [dateFilter, setDateFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(0);
+  const [cleanupDays, setCleanupDays] = useState(30);
+  const [showCleanupDialog, setShowCleanupDialog] = useState(false);
+  const [cleanupLoading, setCleanupLoading] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const serverStatus = statusFilter !== "all" ? statusFilter : undefined;
   const serverFrom = dateFilter !== "all" ? getFromDate(dateFilter) : undefined;
@@ -76,6 +84,23 @@ export default function Runs() {
   const handleFilterChange = (setter: (v: string) => void) => (v: string) => {
     setter(v);
     setPage(0);
+  };
+
+  const handleCleanup = async () => {
+    setCleanupLoading(true);
+    try {
+      const res = await axiosClient.delete<{ success: boolean; data: { deleted: number; olderThanDays: number } }>(
+        `/runs/cleanup?olderThan=${cleanupDays}`
+      );
+      const { deleted } = res.data.data;
+      queryClient.invalidateQueries({ queryKey: ["runs"] });
+      setShowCleanupDialog(false);
+      toast({ title: `${deleted}개의 실행 기록이 삭제되었습니다.` });
+    } catch {
+      toast({ title: "정리 실패", variant: "destructive" });
+    } finally {
+      setCleanupLoading(false);
+    }
   };
 
   if (isLoading) {
@@ -172,6 +197,16 @@ export default function Runs() {
           <Download className="h-4 w-4 mr-1" />
           JUnit XML
         </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowCleanupDialog(true)}
+          title="오래된 실행 기록 삭제"
+          className="text-red-600 border-red-200 hover:bg-red-50"
+        >
+          <Trash2 className="h-4 w-4 mr-1" />
+          정리
+        </Button>
         <span className="text-sm text-gray-500">
           {searchQuery.trim()
             ? `${filteredRuns.length}개 결과`
@@ -263,6 +298,52 @@ export default function Runs() {
           </table>
         )}
       </div>
+
+      {/* Cleanup confirmation dialog */}
+      <Dialog open={showCleanupDialog} onOpenChange={setShowCleanupDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>오래된 실행 기록 정리</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-gray-600">
+              완료된 실행 기록 중 지정한 기간보다 오래된 것을 영구 삭제합니다. 실행 중인 기록은 삭제되지 않습니다.
+            </p>
+            <div className="flex items-center gap-3">
+              <label className="text-sm font-medium whitespace-nowrap">
+                삭제 기준
+              </label>
+              <Select
+                value={String(cleanupDays)}
+                onValueChange={(v) => setCleanupDays(Number(v))}
+              >
+                <SelectTrigger className="w-40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7">7일 이전</SelectItem>
+                  <SelectItem value="14">14일 이전</SelectItem>
+                  <SelectItem value="30">30일 이전</SelectItem>
+                  <SelectItem value="60">60일 이전</SelectItem>
+                  <SelectItem value="90">90일 이전</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCleanupDialog(false)}>
+              취소
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleCleanup}
+              disabled={cleanupLoading}
+            >
+              {cleanupLoading ? "삭제 중..." : "삭제"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Pagination controls — hidden when searching (client-side filter) */}
       {!searchQuery.trim() && (

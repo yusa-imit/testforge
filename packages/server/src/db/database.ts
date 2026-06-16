@@ -1601,6 +1601,24 @@ export class DuckDBDatabase {
     return result;
   }
 
+  async cleanupRuns(olderThanDays: number, referenceDate: Date = new Date()): Promise<number> {
+    const cutoff = new Date(referenceDate);
+    cutoff.setDate(cutoff.getDate() - olderThanDays);
+
+    const runRows = await this.db.all(
+      `SELECT id FROM test_runs WHERE created_at < ? AND status NOT IN ('running')`,
+      [cutoff]
+    );
+    const runIds = runRows.map((r: any) => r.id);
+    if (runIds.length === 0) return 0;
+
+    const placeholders = runIds.map(() => "?").join(", ");
+    await this.db.run(`DELETE FROM step_results WHERE run_id IN (${placeholders})`, runIds);
+    await this.db.run(`DELETE FROM test_runs WHERE id IN (${placeholders})`, runIds);
+
+    return runIds.length;
+  }
+
   async getStepResultsByRun(runId: string): Promise<StepResult[]> {
     const rows = await this.db.all(
       "SELECT * FROM step_results WHERE run_id = ? ORDER BY step_index ASC",
