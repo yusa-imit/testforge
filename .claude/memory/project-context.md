@@ -51,6 +51,34 @@ QA 엔지니어와 기획자를 위한 Self-Healing 자동화 테스트 플랫�
 - **Service Duplicate** (POST /api/services/:id/duplicate — copy service + all features + all scenarios; "복제" button in ServiceDetail header, navigates to new service)
 - **Tags Overview** (GET /api/tags — UNNEST VARCHAR[] to aggregate counts; Tags.tsx with search + per-tag run button; nav link "태그")
 - **Scenario Copy to Feature** (POST /api/scenarios/:id/copy — copy to different feature, original preserved; service+feature picker dialog in ScenarioEditor; "다른 기능으로 복사" button with CopyPlus icon)
+- **Component Duplicate** (POST /api/components/:id/duplicate — closes duplicate gap in entity hierarchy; hover Copy button in Components.tsx list)
+- **Run Cleanup** (DELETE /api/runs/cleanup?olderThan=N — prune completed runs older than N days 1-365; red "정리" button + dialog in Runs.tsx)
+
+## 최근 완료 (Session 85 - 2026-06-16)
+
+✅ **Component Duplicate + Run Cleanup** — Tests: 952 pass, 16 skip, 0 fail (+10 tests)
+
+**POST /api/components/:id/duplicate** — closes the duplicate gap in entity hierarchy:
+- `duplicateComponent(id)` DB method: inserts copy with `(복사본)` suffix, preserves type/description/parameters/steps
+- Route returns 201 with new component, 404 for unknown
+- 4 tests: name suffix, parameters+steps copied, original retained, 404
+- `duplicateComponent()` in api.ts; Copy icon hover button in Components.tsx list rows
+
+**DELETE /api/runs/cleanup?olderThan=N** — maintenance endpoint to prune old completed runs:
+- `cleanupRuns(olderThanDays, referenceDate)` DB method: deletes step_results + test_runs older than cutoff; skips "running" status; accepts reference date for testability
+- Route validates 1-365 range; returns `{ deleted, olderThanDays }`; defaults to 30 days
+- 6 tests: invalid params, zero deletes for recent runs, preserves running, deletes completed, default param
+- Runs.tsx: red "정리" button → confirmation dialog with 7/14/30/60/90 day selector
+
+**Files changed:**
+- `packages/server/src/db/database.ts` — duplicateComponent + cleanupRuns methods
+- `packages/server/src/routes/components.ts` — POST /:id/duplicate route
+- `packages/server/src/routes/components.test.ts` — 4 new tests
+- `packages/server/src/routes/runs.ts` — DELETE /cleanup route
+- `packages/server/src/routes/runs.test.ts` — 6 new tests
+- `packages/web/src/lib/api.ts` — duplicateComponent() function
+- `packages/web/src/pages/Components.tsx` — hover copy button + duplicate mutation
+- `packages/web/src/pages/Runs.tsx` — cleanup button + confirmation dialog
 
 ## 최근 완료 (Session 84 - 2026-06-16)
 
