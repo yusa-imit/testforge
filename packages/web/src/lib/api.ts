@@ -177,6 +177,11 @@ export async function duplicateFeature(id: string) {
   return res.data;
 }
 
+export async function duplicateComponent(id: string) {
+  const res = await axiosClient.post<{ success: boolean; data: unknown }>(`/components/${id}/duplicate`);
+  return res.data;
+}
+
 export async function duplicateScenario(id: string) {
   const res = await api.api.scenarios[":id"].duplicate.$post({ param: { id } });
   return res.json();

@@ -1,17 +1,32 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { getComponents } from "../lib/api";
+import { Copy } from "lucide-react";
+import { getComponents, duplicateComponent } from "../lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/components/ui/use-toast";
 
 export default function Components() {
   const [searchQuery, setSearchQuery] = useState("");
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
     queryKey: ["components"],
     queryFn: getComponents,
+  });
+
+  const duplicateMutation = useMutation({
+    mutationFn: duplicateComponent,
+    onSuccess: (res: any) => {
+      queryClient.invalidateQueries({ queryKey: ["components"] });
+      toast({ title: `"${res.data.name}" 컴포넌트가 복제되었습니다.` });
+    },
+    onError: () => {
+      toast({ title: "복제 실패", variant: "destructive" });
+    },
   });
 
   const components = useMemo(() => data?.data ?? [], [data]);
@@ -86,9 +101,9 @@ export default function Components() {
         ) : (
           <ul className="divide-y divide-gray-200">
             {filteredComponents.map((component) => (
-              <li key={component.id} className="px-6 py-4 hover:bg-gray-50">
-                <Link to={`/components/${component.id}/edit`}>
-                  <div className="flex items-center justify-between">
+              <li key={component.id} className="px-6 py-4 hover:bg-gray-50 group">
+                <div className="flex items-center justify-between">
+                  <Link to={`/components/${component.id}/edit`} className="flex-1 min-w-0">
                     <div>
                       <h3 className="text-sm font-medium text-gray-900">
                         {component.name}
@@ -107,9 +122,25 @@ export default function Components() {
                         </span>
                       </div>
                     </div>
-                    <span className="text-gray-400">편집 →</span>
+                  </Link>
+                  <div className="flex items-center gap-2 ml-4">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="복제"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        duplicateMutation.mutate(component.id);
+                      }}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                    <Link to={`/components/${component.id}/edit`}>
+                      <span className="text-gray-400">편집 →</span>
+                    </Link>
                   </div>
-                </Link>
+                </div>
               </li>
             ))}
           </ul>

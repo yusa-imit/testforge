@@ -60,6 +60,19 @@ const app = new Hono()
     return c.json({ success: true });
   })
 
+  // POST /api/components/:id/duplicate - 컴포넌트 복제
+  .post("/:id/duplicate", async (c) => {
+    const db = await getDB();
+    const id = c.req.param("id");
+    const component = await db.duplicateComponent(id);
+
+    if (!component) {
+      throw notFound("Component", id);
+    }
+
+    return c.json({ success: true, data: component }, 201);
+  })
+
   // GET /api/components/:id/usages - 컴포넌트 사용처
   .get("/:id/usages", async (c) => {
     const db = await getDB();

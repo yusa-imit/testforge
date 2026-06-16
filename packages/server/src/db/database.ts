@@ -1064,6 +1064,32 @@ export class DuckDBDatabase {
     return true;
   }
 
+  async duplicateComponent(id: string): Promise<Component | undefined> {
+    const original = await this.getComponent(id);
+    if (!original) return undefined;
+
+    const newId = uuid();
+    const now = new Date();
+
+    await this.db.run(
+      `INSERT INTO components (id, name, description, type, parameters, steps, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        newId,
+        `${original.name} (복사본)`,
+        original.description ?? null,
+        original.type,
+        JSON.stringify(original.parameters || []),
+        JSON.stringify(original.steps || []),
+        now,
+        now,
+      ]
+    );
+
+    const row = await this.db.get("SELECT * FROM components WHERE id = ?", [newId]);
+    return RowConverter.toComponent(row);
+  }
+
   async importComponent(data: Component): Promise<Component> {
     await this.db.run(
       `INSERT INTO components (id, name, description, type, parameters, steps, created_at, updated_at)

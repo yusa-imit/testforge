@@ -236,3 +236,72 @@ describe("Component types and parameters", () => {
     expect(body.data.parameters[1].defaultValue).toBe(5000);
   });
 });
+
+describe("POST /api/components/:id/duplicate", () => {
+  it("creates a copy with (복사본) name suffix", async () => {
+    const component = await db.createComponent({
+      name: "Login Flow",
+      type: "flow",
+      parameters: [{ name: "username", type: "string", required: true }],
+      steps: [{ type: "navigate" as const, config: { url: "/login" }, description: "Go to login" }],
+    });
+
+    const res = await req("POST", `/api/components/${component.id}/duplicate`);
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as any;
+    expect(body.success).toBe(true);
+    expect(body.data.name).toBe("Login Flow (복사본)");
+  });
+
+  it("copies steps and parameters from the original", async () => {
+    const component = await db.createComponent({
+      name: "Auth Flow",
+      description: "Authentication steps",
+      type: "flow",
+      parameters: [
+        { name: "email", type: "string", required: true },
+        { name: "password", type: "string", required: true },
+      ],
+      steps: [
+        { type: "navigate" as const, config: { url: "/login" }, description: "Go to login" },
+        { type: "fill" as const, config: { locator: { displayName: "email", strategies: [] }, value: "{{email}}" }, description: "Enter email" },
+      ],
+    });
+
+    const res = await req("POST", `/api/components/${component.id}/duplicate`);
+    const body = (await res.json()) as any;
+    const copy = body.data;
+
+    expect(copy.type).toBe("flow");
+    expect(copy.description).toBe("Authentication steps");
+    expect(copy.parameters).toHaveLength(2);
+    expect(copy.steps).toHaveLength(2);
+    expect(copy.steps[0].config.url).toBe("/login");
+  });
+
+  it("original component is preserved after duplication", async () => {
+    const component = await db.createComponent({
+      name: "Shared Flow",
+      type: "flow",
+      parameters: [],
+      steps: [],
+    });
+
+    await req("POST", `/api/components/${component.id}/duplicate`);
+
+    const listRes = await req("GET", "/api/components");
+    const listBody = (await listRes.json()) as any;
+    expect(listBody.data).toHaveLength(2);
+
+    const original = listBody.data.find((c: any) => c.id === component.id);
+    expect(original).toBeDefined();
+    expect(original.name).toBe("Shared Flow");
+  });
+
+  it("returns 404 for unknown component", async () => {
+    const res = await req("POST", `/api/components/${uuid()}/duplicate`);
+    expect(res.status).toBe(404);
+    const body = (await res.json()) as any;
+    expect(body.error.code).toBe("NOT_FOUND");
+  });
+});
